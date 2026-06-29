@@ -1,0 +1,50 @@
+{
+  "data_as_of": "2026-06-28 16:58 ET",
+  "source": "FOX Sports 转引 FanDuel Sportsbook",
+  "source_url": "https://www.foxsports.com/stories/soccer/2026-world-cup-round-32-odds",
+  "odds_format": "decimal",
+  "matches": [
+    {
+      "id": "wc2026-r32-bra-jpn",
+      "competition": "2026 世界杯",
+      "stage": "淘汰赛",
+      "fixture_date": "2026-06-29（赛事当地日期）",
+      "kickoff_beijing": "2026-06-30T01:00:00+08:00",
+      "home": "巴西",
+      "away": "日本",
+      "odds": {
+        "home": 1.69,
+        "draw": 3.80,
+        "away": 5.20
+      }
+    },
+    {
+      "id": "wc2026-r32-ger-pry",
+      "competition": "2026 世界杯",
+      "stage": "淘汰赛",
+      "fixture_date": "2026-06-29（赛事当地日期）",
+      "kickoff_beijing": "2026-06-30T04:30:00+08:00",
+      "home": "德国",
+      "away": "巴拉圭",
+      "odds": {
+        "home": 1.29,
+        "draw": 5.40,
+        "away": 11.00
+      }
+    },
+    {
+      "id": "wc2026-r32-ned-mar",
+      "competition": "2026 世界杯",
+      "stage": "淘汰赛",
+      "fixture_date": "2026-06-29（赛事当地日期）",
+      "kickoff_beijing": "2026-06-30T09:00:00+08:00",
+      "home": "荷兰",
+      "away": "摩洛哥",
+      "odds": {
+        "home": 2.20,
+        "draw": 3.10,
+        "away": 3.70
+      }
+    }
+  ]
+}
