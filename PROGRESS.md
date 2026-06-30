@@ -285,7 +285,7 @@ python -m unittest discover -s tests -v
 - [x] 体彩 API 请求重试 + 指数退避（403 时自动重试 2–3 次）
 - [x] 仪表盘 `ConnectionAbortedError` 静默处理
 - [x] 后台定时刷新缓存（dashboard 启动时/async 线程每 N 分钟拉一次体彩）
-- [ ] 将 `dev/jun-odds` 整理 commit 并 push，方便双人协作
+- [x] 将 `dev/jun-odds` 整理 commit 并 push，方便双人协作
 
 ### P1 · 产品体验
 
@@ -294,6 +294,7 @@ python -m unittest discover -s tests -v
 - [ ] 预测结果导出 JSON / CSV
 - [ ] 单场详情页 URL（`/match/{id}`）便于分享
 - [ ] 移动端布局优化
+- [ ] 增加类似参与投注
 
 ### P2 · 数据与分析增强
 
