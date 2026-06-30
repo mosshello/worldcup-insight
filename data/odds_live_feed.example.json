@@ -1,0 +1,6 @@
+{
+  "match_id": "wc2026-r32-bra-jpn",
+  "source": "your-odds-provider",
+  "european": {"home": 1.67, "draw": 3.75, "away": 5.35},
+  "asian_handicap": {"line": -1.0, "home": 0.88, "away": 1.02}
+}

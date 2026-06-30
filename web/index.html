@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>世界杯盘口洞察</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">World Cup Insight</p>
+        <h1>体彩竞彩分析</h1>
+        <p class="subtitle">未开赛赛事 · 固定奖金走势 · 融合预测 · 比分参考</p>
+      </div>
+      <div class="hero-meta" id="meta-panel">
+        <div class="meta-item">
+          <span class="meta-label">主盘来源</span>
+          <span class="meta-value"><a href="https://www.sporttery.cn/jc/zqszsc/" target="_blank" rel="noreferrer">中国体育彩票竞彩网</a></span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">赛事状态</span>
+          <span class="meta-value" id="sporttery-status">加载中…</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="panel sporttery-panel">
+      <div class="panel-head split">
+        <div>
+          <h2>未开赛赛事</h2>
+          <p id="sporttery-subtitle">仅展示体彩竞彩网当前可售、尚未开赛的足球比赛 · <button type="button" id="refresh-btn" class="link-btn">刷新数据</button></p>
+        </div>
+        <div class="prediction-badge" id="prediction-badge">
+          <span class="badge-label">当前选中</span>
+          <span class="badge-value" id="prediction-direction">—</span>
+          <span class="badge-confidence tag low" id="prediction-confidence">比分 —</span>
+        </div>
+      </div>
+      <div class="match-grid" id="sporttery-grid"></div>
+      <div class="stats-row" id="sporttery-stats"></div>
+      <div class="chart-grid sporttery-charts">
+        <article class="chart-card">
+          <h3>体彩胜平负概率</h3>
+          <div class="chart-box doughnut-box">
+            <canvas id="sporttery-prob-chart"></canvas>
+          </div>
+        </article>
+        <article class="chart-card wide">
+          <h3>体彩胜平负固定奖金走势</h3>
+          <div class="chart-box">
+            <canvas id="sporttery-had-chart"></canvas>
+          </div>
+        </article>
+        <article class="chart-card wide" id="sporttery-hhad-card">
+          <h3>体彩让球胜平负走势</h3>
+          <div class="chart-box">
+            <canvas id="sporttery-hhad-chart"></canvas>
+          </div>
+        </article>
+      </div>
+      <div class="analysis-grid">
+        <article class="analysis-card">
+          <h3>融合预测分析</h3>
+          <ul id="fusion-analysis"></ul>
+        </article>
+        <article class="analysis-card">
+          <h3>外网 vs 体彩</h3>
+          <ul id="foreign-compare"></ul>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

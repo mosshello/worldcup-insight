@@ -1,0 +1,72 @@
+{
+  "match_id": "wc2026-r32-bra-jpn",
+  "home": "巴西",
+  "away": "日本",
+  "snapshots": [
+    {
+      "recorded_at": "2026-06-29T10:00:00+08:00",
+      "european": {
+        "home": 1.75,
+        "draw": 3.9,
+        "away": 5.0
+      },
+      "asian_handicap": {
+        "line": -0.75,
+        "home": 0.98,
+        "away": 0.92
+      },
+      "source": "demo-feed"
+    },
+    {
+      "recorded_at": "2026-06-29T14:00:00+08:00",
+      "european": {
+        "home": 1.72,
+        "draw": 3.85,
+        "away": 5.1
+      },
+      "asian_handicap": {
+        "line": -0.75,
+        "home": 0.95,
+        "away": 0.95
+      },
+      "source": "demo-feed"
+    },
+    {
+      "recorded_at": "2026-06-29T18:00:00+08:00",
+      "european": {
+        "home": 1.69,
+        "draw": 3.8,
+        "away": 5.2
+      },
+      "asian_handicap": {
+        "line": -1.0,
+        "home": 0.92,
+        "away": 0.98
+      },
+      "source": "demo-feed"
+    },
+    {
+      "recorded_at": "2026-06-29T22:00:00+08:00",
+      "european": {
+        "home": 1.67,
+        "draw": 3.75,
+        "away": 5.35
+      },
+      "asian_handicap": {
+        "line": -1.0,
+        "home": 0.88,
+        "away": 1.02
+      },
+      "source": "demo-feed"
+    },
+    {
+      "recorded_at": "2026-06-29T09:09:12+00:00",
+      "european": {
+        "home": 1.6896551724137931,
+        "draw": 3.8,
+        "away": 5.2
+      },
+      "source": "fox-sports/fanduel"
+    }
+  ]
+}

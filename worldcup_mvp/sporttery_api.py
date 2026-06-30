@@ -1,0 +1,301 @@
+"""中国体育彩票竞彩足球官方 Web API 客户端。"""
+
+from __future__ import annotations
+
+import json
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime
+from typing import Any
+from zoneinfo import ZoneInfo
+
+from .team_names import resolve_team
+
+BEIJING_TZ = ZoneInfo("Asia/Shanghai")
+
+MATCH_CALC_URL = (
+    "https://webapi.sporttery.cn/gateway/uniform/football/getMatchCalculatorV1.qry"
+)
+FIXED_BONUS_URL = (
+    "https://webapi.sporttery.cn/gateway/uniform/football/getFixedBonusV1.qry"
+)
+DEFAULT_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Referer": "https://www.sporttery.cn/jc/zqszsc/",
+    "Origin": "https://www.sporttery.cn",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+}
+MAX_RETRIES = 3
+RETRY_BACKOFF_SECONDS = (0.8, 2.0, 4.0)
+RETRYABLE_HTTP_CODES = {403, 429, 500, 502, 503, 504}
+
+
+class SportteryApiError(RuntimeError):
+    """体彩 API 请求失败。"""
+
+
+def _should_retry_http(code: int) -> bool:
+    return code in RETRYABLE_HTTP_CODES
+
+
+def _request_once(url: str, params: dict[str, str] | None = None, *, timeout: float = 15.0) -> dict[str, Any]:
+    query = urllib.parse.urlencode(params or {})
+    full_url = f"{url}?{query}" if query else url
+    request = urllib.request.Request(full_url, headers=DEFAULT_HEADERS)
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        error = SportteryApiError(f"HTTP {exc.code}: {detail[:200]}")
+        error.http_code = exc.code  # type: ignore[attr-defined]
+        raise error from exc
+    except urllib.error.URLError as exc:
+        raise SportteryApiError(str(exc.reason)) from exc
+
+    if not payload.get("success"):
+        raise SportteryApiError(payload.get("errorMessage") or "体彩 API 返回失败")
+    return payload
+
+
+def _request(url: str, params: dict[str, str] | None = None, *, timeout: float = 15.0) -> dict[str, Any]:
+    last_error: SportteryApiError | None = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            return _request_once(url, params, timeout=timeout)
+        except SportteryApiError as exc:
+            last_error = exc
+            http_code = getattr(exc, "http_code", None)
+            if http_code is not None and _should_retry_http(http_code) and attempt < MAX_RETRIES - 1:
+                time.sleep(RETRY_BACKOFF_SECONDS[attempt])
+                continue
+            if "timed out" in str(exc).lower() and attempt < MAX_RETRIES - 1:
+                time.sleep(RETRY_BACKOFF_SECONDS[attempt])
+                continue
+            raise
+    if last_error is not None:
+        raise last_error
+    raise SportteryApiError("体彩 API 请求失败")
+
+
+def _parse_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_trend_flag(flag: Any) -> str:
+    """体彩变动标志：-1 下降，0 持平，1 上升。"""
+    text = str(flag).strip()
+    if text == "-1":
+        return "down"
+    if text == "1":
+        return "up"
+    return "flat"
+
+
+TREND_LABELS = {"down": "下调", "up": "上调", "flat": "持平"}
+
+
+def _normalize_pool(pool: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not pool:
+        return None
+    home = _parse_float(pool.get("h"))
+    draw = _parse_float(pool.get("d"))
+    away = _parse_float(pool.get("a"))
+    if home is None or draw is None or away is None:
+        return None
+    return {
+        "home": home,
+        "draw": draw,
+        "away": away,
+        "trends": {
+            "home": parse_trend_flag(pool.get("hf")),
+            "draw": parse_trend_flag(pool.get("df")),
+            "away": parse_trend_flag(pool.get("af")),
+        },
+        "goal_line": _parse_float(pool.get("goalLineValue") or pool.get("goalLine")),
+        "updated_at": f"{pool.get('updateDate', '')} {pool.get('updateTime', '')}".strip(),
+    }
+
+
+def _flatten_matches(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    matches: list[dict[str, Any]] = []
+    for group in payload.get("value", {}).get("matchInfoList", []):
+        for raw in group.get("subMatchList", []):
+            matches.append(normalize_match(raw))
+    return matches
+
+
+def parse_kickoff_beijing(match: dict[str, Any]) -> datetime | None:
+    """解析体彩场次开赛时间（北京时间）。"""
+    date = match.get("match_date")
+    time = match.get("match_time")
+    if not date or not time:
+        return None
+    try:
+        return datetime.fromisoformat(f"{date}T{time}").replace(tzinfo=BEIJING_TZ)
+    except ValueError:
+        return None
+
+
+def is_upcoming_match(match: dict[str, Any], *, now: datetime | None = None) -> bool:
+    """仍在售且尚未开赛的体彩场次。"""
+    if match.get("pools", {}).get("had") is None:
+        return False
+    kickoff = parse_kickoff_beijing(match)
+    if kickoff is None:
+        return True
+    current = now or datetime.now(BEIJING_TZ)
+    return kickoff > current
+
+
+def fetch_upcoming_matches(*, pool_code: str = "had,hhad") -> list[dict[str, Any]]:
+    """拉取体彩竞彩网当前未开赛的足球赛事，按开赛时间排序。"""
+    matches = fetch_matches(pool_code=pool_code)
+    upcoming = [match for match in matches if is_upcoming_match(match)]
+    upcoming.sort(
+        key=lambda item: parse_kickoff_beijing(item)
+        or datetime.max.replace(tzinfo=BEIJING_TZ)
+    )
+    return upcoming
+
+
+def fetch_fixed_bonus(match_id: str | int) -> dict[str, Any]:
+    """拉取单场固定奖金及猜比分历史。"""
+    payload = _request(
+        FIXED_BONUS_URL,
+        {"clientCode": "3001", "matchId": str(match_id)},
+    )
+    return payload["value"]["oddsHistory"]
+
+
+def normalize_match(raw: dict[str, Any]) -> dict[str, Any]:
+    """将体彩原始比赛对象转为内部结构。"""
+    had = _normalize_pool(raw.get("had"))
+    hhad = _normalize_pool(raw.get("hhad"))
+    return {
+        "match_id": str(raw.get("matchId")),
+        "match_num": raw.get("matchNumStr"),
+        "home": raw.get("homeTeamAbbName") or raw.get("homeTeamAllName"),
+        "away": raw.get("awayTeamAbbName") or raw.get("awayTeamAllName"),
+        "home_en": resolve_team(raw.get("homeTeamAbbName") or "")["en"],
+        "away_en": resolve_team(raw.get("awayTeamAbbName") or "")["en"],
+        "league": raw.get("leagueAbbName"),
+        "match_date": raw.get("matchDate"),
+        "match_time": raw.get("matchTime"),
+        "kickoff": f"{raw.get('matchDate', '')}T{raw.get('matchTime', '')}",
+        "kickoff_beijing": (
+            f"{raw.get('matchDate', '')}T{raw.get('matchTime', '')}+08:00"
+            if raw.get("matchDate") and raw.get("matchTime")
+            else None
+        ),
+        "match_status": raw.get("matchStatus") or raw.get("sellStatus"),
+        "betting_single": raw.get("bettingSingle"),
+        "pools": {
+            "had": had,
+            "hhad": hhad,
+        },
+        "source": "sporttery.cn",
+        "source_url": "https://www.sporttery.cn/jc/zqszsc/",
+    }
+
+
+def fetch_matches(*, pool_code: str = "had,hhad") -> list[dict[str, Any]]:
+    payload = _request(
+        MATCH_CALC_URL,
+        {"channel": "c", "poolCode": pool_code},
+    )
+    return _flatten_matches(payload)
+
+
+def find_match(
+    *,
+    home: str | None = None,
+    away: str | None = None,
+    match_id: str | None = None,
+    pool_code: str = "had,hhad",
+    upcoming_only: bool = False,
+) -> dict[str, Any]:
+    matches = fetch_upcoming_matches(pool_code=pool_code) if upcoming_only else fetch_matches(pool_code=pool_code)
+    if match_id:
+        for match in matches:
+            if match["match_id"] == str(match_id):
+                return match
+        raise SportteryApiError(f"未找到体彩 matchId={match_id}")
+
+    if home and away:
+        for match in matches:
+            if resolve_team(match["home"])["en"].casefold() == resolve_team(home)["en"].casefold() and resolve_team(
+                match["away"]
+            )["en"].casefold() == resolve_team(away)["en"].casefold():
+                return match
+        raise SportteryApiError(f"未找到体彩赛事：{home} vs {away}")
+
+    raise SportteryApiError("需要提供 match_id 或主客队名称")
+
+
+def _history_point(item: dict[str, Any]) -> dict[str, Any]:
+    point = {
+        "recorded_at": f"{item.get('updateDate', '')}T{item.get('updateTime', '')}",
+        "home": _parse_float(item.get("h")),
+        "draw": _parse_float(item.get("d")),
+        "away": _parse_float(item.get("a")),
+        "trends": {
+            "home": parse_trend_flag(item.get("hf")),
+            "draw": parse_trend_flag(item.get("df")),
+            "away": parse_trend_flag(item.get("af")),
+        },
+    }
+    line = _parse_float(item.get("goalLineValue") or item.get("goalLine"))
+    if line is not None:
+        point["goal_line"] = line
+    return point
+
+
+def fetch_odds_history(match_id: str | int) -> dict[str, Any]:
+    payload = _request(
+        FIXED_BONUS_URL,
+        {"clientCode": "3001", "matchId": str(match_id)},
+    )
+    history = payload["value"]["oddsHistory"]
+    return {
+        "match_id": str(history.get("matchId")),
+        "home": history.get("homeTeamAbbName"),
+        "away": history.get("awayTeamAbbName"),
+        "league": history.get("leagueAbbName"),
+        "had_history": [_history_point(item) for item in history.get("hadList", [])],
+        "hhad_history": [_history_point(item) for item in history.get("hhadList", [])],
+        "source": "sporttery.cn/getFixedBonusV1",
+    }
+
+
+def match_to_snapshot(match: dict[str, Any]) -> dict[str, Any]:
+    """转为通用快照结构，had 映射为 european。"""
+    had = match["pools"].get("had")
+    if had is None:
+        raise SportteryApiError("该比赛暂无胜平负固定奖金")
+
+    snapshot: dict[str, Any] = {
+        "source": "sporttery.cn/had",
+        "european": {
+            "home": had["home"],
+            "draw": had["draw"],
+            "away": had["away"],
+        },
+        "sporttery": {
+            "match_id": match["match_id"],
+            "had": had,
+            "hhad": match["pools"].get("hhad"),
+        },
+    }
+    return snapshot
