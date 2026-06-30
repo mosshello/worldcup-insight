@@ -1,0 +1,53 @@
+{
+  "_comment": "复制为 intelligence_overlay.json 后按体彩 match_id 或「主队|客队」键维护人工情报。",
+  "matches": {
+    "德国|巴拉圭": {
+      "venue": {
+        "stadium": "MetLife Stadium",
+        "city": "East Rutherford, NJ",
+        "source": "manual"
+      },
+      "environment": {
+        "temperature_c": 26,
+        "humidity_pct": 68,
+        "source": "manual-forecast"
+      },
+      "referee": "待官方公布（overlay 人工更新）",
+      "rotation_risk": "德国小组赛末轮已轮换部分防线，淘汰赛预计主力回归；巴拉圭中场迭戈·戈麦斯停赛影响组织。",
+      "manager_quotes": [
+        "纳格尔斯曼（德国）：淘汰赛必须提高转换效率，南美球队低位防守时要有耐心。",
+        "阿尔法罗（巴拉圭）：面对欧洲强队我们会收缩空间，利用反击与定位球。"
+      ],
+      "home": {
+        "absences": [
+          {"player": "尼科·施洛特贝克", "status": "out", "impact": 0.6, "line": "defense", "note": "脚踝伤"},
+          {"player": "纳撒尼尔·布朗", "status": "doubtful", "impact": 0.4, "line": "defense", "note": "肌肉问题"}
+        ],
+        "predicted_lineup": ["诺伊尔", "基米希", "吕迪格", "塔", "米特尔施塔特", "帕夫洛维奇", "格雷茨卡", "维尔茨", "萨内", "穆西亚拉", "哈弗茨"],
+        "tactics": "高位压迫 + 肋部渗透；施洛特贝克缺阵可能改用塔/吕迪格双中卫，边路推进依赖基米希与米特尔施塔特。"
+      },
+      "away": {
+        "absences": [
+          {"player": "迭戈·戈麦斯", "status": "suspended", "impact": 0.8, "line": "both", "note": "累计黄牌停赛"},
+          {"player": "奥马尔·阿尔德雷特", "status": "doubtful", "impact": 0.7, "line": "defense", "note": "膝部出场存疑"},
+          {"player": "拉蒙·索萨", "status": "doubtful", "impact": 0.5, "line": "attack", "note": "肌肉问题"}
+        ],
+        "predicted_lineup": ["罗切", "卡塞雷斯", "巴尔加斯", "阿隆索", "桑切斯", "维拉", "卡塞雷斯·M", "恩西索", "阿尔米隆", "萨纳布里亚", "卡瓦列罗"],
+        "tactics": "5-4-1 低位防守，戈麦斯停赛削弱中场出球，反击依赖恩西索与阿尔米隆速度。"
+      }
+    },
+    "巴西|日本": {
+      "home": {
+        "absences": [
+          {"player": "拉菲尼亚", "status": "doubtful", "impact": 0.8, "line": "attack", "note": "腿后肌出场存疑"}
+        ]
+      },
+      "away": {
+        "absences": [
+          {"player": "久保建英", "status": "doubtful", "impact": 0.8, "line": "attack", "note": "膝部出场存疑"},
+          {"player": "板仓滉", "status": "doubtful", "impact": 0.7, "line": "defense", "note": "出场存疑"}
+        ]
+      }
+    }
+  }
+}

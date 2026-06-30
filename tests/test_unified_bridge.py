@@ -28,6 +28,10 @@ class UnifiedBridgeTests(unittest.TestCase):
 
     @patch("worldcup_mvp.unified_bridge.UnifiedDataManager.from_env")
     def test_get_provider_health(self, mock_from_env: MagicMock) -> None:
+        from worldcup_mvp import unified_bridge
+
+        unified_bridge._health_cache = None
+        unified_bridge._health_cache_at = 0.0
         mock_from_env.return_value.doctor.return_value = {
             "configuration": "ok-no-api-key-required",
             "providers": [
@@ -36,7 +40,7 @@ class UnifiedBridgeTests(unittest.TestCase):
                 {"provider": "sporttery-public", "ok": False},
             ],
         }
-        report = get_provider_health()
+        report = get_provider_health(force=True)
         self.assertTrue(report["success"])
         self.assertFalse(report["all_ok"])
         self.assertEqual(len(report["providers"]), 3)

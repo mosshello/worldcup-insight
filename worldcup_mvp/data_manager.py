@@ -14,6 +14,7 @@ from typing import Any, Callable, Mapping
 from zoneinfo import ZoneInfo
 
 from .http_client import DataSourceError, HttpJsonClient
+from .match_intelligence import compute_home_away_splits, extract_venue_from_fifa
 from .providers import FifaPublicProvider, PolymarketPublicProvider, SportteryPublicProvider
 
 
@@ -31,7 +32,7 @@ FIFA_RULES = {
 }
 
 POLYMARKET_CODE_ALIASES = {"NED": "NLD"}
-SPORTTERY_CODE_ALIASES = {"BRZ": "BRA", "PGY": "PAR", "NET": "NED", "MCO": "MAR"}
+SPORTTERY_CODE_ALIASES = {"BRZ": "BRA", "PGY": "PAR", "NET": "NED", "MCO": "MAR", "NOW": "NOR"}
 
 
 @dataclass(frozen=True)
@@ -460,6 +461,7 @@ class UnifiedDataManager:
         timeline_cache: dict[str, list[dict[str, Any]]] = {}
 
         matches = []
+        errors: list[str] = []
         for item in target:
             kickoff = _aware_datetime(item.get("Date"), "FIFA.Date")
             if kickoff <= now:
@@ -474,25 +476,33 @@ class UnifiedDataManager:
                 continue
             home_stats = self._group_stats(history, str(home["IdTeam"]), home_name)
             away_stats = self._group_stats(history, str(away["IdTeam"]), away_name)
+            home_id = str(home["IdTeam"])
+            away_id = str(away["IdTeam"])
             home_scorers = self._scorers(
-                history, str(home["IdTeam"]), home_stats, home_name, timeline_cache
+                history, home_id, home_stats, home_name, timeline_cache
             )
             away_scorers = self._scorers(
-                history, str(away["IdTeam"]), away_stats, away_name, timeline_cache
+                history, away_id, away_stats, away_name, timeline_cache
             )
+            home_splits = compute_home_away_splits(history, home_id)
+            away_splits = compute_home_away_splits(history, away_id)
+            venue = extract_venue_from_fifa(item)
             market_home = POLYMARKET_CODE_ALIASES.get(home_code, home_code).lower()
             market_away = POLYMARKET_CODE_ALIASES.get(away_code, away_code).lower()
             slug = f"fifwc-{market_home}-{market_away}-{fixture_date}"
-            event = self.market.event_by_slug(slug)
-            odds, market_provenance = self._market_odds(
-                event, home_name, away_name, kickoff
-            )
+            try:
+                event = self.market.event_by_slug(slug)
+                odds, market_provenance = self._market_odds(
+                    event, home_name, away_name, kickoff
+                )
+            except DataSourceError as exc:
+                errors.append(f"{home_name} vs {away_name}: {exc}")
+                continue
             stage_name = ""
             names = item.get("StageName")
             if isinstance(names, list) and names and isinstance(names[0], dict):
                 stage_name = str(names[0].get("Description") or "")
-            matches.append(
-                {
+            match_payload: dict[str, Any] = {
                     "id": f"fifa-{item.get('IdMatch')}",
                     "competition": "FIFA World Cup 2026",
                     "stage": "小组赛" if item.get("IdGroup") else "淘汰赛",
@@ -506,8 +516,18 @@ class UnifiedDataManager:
                     "sporttery": sporttery_offer,
                     "tournament_rules": dict(FIFA_RULES),
                     "team_context": {
-                        "home": {"group_stats": home_stats, "absences": [], "scorers": home_scorers},
-                        "away": {"group_stats": away_stats, "absences": [], "scorers": away_scorers},
+                        "home": {
+                            "group_stats": home_stats,
+                            "absences": [],
+                            "scorers": home_scorers,
+                            "home_away": home_splits,
+                        },
+                        "away": {
+                            "group_stats": away_stats,
+                            "absences": [],
+                            "scorers": away_scorers,
+                            "home_away": away_splits,
+                        },
                     },
                     "provider_ids": {
                         "fifa_match": str(item.get("IdMatch")),
@@ -526,8 +546,12 @@ class UnifiedDataManager:
                         "fifa_stage_name": stage_name,
                     },
                 }
-            )
+            if venue:
+                match_payload["venue"] = venue
+            matches.append(match_payload)
         if not matches:
+            if errors:
+                raise DataSourceError(errors[0].split(": ", 1)[-1])
             raise DataSourceError(f"{fixture_date}当前没有未开赛且市场开放的世界杯比赛")
         return {
             "data_as_of": now.isoformat(),
@@ -541,11 +565,12 @@ class UnifiedDataManager:
             ],
             "odds_format": "decimal",
             "quality_checks": {
-                "status": "passed",
+                "status": "passed" if not errors else "partial",
                 "api_key_required": False,
                 "fixture_primary_source": "FIFA official",
                 "purchasable_primary_source": "Sporttery official",
                 "match_count": len(matches),
+                "skipped_matches": errors,
                 "minimum_market_liquidity": self.config.minimum_market_liquidity,
                 "kickoff_tolerance_minutes": self.config.kickoff_tolerance_minutes,
                 "injury_coverage": False,

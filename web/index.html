@@ -10,10 +10,13 @@
 <body>
   <div class="page">
     <header class="hero">
-      <div class="hero-text">
-        <p class="eyebrow">World Cup Insight</p>
-        <h1>体彩竞彩分析</h1>
-        <p class="subtitle">未开赛赛事 · 固定奖金走势 · 融合预测 · 比分参考</p>
+      <div class="hero-left">
+        <div class="hero-text">
+          <p class="eyebrow">World Cup Insight</p>
+          <h1>体彩竞彩分析</h1>
+          <p class="subtitle">未开赛赛事 · 固定奖金走势 · 融合预测 · 比分参考</p>
+        </div>
+        <div class="hero-dashboard" id="hero-dashboard"></div>
       </div>
       <div class="hero-meta" id="meta-panel">
         <div class="meta-item">
@@ -28,11 +31,15 @@
           <span class="meta-label">赛事状态</span>
           <span class="meta-value" id="sporttery-status">加载中…</span>
         </div>
+        <div class="meta-item full-width" id="mode-note-wrap" style="display:none">
+          <span class="meta-label">模式说明</span>
+          <span class="meta-value mode-note" id="mode-note"></span>
+        </div>
         <div class="meta-item toolbar">
           <span class="meta-label">数据模式</span>
           <select id="data-mode-select" aria-label="数据模式">
             <option value="sporttery" selected>体彩全量</option>
-            <option value="unified">三源交叉</option>
+            <option value="unified">三源增强</option>
           </select>
         </div>
         <div class="meta-item toolbar">
@@ -52,11 +59,12 @@
         <div>
           <h2>未开赛赛事</h2>
           <p id="sporttery-subtitle">
-            仅展示体彩竞彩网当前可售、尚未开赛的足球比赛 ·
+            按体彩销售日分组 · 同步竞彩网已开售场次 ·
             <button type="button" id="refresh-btn" class="link-btn">刷新数据</button> ·
             <a class="link-btn" href="/api/export/predictions.json" download>导出 JSON</a> ·
             <a class="link-btn" href="/api/export/predictions.csv" download>导出 CSV</a>
           </p>
+          <div class="date-tabs" id="date-tabs" role="tablist" aria-label="赛事日期"></div>
         </div>
         <div class="prediction-badge" id="prediction-badge">
           <span class="badge-label">当前选中</span>
@@ -65,6 +73,7 @@
           <button type="button" id="share-match-btn" class="ghost-btn" title="复制单场分享链接">分享链接</button>
         </div>
       </div>
+      <p class="date-filter-note" id="date-filter-note"></p>
       <div class="match-grid" id="sporttery-grid"></div>
       <div class="stats-row" id="sporttery-stats"></div>
       <div class="stats-row" id="bet-simulation"></div>
@@ -97,6 +106,21 @@
           <h3>外网 vs 体彩</h3>
           <ul id="foreign-compare"></ul>
         </article>
+        <article class="analysis-card wide" id="intelligence-card">
+          <h3>赛前情报</h3>
+          <div id="intelligence-detail"></div>
+          <ul id="match-intelligence"></ul>
+          <p class="hint" id="intelligence-coverage"></p>
+        </article>
+        <article class="analysis-card wide" id="pool-analysis-card">
+          <h3>多玩法分析（总进球 / 半全场 / 凯利）</h3>
+          <ul id="pool-analysis"></ul>
+          <div class="kelly-grid" id="kelly-had"></div>
+        </article>
+        <article class="analysis-card" id="data-sources-card">
+          <h3>数据覆盖</h3>
+          <ul id="data-sources"></ul>
+        </article>
       </div>
     </section>
 
@@ -120,4 +144,3 @@
   <script src="/static/app.js"></script>
 </body>
 </html>
-

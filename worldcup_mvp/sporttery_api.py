@@ -17,6 +17,9 @@ SPORTTERY_BASE_URL = "https://webapi.sporttery.cn"
 MATCH_CALC_URL = (
     "https://webapi.sporttery.cn/gateway/uniform/football/getMatchCalculatorV1.qry"
 )
+MATCH_LIST_URL = (
+    "https://webapi.sporttery.cn/gateway/uniform/football/getMatchListV1.qry"
+)
 MATCH_RESULT_URL = (
     "https://webapi.sporttery.cn/gateway/uniform/football/getMatchResultV1.qry"
 )
@@ -158,8 +161,11 @@ def parse_kickoff_beijing(match: dict[str, Any]) -> datetime | None:
     time = match.get("match_time")
     if not date or not time:
         return None
+    time_text = str(time)
+    if len(time_text) == 5:
+        time_text = f"{time_text}:00"
     try:
-        return datetime.fromisoformat(f"{date}T{time}").replace(tzinfo=BEIJING_TZ)
+        return datetime.fromisoformat(f"{date}T{time_text}").replace(tzinfo=BEIJING_TZ)
     except ValueError:
         return None
 
@@ -207,6 +213,15 @@ def is_upcoming_match(match: dict[str, Any], *, now: datetime | None = None) -> 
     return kickoff > current
 
 
+def is_announced_match(match: dict[str, Any], *, now: datetime | None = None) -> bool:
+    """官网已公布且尚未开赛的场次，包含待开售。"""
+    kickoff = parse_kickoff_beijing(match)
+    if kickoff is None:
+        return True
+    current = now or datetime.now(BEIJING_TZ)
+    return kickoff > current
+
+
 def fetch_upcoming_matches(*, pool_code: str = "had,hhad") -> list[dict[str, Any]]:
     """拉取体彩竞彩网当前未开赛的足球赛事，按开赛时间排序。"""
     matches = fetch_matches(pool_code=pool_code)
@@ -216,6 +231,35 @@ def fetch_upcoming_matches(*, pool_code: str = "had,hhad") -> list[dict[str, Any
         or datetime.max.replace(tzinfo=BEIJING_TZ)
     )
     return upcoming
+
+
+def fetch_scheduled_matches() -> list[dict[str, Any]]:
+    """拉取官网赛程页公布的全部未开赛场次（含待开售）。"""
+    payload = _request(
+        MATCH_LIST_URL,
+        {"clientCode": "3001"},
+    )
+    matches = _flatten_matches(payload)
+    scheduled = [match for match in matches if is_announced_match(match)]
+    scheduled.sort(
+        key=lambda item: parse_kickoff_beijing(item)
+        or datetime.max.replace(tzinfo=BEIJING_TZ)
+    )
+    return scheduled
+
+
+def fetch_announced_matches(*, pool_code: str = "had,hhad") -> list[dict[str, Any]]:
+    """合并赛程页与计算器：已开售场次带赔率，待开售保留赛程占位。"""
+    scheduled = fetch_scheduled_matches()
+    selling_by_id = {match["match_id"]: match for match in fetch_upcoming_matches(pool_code=pool_code)}
+    merged: list[dict[str, Any]] = []
+    for match in scheduled:
+        selling = selling_by_id.get(match["match_id"])
+        if selling:
+            merged.append({**match, **selling, "sale_status": "selling", "analysis_available": True})
+        else:
+            merged.append({**match, "sale_status": "pending", "analysis_available": False})
+    return merged
 
 
 def fetch_fixed_bonus(match_id: str | int) -> dict[str, Any]:
@@ -274,6 +318,8 @@ def normalize_match(raw: dict[str, Any]) -> dict[str, Any]:
     """将体彩原始比赛对象转为内部结构。"""
     had = _normalize_pool(raw.get("had"))
     hhad = _normalize_pool(raw.get("hhad"))
+    sell_status = str(raw.get("sellStatus") or "")
+    match_status = raw.get("matchStatus") or sell_status
     return {
         "match_id": str(raw.get("matchId")),
         "match_num": raw.get("matchNumStr"),
@@ -283,6 +329,7 @@ def normalize_match(raw: dict[str, Any]) -> dict[str, Any]:
         "away_en": resolve_team(raw.get("awayTeamAbbName") or "")["en"],
         "league": raw.get("leagueAbbName"),
         "match_date": raw.get("matchDate"),
+        "business_date": raw.get("businessDate"),
         "match_time": raw.get("matchTime"),
         "kickoff": f"{raw.get('matchDate', '')}T{raw.get('matchTime', '')}",
         "kickoff_beijing": (
@@ -290,7 +337,9 @@ def normalize_match(raw: dict[str, Any]) -> dict[str, Any]:
             if raw.get("matchDate") and raw.get("matchTime")
             else None
         ),
-        "match_status": raw.get("matchStatus") or raw.get("sellStatus"),
+        "match_status": match_status,
+        "sale_status": "selling" if sell_status == "1" or match_status == "Selling" else "pending",
+        "analysis_available": had is not None,
         "betting_single": raw.get("bettingSingle"),
         "pools": {
             "had": had,
@@ -366,6 +415,9 @@ def fetch_odds_history(match_id: str | int) -> dict[str, Any]:
         "league": history.get("leagueAbbName"),
         "had_history": [_history_point(item) for item in history.get("hadList", [])],
         "hhad_history": [_history_point(item) for item in history.get("hhadList", [])],
+        "ttg_history": list(history.get("ttgList") or []),
+        "hafu_history": list(history.get("hafuList") or []),
+        "crs_history": list(history.get("crsList") or []),
         "source": "sporttery.cn/getFixedBonusV1",
     }
 

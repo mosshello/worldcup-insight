@@ -6,10 +6,13 @@ const OUTCOME_COLORS = {
 };
 const REFRESH_STORAGE_KEY = "dashboardAutoRefreshSeconds";
 const DATA_MODE_STORAGE_KEY = "dashboardDataMode";
+const DATE_TAB_STORAGE_KEY = "dashboardDateTabOffset";
 
 let overview = null;
+let allPredictions = [];
 let predictions = [];
 let activeMatchId = null;
+let selectedDateOffset = 0;
 let charts = {};
 let refreshTimer = null;
 let countdownTimer = null;
@@ -22,6 +25,148 @@ function confidenceClass(level) {
 
 function pct(value) {
   return `${(value * 100).toFixed(1)}%`;
+}
+
+function renderMatchIntelligence(intel) {
+  const list = document.getElementById("match-intelligence");
+  const detail = document.getElementById("intelligence-detail");
+  const coverageEl = document.getElementById("intelligence-coverage");
+  const card = document.getElementById("intelligence-card");
+  if (!list || !card) return;
+
+  if (!intel || (!intel.summary_bullets?.length && !intel.detail_sections)) {
+    list.innerHTML = `<li class="empty-note">暂无结构化赛前情报（需三源统一索引或 overlay 数据）。</li>`;
+    if (detail) detail.innerHTML = "";
+    if (coverageEl) coverageEl.textContent = "";
+    return;
+  }
+
+  if (detail && intel.detail_sections) {
+    const ds = intel.detail_sections;
+    const teamCards = (ds.teams || [])
+      .map((team) => {
+        const gs = team.group_stats || {};
+        const profile = team.profile || {};
+        const tags = (profile.style_tags || []).slice(0, 3).join(" · ") || "—";
+        const statsText = gs.points != null
+          ? `${gs.points} 分 · ${gs.goals_for || 0}:${gs.goals_against || 0}`
+          : `${profile.region || "—"} · ${profile.confederation || "—"}`;
+        return `<div class="intel-team-card">
+          <div class="intel-team-head">${team.name}</div>
+          <div class="intel-team-meta">${statsText}</div>
+          <div class="intel-team-tags">${tags}</div>
+        </div>`;
+      })
+      .join("");
+
+    const absenceBlock = (side, title) => {
+      const lines = (ds.absences || {})[side] || [];
+      return `<div class="intel-absence-card">
+        <div class="label">${title}</div>
+        ${lines.length
+          ? `<ul>${lines.map((line) => `<li>${line}</li>`).join("")}</ul>`
+          : `<p class="hint">暂无结构化伤停</p>`}
+      </div>`;
+    };
+
+    detail.innerHTML = `
+      <div class="intel-grid">
+        ${teamCards}
+      </div>
+      <div class="intel-grid two">
+        ${absenceBlock("home", intel.home + " 伤停")}
+        ${absenceBlock("away", intel.away + " 伤停")}
+      </div>
+      ${ds.venue ? `<div class="intel-meta-row"><span>场地</span><strong>${ds.venue.label || ds.venue.stadium || "—"}</strong></div>` : ""}
+      ${ds.environment?.temperature_c != null ? `<div class="intel-meta-row"><span>气温</span><strong>${ds.environment.temperature_c}°C</strong></div>` : ""}
+      ${ds.referee ? `<div class="intel-meta-row"><span>裁判</span><strong>${ds.referee}</strong></div>` : ""}
+      ${ds.style_note ? `<div class="intel-style-note">${ds.style_note}</div>` : ""}
+      ${ds.rotation_risk ? `<div class="intel-style-note">${ds.rotation_risk}</div>` : ""}
+    `;
+  } else if (detail) {
+    detail.innerHTML = "";
+  }
+
+  const summaryLines = (intel.summary_bullets || []).filter(
+    (line) => !isJsonLikeText(line)
+  );
+  list.innerHTML = summaryLines.map((line) => `<li>${line}</li>`).join("");
+
+  const extras = [];
+  if (intel.home_predicted_lineup?.length) {
+    extras.push(`<li><strong>${intel.home} 预测首发：</strong>${intel.home_predicted_lineup.join("、")}</li>`);
+  }
+  if (intel.away_predicted_lineup?.length) {
+    extras.push(`<li><strong>${intel.away} 预测首发：</strong>${intel.away_predicted_lineup.join("、")}</li>`);
+  }
+  if (intel.home_tactics) {
+    extras.push(`<li><strong>${intel.home} 战术：</strong>${intel.home_tactics}</li>`);
+  }
+  if (intel.away_tactics) {
+    extras.push(`<li><strong>${intel.away} 战术：</strong>${intel.away_tactics}</li>`);
+  }
+  if (extras.length) {
+    list.innerHTML += extras.join("");
+  }
+
+  const cov = intel.coverage || {};
+  const tags = [
+    cov.home_away_splits ? "主客场拆分" : null,
+    cov.style_profiles ? "风格对阵" : null,
+    cov.venue_available ? "场地" : null,
+    cov.referee_available ? "裁判" : null,
+    cov.overlay_used ? "人工 overlay" : null,
+    cov.injury_api ? "API 伤停" : "伤停需 overlay",
+  ].filter(Boolean);
+  if (coverageEl) {
+    const src = (intel.data_sources || []).join(" · ");
+    coverageEl.textContent = `${intel.disclaimer || ""} 来源：${src || "—"} · 覆盖：${tags.join(" · ")}`;
+  }
+}
+
+function renderDataSources(payload) {
+  const list = document.getElementById("data-sources");
+  if (!list) return;
+  const ds = payload.data_sources || {};
+  const lines = [
+    `体彩主盘：${ds.sporttery ? "✓" : "✗"}`,
+    `FIFA 三源索引：${ds.unified ? "✓ 已匹配" : "✗ 本场未入索引"}`,
+    `外网辅盘：${ds.foreign || "暂不可用（FOX/Polymarket/OddsAPI 均未命中）"}`,
+    `总进球 ttg：${ds.pool_ttg ? "✓" : "✗"}`,
+    `半全场 hafu：${ds.pool_hafu ? "✓" : "✗"}`,
+    `情报源：${(ds.intelligence || []).join(" · ") || "基础模板"}`,
+  ];
+  list.innerHTML = lines.map((line) => `<li>${line}</li>`).join("");
+}
+
+function renderPoolAnalysis(pool) {
+  const list = document.getElementById("pool-analysis");
+  const kellyEl = document.getElementById("kelly-had");
+  const card = document.getElementById("pool-analysis-card");
+  if (!list || !card) return;
+
+  if (!pool || !pool.summary_bullets?.length) {
+    list.innerHTML = `<li class="empty-note">暂无 ttg/hafu 数据（需 getFixedBonus 历史）。</li>`;
+    if (kellyEl) kellyEl.innerHTML = "";
+    return;
+  }
+
+  list.innerHTML = pool.summary_bullets.map((line) => `<li>${line}</li>`).join("");
+
+  if (kellyEl && pool.kelly_had?.length) {
+    kellyEl.innerHTML = pool.kelly_had
+      .map((row) => {
+        const valueTag = row.is_value ? " · 价值" : "";
+        return `<div class="stat-card compact ${row.is_value ? "delta-alert" : ""}">
+          <div class="label">${row.label}</div>
+          <div class="value" style="font-size:16px">凯利 ${row.kelly_index.toFixed(3)}</div>
+          <div class="hint">SP ${row.odds.toFixed(2)} · 外网 ${pct(row.reference_prob)} · 偏差 ${row.value_edge_pp >= 0 ? "+" : ""}${row.value_edge_pp.toFixed(1)}pp${valueTag}</div>
+        </div>`;
+      })
+      .join("");
+  } else if (kellyEl) {
+    kellyEl.innerHTML = "";
+  }
 }
 
 function getMatchIdFromUrl() {
@@ -50,17 +195,31 @@ function renderMeta() {
   const predictionsMeta = overview.predictions || {};
   const health = overview.provider_health || {};
   const unified = overview.unified_index || {};
+  const stats = overview.dashboard_stats || {};
+  const modeNote = overview.unified_mode_note;
+
+  renderHeroDashboard(stats);
 
   if (health.providers && health.providers.length) {
     const labels = health.providers.map((item) => {
       const short = item.name.replace("-public", "").replace("sporttery", "体彩");
       return `${short}:${item.ok ? "✓" : "✗"}`;
     });
+    const cacheHint = health.cached ? "（缓存）" : "";
     document.getElementById("provider-health").textContent =
-      health.all_ok ? `全部正常（${labels.join(" · ")}）` : labels.join(" · ");
+      `${health.all_ok ? "全部正常" : "部分异常"}${cacheHint} · ${labels.join(" · ")}`;
   } else {
     document.getElementById("provider-health").textContent =
-      health.error || "三源检测暂不可用";
+      health.error || "三源检测暂不可用 · 可访问 /api/doctor 排查";
+  }
+
+  const modeWrap = document.getElementById("mode-note-wrap");
+  const modeNoteEl = document.getElementById("mode-note");
+  if (modeNote && modeWrap && modeNoteEl) {
+    modeWrap.style.display = "block";
+    modeNoteEl.textContent = modeNote;
+  } else if (modeWrap) {
+    modeWrap.style.display = "none";
   }
 
   if (!sporttery.success) {
@@ -73,32 +232,218 @@ function renderMeta() {
   const unifiedHint = unified.success
     ? ` · 三源索引 ${unified.match_count} 场`
     : unified.error
-      ? " · 三源索引未就绪"
+      ? ` · 三源索引失败`
       : "";
-  const modeHint = overview.mode === "unified" ? " · 三源交叉模式" : "";
+  const modeHint = overview.mode === "unified" ? " · 三源增强" : " · 体彩全量";
+  const visible = filterPredictions().length;
   document.getElementById("sporttery-status").textContent =
-    `${sporttery.match_count} 场未开赛 ${cacheHint}${unifiedHint}${modeHint}`;
+    `当前 ${visible} 场 · 全部 ${stats.total_upcoming || 0} 场 ${cacheHint}${unifiedHint}${modeHint}`;
 }
 
-function renderSportteryCards() {
+function renderHeroDashboard(stats) {
+  const panel = document.getElementById("hero-dashboard");
+  if (!panel || !stats.date_tabs) return;
+
+  const tabs = stats.date_tabs;
+  const buckets = stats.date_buckets || {};
+  const todayTab = tabs[selectedDateOffset] || tabs[0];
+  const bucketKey = todayTab?.date ?? "";
+  const bucket = buckets[bucketKey] || buckets[""] || { total: 0, unified: 0, high_confidence: 0 };
+
+  panel.innerHTML = `
+    <div class="hero-clock">
+      <span class="hero-date">${todayTab?.display || stats.beijing_date}</span>
+      <span class="hero-timezone">北京时间 · 按体彩销售日分组 · 共 ${stats.total_upcoming || 0} 场</span>
+    </div>
+    <div class="hero-kpi-grid">
+      <div class="hero-kpi">
+        <span class="kpi-value">${bucket.total || 0}</span>
+        <span class="kpi-label">当日赛事</span>
+      </div>
+      <div class="hero-kpi accent">
+        <span class="kpi-value">${bucket.unified || 0}</span>
+        <span class="kpi-label">三源交叉</span>
+      </div>
+      <div class="hero-kpi">
+        <span class="kpi-value">${bucket.high_confidence || 0}</span>
+        <span class="kpi-label">高信心</span>
+      </div>
+      <div class="hero-kpi">
+        <span class="kpi-value">${stats.overlay_matches || 0}</span>
+        <span class="kpi-label">overlay 情报</span>
+      </div>
+    </div>
+    <div class="hero-capabilities">
+      <span>融合预测</span><span>Polymarket 辅盘</span><span>ttg / hafu</span><span>凯利偏差</span><span>伤停 overlay</span>
+    </div>
+  `;
+}
+
+function getSelectedDate() {
+  const tabs = overview?.dashboard_stats?.date_tabs || [];
+  return tabs[selectedDateOffset]?.date || tabs[0]?.date || "";
+}
+
+function filterPredictions() {
+  const selectedDate = getSelectedDate();
+  return allPredictions.filter((item) => !selectedDate || item.match_date === selectedDate);
+}
+
+function renderDateTabs() {
+  const container = document.getElementById("date-tabs");
+  const note = document.getElementById("date-filter-note");
+  if (!container) return;
+
+  const tabs = overview?.dashboard_stats?.date_tabs || [];
+  const buckets = overview?.dashboard_stats?.date_buckets || {};
+  container.innerHTML = tabs
+    .map((tab, index) => {
+      const bucket = buckets[tab.date] || { total: 0, unified: 0 };
+      const active = index === selectedDateOffset ? "active" : "";
+      const dateLabel = tab.date ? tab.date.slice(5) : "全部";
+      return `<button type="button" class="date-tab ${active}" data-offset="${index}" role="tab">
+        <span class="date-tab-label">${tab.label}</span>
+        <span class="date-tab-sub">${dateLabel} · ${bucket.total}场${bucket.unified ? ` · 三源${bucket.unified}` : ""}</span>
+      </button>`;
+    })
+    .join("");
+
+  container.querySelectorAll(".date-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedDateOffset = Number(btn.dataset.offset);
+      localStorage.setItem(DATE_TAB_STORAGE_KEY, String(selectedDateOffset));
+      renderMeta();
+      renderSportteryCards({ preserveMatch: true });
+    });
+  });
+
+  if (note) {
+    const selectedDate = getSelectedDate();
+    const visible = filterPredictions().length;
+    const bucket = (overview?.dashboard_stats?.date_buckets || {})[selectedDate] || {};
+    const allBucket = (overview?.dashboard_stats?.date_buckets || {})[""] || {};
+    if (!selectedDate) {
+      note.textContent = `全部 ${visible} 场（体彩官网已公布 ${allBucket.total || visible} 场，其中 ${allBucket.unified || 0} 场三源增强）`;
+    } else {
+      note.textContent = `已选 ${selectedDate}（体彩销售日）：${visible} 场（其中 ${bucket.unified || 0} 场三源增强）`;
+    }
+  }
+}
+
+function isJsonLikeText(text) {
+  const value = String(text || "").trim();
+  return value.startsWith("{") || value.startsWith("[") || value.includes('"Stadium"');
+}
+
+function clearMatchDetail() {
+  activeMatchId = null;
+  document.getElementById("prediction-direction").textContent = "—";
+  document.getElementById("prediction-confidence").textContent = "比分 —";
+  document.getElementById("prediction-confidence").className = "badge-confidence tag low";
+  document.getElementById("sporttery-stats").innerHTML = `<p class="empty-note">请选择左侧赛事查看详情</p>`;
+  document.getElementById("bet-simulation").innerHTML = "";
+  document.getElementById("fusion-analysis").innerHTML = `<li class="empty-note">暂无选中赛事</li>`;
+  document.getElementById("foreign-compare").innerHTML = `<li class="empty-note">暂无选中赛事</li>`;
+  renderMatchIntelligence(null);
+  renderPoolAnalysis(null);
+  renderDataSources({});
+  Object.values(charts).forEach((chart) => chart?.destroy?.());
+  charts = {};
+}
+
+function pickDefaultDateTab() {
+  const tabs = overview?.dashboard_stats?.date_tabs || [];
+  const buckets = overview?.dashboard_stats?.date_buckets || {};
+  let fallback = 0;
+  for (let i = 0; i < tabs.length; i += 1) {
+    const tab = tabs[i];
+    if (!tab.date) {
+      fallback = i;
+      continue;
+    }
+    const bucket = buckets[tab.date] || {};
+    if (bucket.total > 0) {
+      if (tab.label === "今天") return i;
+      if (fallback === 0) fallback = i;
+    }
+  }
+  return fallback;
+}
+
+function sanitizeCardText(text) {
+  if (!text || isJsonLikeText(text)) return "";
+  return text;
+}
+
+function renderDataTags(tags) {
+  if (!tags || !tags.length) return "";
+  return tags.map((tag) => `<span class="tag mini">${tag}</span>`).join("");
+}
+
+function renderPendingMatchDetail(match) {
+  document.getElementById("prediction-direction").textContent = "待开售";
+  document.getElementById("prediction-confidence").textContent = "比分 —";
+  document.getElementById("prediction-confidence").className = "badge-confidence tag low";
+  document.getElementById("sporttery-stats").innerHTML = `
+    <div class="stat-card">
+      <div class="label">赛事状态</div>
+      <div class="value">待开售</div>
+      <div class="hint">体彩官网已公布赛程，固定奖金暂未开放</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">开赛时间</div>
+      <div class="value" style="font-size:18px">${match.countdown_label || "待定"}</div>
+      <div class="hint">${match.kickoff_beijing || ""}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">销售日</div>
+      <div class="value" style="font-size:18px">${match.match_date || "—"}</div>
+      <div class="hint">${match.match_num || "待编号"}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">后续补齐</div>
+      <div class="value" style="font-size:18px">自动刷新</div>
+      <div class="hint">开售后展示预测、SP走势、ttg/hafu 与凯利偏差</div>
+    </div>
+  `;
+  document.getElementById("bet-simulation").innerHTML = "";
+  document.getElementById("fusion-analysis").innerHTML =
+    `<li>体彩官网已公布 ${match.home} vs ${match.away}，当前为待开售状态。</li><li>固定奖金开放后，本平台会自动补齐完整分析。</li>`;
+  document.getElementById("foreign-compare").innerHTML =
+    `<li class="empty-note">待开售场次暂无体彩主盘，暂不计算外网差值。</li>`;
+  renderMatchIntelligence(null);
+  renderPoolAnalysis(null);
+  renderDataSources({ data_sources: { sporttery: true, unified: false, foreign: "待开售" } });
+  Object.values(charts).forEach((chart) => chart?.destroy?.());
+  charts = {};
+}
+
+function renderSportteryCards(options = {}) {
+  const { preserveMatch = false } = options;
   const grid = document.getElementById("sporttery-grid");
-  predictions = (overview.predictions && overview.predictions.predictions) || [];
+  allPredictions = (overview.predictions && overview.predictions.predictions) || [];
+  predictions = filterPredictions();
+  renderDateTabs();
 
   if (!predictions.length) {
-    grid.innerHTML = `<p class="empty-note">当前没有未开赛的体彩足球赛事，或 API 暂时不可用。请稍后刷新。</p>`;
+    const hint = overview.unified_mode_note || "当前日期没有未开赛赛事，请切换日期或稍后刷新。";
+    grid.innerHTML = `<p class="empty-note">${hint}</p>`;
+    clearMatchDetail();
     return;
   }
 
   grid.innerHTML = predictions
     .map((item) => `
-      <article class="match-card sporttery-card" data-match-id="${item.match_id}">
+      <article class="match-card sporttery-card ${item.unified_linked ? "unified-linked" : ""} ${item.analysis_available === false ? "pending-sale" : ""}" data-match-id="${item.match_id}">
         <div class="card-top">
           <h3>${item.home} vs ${item.away}</h3>
           <span class="countdown-badge">${item.countdown_label || "待定"}</span>
         </div>
-        <div class="stage">${item.league || "竞彩"} · ${item.kickoff_beijing || "待定"}</div>
+        <div class="stage">${sanitizeCardText(item.region_label) || `${item.league || "竞彩"} · ${(item.kickoff_beijing || "待定").slice(0, 16)}`}</div>
+        <div class="tag-row">${renderDataTags(item.data_tags)}</div>
         <div class="odds-line">
-          <span>方向 ${item.direction}</span>
+          <span>${item.match_num || "—"}</span>
+          <span>${item.analysis_available === false ? "状态" : "方向"} ${item.direction}</span>
           <span>比分 ${item.predicted_score}</span>
           <span class="tag ${confidenceClass(item.confidence)}">${item.confidence}</span>
         </div>
@@ -114,9 +459,12 @@ function renderSportteryCards() {
   });
 
   const urlMatchId = getMatchIdFromUrl();
-  const initialId = urlMatchId && predictions.some((item) => item.match_id === urlMatchId)
-    ? urlMatchId
-    : predictions[0].match_id;
+  const stillExists = preserveMatch && activeMatchId && predictions.some((item) => item.match_id === activeMatchId);
+  const initialId = stillExists
+    ? activeMatchId
+    : urlMatchId && predictions.some((item) => item.match_id === urlMatchId)
+      ? urlMatchId
+      : predictions[0].match_id;
   loadSportteryDetail(initialId);
 }
 
@@ -179,6 +527,11 @@ async function loadSportteryDetail(matchId) {
       `badge-confidence tag ${confidenceClass(cached.confidence)}`;
   }
 
+  if (cached?.analysis_available === false) {
+    renderPendingMatchDetail(cached);
+    return;
+  }
+
   const payload = await fetchJson(`/api/sporttery/predict/${encodeURIComponent(matchId)}?foreign=auto`);
   const prediction = payload.prediction;
   const score = payload.score_prediction || cached;
@@ -222,6 +575,10 @@ async function loadSportteryDetail(matchId) {
     document.getElementById("fusion-analysis").innerHTML =
       [...(prediction.analysis || []), score.direction_note].filter(Boolean).map((line) => `<li>${line}</li>`).join("");
   }
+
+  renderMatchIntelligence(payload.match_intelligence);
+  renderPoolAnalysis(payload.pool_analysis);
+  renderDataSources(payload);
 
   const compare = document.getElementById("foreign-compare");
   const alertKeys = new Set(payload.probability_delta_alerts || []);
@@ -376,12 +733,16 @@ function renderSettlementResults(payload) {
 }
 
 async function refreshOverview(options = {}) {
-  const { preserveMatch = true } = options;
+  const { preserveMatch = true, resetDateTab = false } = options;
   const mode = document.getElementById("data-mode-select").value;
   overview = await fetchJson(`/api/overview?mode=${encodeURIComponent(mode)}`);
+  if (resetDateTab || !preserveMatch) {
+    selectedDateOffset = pickDefaultDateTab();
+    localStorage.setItem(DATE_TAB_STORAGE_KEY, String(selectedDateOffset));
+  }
   renderMeta();
   renderSettlementSummary();
-  renderSportteryCards();
+  renderSportteryCards({ preserveMatch });
   if (preserveMatch && activeMatchId) {
     const stillExists = predictions.some((item) => item.match_id === activeMatchId);
     if (stillExists) {
@@ -432,14 +793,17 @@ async function init() {
   const modeSelect = document.getElementById("data-mode-select");
   const saved = localStorage.getItem(REFRESH_STORAGE_KEY);
   const savedMode = localStorage.getItem(DATA_MODE_STORAGE_KEY);
+  const savedDateTab = localStorage.getItem(DATE_TAB_STORAGE_KEY);
   if (saved !== null) select.value = saved;
   if (savedMode) modeSelect.value = savedMode;
+  if (savedDateTab !== null) selectedDateOffset = Number(savedDateTab) || 0;
   setupAutoRefresh(Number(select.value));
 
   select.addEventListener("change", () => setupAutoRefresh(Number(select.value)));
   modeSelect.addEventListener("change", () => {
     localStorage.setItem(DATA_MODE_STORAGE_KEY, modeSelect.value);
-    refreshOverview({ preserveMatch: false });
+    selectedDateOffset = 0;
+    refreshOverview({ preserveMatch: false, resetDateTab: true });
   });
 
   document.getElementById("refresh-btn").addEventListener("click", () => {
@@ -478,7 +842,7 @@ async function init() {
     if (matchId) loadSportteryDetail(matchId).catch(console.error);
   });
 
-  await refreshOverview({ preserveMatch: false });
+  await refreshOverview({ preserveMatch: false, resetDateTab: true });
   setupCountdownTicker();
 }
 

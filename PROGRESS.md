@@ -313,11 +313,33 @@ python -m unittest discover -s tests -v
 
 ### P2 · 数据与分析增强
 
-- [ ] 体彩 `ttg`（总进球）、`hafu`（半全场）纳入分析
-- [ ] 凯利指数 / 返还率 / 价值偏差（参考 SportteryAPI 思路）
+#### 赛前情报能力矩阵（合并 master 后现状）
+
+| 因素 | 三源实时管线 | 本地/overlay | 说明 |
+|------|-------------|--------------|------|
+| 小组赛积分/进失球/净胜球 | ✅ FIFA 自动 | — | `data_manager._group_stats` |
+| 射手榜（timeline） | ✅ FIFA 自动 | — | 进球事件聚合 |
+| 主客场拆分（本届） | ✅ FIFA 自动 | — | `match_intelligence.compute_home_away_splits` |
+| 风格/洲际对阵启发式 | ✅ 规则模板 | — | 欧 vs 南美等文案，非 ML |
+| 伤停/停赛 | ❌ API 无 | ✅ overlay | `data/intelligence_overlay.json` |
+| 预测首发/战术 | ❌ | ✅ overlay | 人工维护 SportsMole 等来源 |
+| 场地/气温 | ⚠️ FIFA 字段可选 | ✅ overlay | `StadiumName` 有则自动带出 |
+| 裁判 | ❌ | ✅ overlay | 赛前公布后人工录入 |
+| 教练轮换发言 | ❌ | ✅ overlay | `manager_quotes` / `rotation_risk` |
+| 历史「德国遇南美疲软」类模型 | ❌ | — | P4 模型化再考虑 |
+
+> 匿名公开 API 明确 `injury_coverage=false`；空 `absences` **不等于**确定无伤。
+
+#### P2 任务清单
+
+- [x] **赛前情报模块** `match_intelligence.py`：FIFA 主客场 + overlay 合并 + 仪表盘「赛前情报」面板
+- [x] **overlay 示例** `data/intelligence_overlay.example.json`（德巴、巴日伤停/战术模板）
+- [x] 体彩 `ttg`（总进球）、`hafu`（半全场）纳入分析 — `pool_analytics.py` + 仪表盘面板
+- [x] 凯利指数 / 返还率 / 价值偏差 — 相对外网去水概率的凯利与 EV
 - [x] 外网与体彩概率差值告警（超过阈值高亮）—— 首版 5pp 阈值已在仪表盘实现
-- [ ] 完场后自动复盘：预测 vs 实际赛果（结合 FIFA 比分 + 结算模块）
-- [ ] 扩充 `team_name_map.json` 或自动从 FIFA/体彩代码别名同步
+- [x] 完场后自动复盘：预测 vs 实际赛果（FIFA 比分 + 结算模块，P1.5 已接入）
+- [x] 扩充 `team_name_map.json` — `scripts/sync_team_map.py` 从体彩可售赛事增量同步
+- [x] 伤停 overlay 半自动 — `scripts/import_intelligence_overlay.py` 从 `matches_*.json` 导入
 
 ### P3 · 架构与工程
 

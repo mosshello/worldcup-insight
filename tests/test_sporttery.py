@@ -6,6 +6,8 @@ from unittest.mock import patch
 
 from worldcup_mvp.fusion_predictor import predict_match
 from worldcup_mvp.sporttery_api import match_to_snapshot, normalize_match, parse_trend_flag
+from worldcup_mvp.dashboard_data import _kickoff_date
+from worldcup_mvp.data_manager import SPORTTERY_CODE_ALIASES
 
 
 SAMPLE_RAW_MATCH = {
@@ -56,6 +58,33 @@ class SportteryApiTests(unittest.TestCase):
         match = normalize_match(SAMPLE_RAW_MATCH)
         self.assertEqual(match["match_id"], "2040337")
         self.assertEqual(match["pools"]["had"]["home"], 1.49)
+
+    def test_normalize_match_business_date(self) -> None:
+        raw = {**SAMPLE_RAW_MATCH, "businessDate": "2026-06-30", "matchDate": "2026-07-01"}
+        match = normalize_match(raw)
+        self.assertEqual(match["business_date"], "2026-06-30")
+        self.assertEqual(
+            _kickoff_date({**match, "kickoff_beijing": "2026-07-01T01:00:00+08:00"}),
+            "2026-06-30",
+        )
+
+    def test_norway_code_alias(self) -> None:
+        self.assertEqual(SPORTTERY_CODE_ALIASES.get("NOW"), "NOR")
+
+    def test_build_date_tabs_from_business_dates(self) -> None:
+        from worldcup_mvp.dashboard_data import _build_date_tabs, _build_date_buckets
+
+        predictions = [
+            {"business_date": "2026-06-30", "confidence": "高", "unified_linked": True},
+            {"business_date": "2026-07-01", "confidence": "中", "unified_linked": False},
+            {"business_date": "2026-07-02", "confidence": "高", "unified_linked": False},
+        ]
+        tabs = _build_date_tabs(predictions)
+        self.assertEqual(tabs[0]["label"], "全部")
+        self.assertEqual(len(tabs), 4)
+        buckets = _build_date_buckets(predictions)
+        self.assertEqual(buckets[""]["total"], 3)
+        self.assertEqual(buckets["2026-07-01"]["total"], 1)
 
     def test_match_to_snapshot(self) -> None:
         match = normalize_match(SAMPLE_RAW_MATCH)

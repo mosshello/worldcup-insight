@@ -114,7 +114,7 @@ class SettlementModuleTests(unittest.TestCase):
 
     @patch("worldcup_mvp.dashboard_data.get_provider_health")
     @patch("worldcup_mvp.dashboard_data.get_settlement_summary")
-    @patch("worldcup_mvp.dashboard_data.load_unified_index")
+    @patch("worldcup_mvp.dashboard_data.load_unified_index_merged")
     @patch("worldcup_mvp.dashboard_data.get_upcoming_score_predictions")
     @patch("worldcup_mvp.dashboard_data.get_sporttery_matches")
     def test_overview_unified_mode(
@@ -131,21 +131,25 @@ class SettlementModuleTests(unittest.TestCase):
         mock_predictions.return_value = {
             "success": True,
             "predictions": [
-                {"match_id": "1", "home": "A", "away": "B"},
-                {"match_id": "2", "home": "C", "away": "D"},
+                {"match_id": "1", "home": "A", "away": "B", "kickoff_beijing": "2026-06-30T20:00:00+08:00"},
+                {"match_id": "2", "home": "C", "away": "D", "kickoff_beijing": "2026-06-30T22:00:00+08:00"},
             ],
         }
         mock_index.return_value = {
             "success": True,
             "fixture_date": "2026-06-30",
             "match_count": 1,
-            "by_sporttery_id": {"1": {"provider_ids": {"sporttery_match": "1"}}},
+            "dates_loaded": ["2026-06-30"],
+            "by_sporttery_id": {"1": {"provider_ids": {"sporttery_match": "1"}, "stage": "小组赛"}},
         }
         mock_settlement.return_value = {"open_count": 0, "settled_count": 0, "total_pnl": 0}
         mock_health.return_value = {"success": True, "providers": [], "all_ok": True}
         payload = get_overview(mode="unified")
         self.assertEqual(payload["mode"], "unified")
-        self.assertEqual(payload["predictions"]["count"], 1)
+        self.assertEqual(payload["predictions"]["count"], 2)
+        self.assertTrue(payload["predictions"]["predictions"][0]["unified_linked"])
+        self.assertFalse(payload["predictions"]["predictions"][1]["unified_linked"])
+        self.assertIn("dashboard_stats", payload)
 
 
 if __name__ == "__main__":

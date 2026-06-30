@@ -6,7 +6,12 @@ from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 from worldcup_mvp.score_predictor import top_crs_scores
-from worldcup_mvp.sporttery_api import is_upcoming_match, parse_kickoff_beijing
+from worldcup_mvp.sporttery_api import (
+    fetch_announced_matches,
+    is_announced_match,
+    is_upcoming_match,
+    parse_kickoff_beijing,
+)
 
 BEIJING = ZoneInfo("Asia/Shanghai")
 
@@ -38,6 +43,15 @@ class UpcomingMatchTests(unittest.TestCase):
         match = {"match_date": "2099-01-01", "match_time": "12:00:00", "pools": {"had": None}}
         self.assertFalse(is_upcoming_match(match))
 
+    def test_announced_match_allows_pending_sale(self) -> None:
+        match = {
+            "match_date": "2099-01-01",
+            "match_time": "12:00",
+            "pools": {"had": None},
+            "sale_status": "pending",
+        }
+        self.assertTrue(is_announced_match(match))
+
     @patch("worldcup_mvp.sporttery_api.fetch_matches")
     def test_fetch_upcoming_matches_sorted(self, mock_fetch: unittest.mock.Mock) -> None:
         from worldcup_mvp.sporttery_api import fetch_upcoming_matches
@@ -58,6 +72,30 @@ class UpcomingMatchTests(unittest.TestCase):
         ]
         upcoming = fetch_upcoming_matches()
         self.assertEqual([item["match_id"] for item in upcoming], ["1", "2"])
+
+    @patch("worldcup_mvp.sporttery_api.fetch_scheduled_matches")
+    @patch("worldcup_mvp.sporttery_api.fetch_upcoming_matches")
+    def test_fetch_announced_matches_merges_pending(
+        self,
+        mock_upcoming: unittest.mock.Mock,
+        mock_scheduled: unittest.mock.Mock,
+    ) -> None:
+        mock_scheduled.return_value = [
+            {"match_id": "1", "home": "A", "away": "B", "sale_status": "pending"},
+            {"match_id": "2", "home": "C", "away": "D", "sale_status": "pending"},
+        ]
+        mock_upcoming.return_value = [
+            {
+                "match_id": "1",
+                "home": "A",
+                "away": "B",
+                "pools": {"had": {"home": 1.5, "draw": 3.5, "away": 5.0}},
+            }
+        ]
+        announced = fetch_announced_matches()
+        self.assertTrue(announced[0]["analysis_available"])
+        self.assertFalse(announced[1]["analysis_available"])
+        self.assertEqual(announced[1]["sale_status"], "pending")
 
 
 class CrsParserTests(unittest.TestCase):

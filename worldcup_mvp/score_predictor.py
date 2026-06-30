@@ -11,6 +11,7 @@ from .fusion_predictor import _devig, _pick_from_probs
 from .sporttery_api import (
     SportteryApiError,
     enrich_match_timing,
+    fetch_announced_matches,
     fetch_fixed_bonus,
     fetch_upcoming_matches,
     is_upcoming_match,
@@ -125,6 +126,7 @@ def predict_score_for_match(
         "away": away,
         "league": sporttery_match.get("league"),
         "match_num": sporttery_match.get("match_num"),
+        "business_date": sporttery_match.get("business_date"),
         "kickoff_beijing": sporttery_match.get("kickoff_beijing"),
         "hours_until_kickoff": sporttery_match.get("hours_until_kickoff"),
         "countdown_label": sporttery_match.get("countdown_label"),
@@ -174,7 +176,7 @@ def predict_upcoming_scores() -> list[dict[str, Any]]:
 def list_upcoming_matches() -> dict[str, Any]:
     """返回未开赛体彩赛事列表（不含比分预测）。"""
     try:
-        matches = fetch_upcoming_matches()
+        matches = fetch_announced_matches()
     except SportteryApiError as exc:
         cached = load_snapshot()
         if cached:
