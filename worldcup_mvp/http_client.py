@@ -15,7 +15,8 @@ class DataSourceError(RuntimeError):
 class HttpJsonClient:
     """带超时、有限重试和密钥脱敏的 HTTPS JSON 客户端。"""
 
-    RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+    RETRYABLE_STATUS = {403, 429, 500, 502, 503, 504}
+    BACKOFF_403_SECONDS = (0.8, 2.0, 4.0)
 
     def __init__(
         self,
@@ -64,7 +65,10 @@ class HttpJsonClient:
                     raise DataSourceError(f"{self.provider_name} 返回了无效 JSON") from exc
             except error.HTTPError as exc:
                 if exc.code in self.RETRYABLE_STATUS and attempt < self.max_retries:
-                    time.sleep(0.25 * (attempt + 1))
+                    if exc.code == 403 and attempt < len(self.BACKOFF_403_SECONDS):
+                        time.sleep(self.BACKOFF_403_SECONDS[attempt])
+                    else:
+                        time.sleep(0.25 * (attempt + 1))
                     continue
                 raise DataSourceError(
                     f"{self.provider_name} 请求失败（HTTP {exc.code}）"

@@ -10,6 +10,8 @@ class DashboardDataTests(unittest.TestCase):
         payload = get_overview()
         self.assertIn("sporttery", payload)
         self.assertIn("predictions", payload)
+        self.assertIn("provider_health", payload)
+        self.assertIn("unified_index", payload)
 
     def test_history_dashboard(self) -> None:
         payload = get_history_dashboard("odds_history_bra-jpn.json")

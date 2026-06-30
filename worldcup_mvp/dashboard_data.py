@@ -20,6 +20,17 @@ from .settlement import get_settlement_summary, settle_open_predictions
 from .sporttery_api import SportteryApiError, enrich_match_timing, fetch_odds_history, fetch_upcoming_matches, find_match
 from .sporttery_cache import load_snapshot, save_snapshot
 from .the_odds_api import find_snapshot
+from .unified_bridge import (
+    PROBABILITY_DELTA_ALERT_PP,
+    build_context_analysis,
+    delta_alerts,
+    enrich_prediction_record,
+    fetch_polymarket_odds,
+    get_provider_health,
+    get_unified_match,
+    load_unified_index,
+    probability_deltas,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MATCHES = PROJECT_ROOT / "data" / "matches_2026-06-29.json"
@@ -179,8 +190,28 @@ def build_sporttery_series(history: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _fetch_foreign_odds(home: str, away: str, source: str = "fox") -> tuple[dict[str, float] | None, str | None]:
+FOREIGN_SOURCE_CHAIN: dict[str, list[str]] = {
+    "auto": ["polymarket", "fox", "api"],
+    "polymarket": ["polymarket", "fox"],
+    "fox": ["fox"],
+    "api": ["api"],
+    "none": ["none"],
+}
+
+
+def _fetch_foreign_odds_once(
+    home: str,
+    away: str,
+    source: str,
+    *,
+    match: dict[str, Any] | None = None,
+) -> tuple[dict[str, float] | None, str | None]:
     if source == "none":
+        return None, None
+    if source == "polymarket" and match is not None:
+        odds, label = fetch_polymarket_odds(match)
+        if odds is not None:
+            return odds, label
         return None, None
     if source == "fox":
         try:
@@ -188,7 +219,6 @@ def _fetch_foreign_odds(home: str, away: str, source: str = "fox") -> tuple[dict
             return snapshot.get("european"), snapshot.get("source")
         except RuntimeError:
             return None, None
-
     if source == "api":
         api_key = get_odds_api_key()
         if not api_key:
@@ -198,7 +228,21 @@ def _fetch_foreign_odds(home: str, away: str, source: str = "fox") -> tuple[dict
             return snapshot.get("european"), snapshot.get("source")
         except Exception:
             return None, None
+    return None, None
 
+
+def _fetch_foreign_odds(
+    home: str,
+    away: str,
+    source: str = "auto",
+    *,
+    match: dict[str, Any] | None = None,
+) -> tuple[dict[str, float] | None, str | None]:
+    chain = FOREIGN_SOURCE_CHAIN.get(source, FOREIGN_SOURCE_CHAIN["auto"])
+    for candidate in chain:
+        odds, label = _fetch_foreign_odds_once(home, away, candidate, match=match)
+        if odds is not None:
+            return odds, label
     return None, None
 
 
@@ -225,6 +269,10 @@ def get_upcoming_score_predictions() -> dict[str, Any]:
     try:
         predictions = predict_upcoming_scores()
         matches = fetch_upcoming_matches()
+        load_unified_index(force=True)
+        predictions = [
+            enrich_prediction_record(item) for item in predictions
+        ]
         save_snapshot(matches=matches, predictions=predictions)
         return {
             "success": True,
@@ -237,7 +285,8 @@ def get_upcoming_score_predictions() -> dict[str, Any]:
         cached = load_snapshot()
         if cached and cached.get("predictions"):
             predictions = [
-                _enrich_prediction_timing(item) for item in cached["predictions"]
+                enrich_prediction_record(_enrich_prediction_timing(item))
+                for item in cached["predictions"]
             ]
             return {
                 "success": True,
@@ -255,11 +304,16 @@ def get_fusion_prediction(
     match_id: str | None = None,
     home: str | None = None,
     away: str | None = None,
-    foreign_source: str = "fox",
+    foreign_source: str = "auto",
 ) -> dict[str, Any]:
     match = find_match(match_id=match_id, home=home, away=away, upcoming_only=True)
     history = fetch_odds_history(match["match_id"])
-    foreign_odds, foreign_src = _fetch_foreign_odds(match["home"], match["away"], foreign_source)
+    foreign_odds, foreign_src = _fetch_foreign_odds(
+        match["home"],
+        match["away"],
+        foreign_source,
+        match=match,
+    )
     prediction = predict_match(
         match,
         sporttery_history=history,
@@ -267,15 +321,32 @@ def get_fusion_prediction(
         foreign_source=foreign_src,
     )
     score_prediction = predict_score_for_match(match)
+    unified_match = get_unified_match(match["match_id"])
+    context_analysis = build_context_analysis(unified_match) if unified_match else None
+
+    deltas: dict[str, float] = {}
+    alerts: list[str] = []
+    foreign_probs = (prediction.get("foreign") or {}).get("probabilities")
+    if foreign_probs and prediction.get("probabilities"):
+        deltas = probability_deltas(prediction["probabilities"], foreign_probs)
+        alerts = delta_alerts(deltas)
+
     return {
         "prediction": prediction,
         "score_prediction": score_prediction,
         "history": history,
         "series": build_sporttery_series(history),
+        "context_analysis": context_analysis,
+        "provider_ids": (unified_match or {}).get("provider_ids"),
+        "probability_deltas_pp": deltas,
+        "probability_delta_alerts": alerts,
+        "probability_delta_threshold_pp": PROBABILITY_DELTA_ALERT_PP,
+        "foreign_source_requested": foreign_source,
+        "foreign_source_resolved": foreign_src,
     }
 
 
-def get_overview(data_dir: Path | None = None) -> dict[str, Any]:
+def get_overview(data_dir: Path | None = None, *, mode: str = "sporttery") -> dict[str, Any]:
     directory = data_dir or PROJECT_ROOT / "data"
     histories = list_history_files(directory)
     sporttery = get_sporttery_matches()
@@ -283,11 +354,39 @@ def get_overview(data_dir: Path | None = None) -> dict[str, Any]:
         "success": False,
         "predictions": [],
     }
+    unified_index = load_unified_index(force=(mode == "unified"))
+
+    if mode == "unified" and unified_index.get("success"):
+        unified_ids = set(unified_index.get("by_sporttery_id", {}).keys())
+        pred_list = predictions.get("predictions") or []
+        filtered = [item for item in pred_list if str(item.get("match_id")) in unified_ids]
+        predictions = {
+            **predictions,
+            "predictions": filtered,
+            "count": len(filtered),
+            "mode": "unified",
+            "filtered_from": len(pred_list),
+        }
+        sporttery = {
+            **sporttery,
+            "source": "unified-data-manager",
+            "unified_match_count": unified_index.get("match_count", 0),
+            "mode": "unified",
+        }
+
     return {
         "sporttery": sporttery,
         "predictions": predictions,
         "histories": histories,
         "settlement_summary": get_settlement_summary(),
+        "provider_health": get_provider_health(),
+        "mode": mode,
+        "unified_index": {
+            "success": unified_index.get("success", False),
+            "fixture_date": unified_index.get("fixture_date"),
+            "match_count": unified_index.get("match_count", 0),
+            "error": unified_index.get("error"),
+        },
     }
 
 

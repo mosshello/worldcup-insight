@@ -5,6 +5,7 @@ const OUTCOME_COLORS = {
   away: "#ef4444",
 };
 const REFRESH_STORAGE_KEY = "dashboardAutoRefreshSeconds";
+const DATA_MODE_STORAGE_KEY = "dashboardDataMode";
 
 let overview = null;
 let predictions = [];
@@ -47,6 +48,21 @@ async function fetchJson(url) {
 function renderMeta() {
   const sporttery = overview.sporttery || {};
   const predictionsMeta = overview.predictions || {};
+  const health = overview.provider_health || {};
+  const unified = overview.unified_index || {};
+
+  if (health.providers && health.providers.length) {
+    const labels = health.providers.map((item) => {
+      const short = item.name.replace("-public", "").replace("sporttery", "体彩");
+      return `${short}:${item.ok ? "✓" : "✗"}`;
+    });
+    document.getElementById("provider-health").textContent =
+      health.all_ok ? `全部正常（${labels.join(" · ")}）` : labels.join(" · ");
+  } else {
+    document.getElementById("provider-health").textContent =
+      health.error || "三源检测暂不可用";
+  }
+
   if (!sporttery.success) {
     document.getElementById("sporttery-status").textContent = sporttery.error || "体彩 API 暂不可用";
     return;
@@ -54,8 +70,14 @@ function renderMeta() {
   const cacheHint = sporttery.cached || predictionsMeta.cached
     ? `（缓存 ${sporttery.cached_at || predictionsMeta.cached_at || ""}）`
     : "（实时）";
+  const unifiedHint = unified.success
+    ? ` · 三源索引 ${unified.match_count} 场`
+    : unified.error
+      ? " · 三源索引未就绪"
+      : "";
+  const modeHint = overview.mode === "unified" ? " · 三源交叉模式" : "";
   document.getElementById("sporttery-status").textContent =
-    `${sporttery.match_count} 场未开赛 ${cacheHint}`;
+    `${sporttery.match_count} 场未开赛 ${cacheHint}${unifiedHint}${modeHint}`;
 }
 
 function renderSportteryCards() {
@@ -157,7 +179,7 @@ async function loadSportteryDetail(matchId) {
       `badge-confidence tag ${confidenceClass(cached.confidence)}`;
   }
 
-  const payload = await fetchJson(`/api/sporttery/predict/${encodeURIComponent(matchId)}?foreign=fox`);
+  const payload = await fetchJson(`/api/sporttery/predict/${encodeURIComponent(matchId)}?foreign=auto`);
   const prediction = payload.prediction;
   const score = payload.score_prediction || cached;
 
@@ -184,15 +206,26 @@ async function loadSportteryDetail(matchId) {
     </div>
     <div class="stat-card">
       <div class="label">外网辅盘</div>
-      <div class="value" style="font-size:16px">${score.fox_source || "暂无"}</div>
-      <div class="hint">${score.fox_moneyline}</div>
+      <div class="value" style="font-size:16px">${payload.foreign_source_resolved || score.fox_source || "暂无"}</div>
+      <div class="hint">${score.fox_moneyline || "优先 Polymarket，失败回退 FOX"}</div>
     </div>
   `;
 
-  document.getElementById("fusion-analysis").innerHTML =
-    [...(prediction.analysis || []), score.direction_note].filter(Boolean).map((line) => `<li>${line}</li>`).join("");
+  const context = payload.context_analysis;
+  if (context && context.context_available) {
+    document.getElementById("fusion-analysis").innerHTML =
+      [`综合信号：${OUTCOME_LABELS[context.context_pick]}（信心 ${context.context_confidence}，边际 ${context.context_edge >= 0 ? "+" : ""}${context.context_edge.toFixed(3)}）`,
+        ...(prediction.analysis || []),
+        score.direction_note,
+      ].filter(Boolean).map((line) => `<li>${line}</li>`).join("");
+  } else {
+    document.getElementById("fusion-analysis").innerHTML =
+      [...(prediction.analysis || []), score.direction_note].filter(Boolean).map((line) => `<li>${line}</li>`).join("");
+  }
 
   const compare = document.getElementById("foreign-compare");
+  const alertKeys = new Set(payload.probability_delta_alerts || []);
+  const threshold = payload.probability_delta_threshold_pp || 5;
   if (prediction.foreign.probabilities) {
     const fp = prediction.foreign.probabilities;
     const sp = prediction.probabilities;
@@ -200,7 +233,9 @@ async function loadSportteryDetail(matchId) {
       .map((key) => {
         const delta = (fp[key] - sp[key]) * 100;
         const sign = delta >= 0 ? "+" : "";
-        return `<li>${OUTCOME_LABELS[key]}：体彩 ${pct(sp[key])}｜外网 ${pct(fp[key])}｜差值 ${sign}${delta.toFixed(1)}pp</li>`;
+        const alertClass = alertKeys.has(key) ? "delta-alert" : "";
+        const alertTag = alertKeys.has(key) ? ` ⚠ ≥${threshold}pp` : "";
+        return `<li class="${alertClass}">${OUTCOME_LABELS[key]}：体彩 ${pct(sp[key])}｜外网 ${pct(fp[key])}｜差值 ${sign}${delta.toFixed(1)}pp${alertTag}</li>`;
       })
       .join("");
   } else {
@@ -318,7 +353,8 @@ function renderSettlementResults(payload) {
             <th>场次</th>
             <th>状态</th>
             <th>预测</th>
-            <th>实际</th>
+            <th>实际（体彩）</th>
+            <th>FIFA 比分</th>
             <th>盈亏</th>
           </tr>
         </thead>
@@ -329,6 +365,7 @@ function renderSettlementResults(payload) {
               <td>${row.status}</td>
               <td>${row.predicted_had || "—"} / ${row.predicted_score || "—"}</td>
               <td>${row.actual_had || "—"} / ${row.actual_score || "—"}</td>
+              <td>${row.fifa_actual ? `${row.fifa_actual.score_label}（${row.fifa_actual.outcome_label}）` : "—"}</td>
               <td class="${(row.total_pnl || 0) >= 0 ? "positive" : "negative"}">${row.total_pnl ?? "—"}</td>
             </tr>
           `).join("")}
@@ -340,7 +377,8 @@ function renderSettlementResults(payload) {
 
 async function refreshOverview(options = {}) {
   const { preserveMatch = true } = options;
-  overview = await fetchJson("/api/overview");
+  const mode = document.getElementById("data-mode-select").value;
+  overview = await fetchJson(`/api/overview?mode=${encodeURIComponent(mode)}`);
   renderMeta();
   renderSettlementSummary();
   renderSportteryCards();
@@ -391,11 +429,18 @@ function setupCountdownTicker() {
 
 async function init() {
   const select = document.getElementById("auto-refresh-select");
+  const modeSelect = document.getElementById("data-mode-select");
   const saved = localStorage.getItem(REFRESH_STORAGE_KEY);
+  const savedMode = localStorage.getItem(DATA_MODE_STORAGE_KEY);
   if (saved !== null) select.value = saved;
+  if (savedMode) modeSelect.value = savedMode;
   setupAutoRefresh(Number(select.value));
 
   select.addEventListener("change", () => setupAutoRefresh(Number(select.value)));
+  modeSelect.addEventListener("change", () => {
+    localStorage.setItem(DATA_MODE_STORAGE_KEY, modeSelect.value);
+    refreshOverview({ preserveMatch: false });
+  });
 
   document.getElementById("refresh-btn").addEventListener("click", () => {
     refreshOverview({ preserveMatch: true });

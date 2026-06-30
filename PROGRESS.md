@@ -297,13 +297,27 @@ python -m unittest discover -s tests -v
 - [x] 增加类似参与投注游戏假设金额的盈亏计算（参考 SportteryAPI）
 - [x] 每日进行结算可以通过体彩官网获取比赛结束结算信息（预测投注金额 vs 实际赛果，计算盈亏）
 
+### P1.5 · 三源联动（master 合并后）
+
+> 目标：在保留 dev/jun-odds 体彩主盘 + 可视化能力的前提下，接入成员 `UnifiedDataManager`（FIFA + Polymarket + 体彩）三源管线。
+
+- [x] 新增 `unified_bridge.py` 桥接三源索引与仪表盘
+- [x] 外网辅盘默认 `auto`：优先 Polymarket，失败回退 FOX / Odds API
+- [x] 仪表盘页头展示三源 `doctor` 健康状态（FIFA / Polymarket / 体彩）
+- [x] 预测记录写入 `provider_ids`（FIFA / 体彩 / Polymarket 对照）
+- [x] 融合分析接入 FIFA 上下文综合信号（`context_pick` / `context_edge`）
+- [x] 外网 vs 体彩概率差值 ≥5pp 高亮告警
+- [x] 结算复盘同时拉 FIFA 90 分钟比分 vs 体彩 `matchResultList`
+- [x] 统一 `sporttery_api` 与 `HttpJsonClient` HTTP 层（403 退避共享）
+- [x] 仪表盘「三源交叉模式」：`/api/overview?mode=unified` 仅展示三源均匹配场次
+
 ### P2 · 数据与分析增强
 
 - [ ] 体彩 `ttg`（总进球）、`hafu`（半全场）纳入分析
 - [ ] 凯利指数 / 返还率 / 价值偏差（参考 SportteryAPI 思路）
-- [ ] 外网与体彩概率差值告警（超过阈值高亮）
-- [ ] 完场后自动复盘：预测 vs 实际赛果
-- [ ] 扩充 `team_name_map.json` 或自动从体彩 API 同步队名
+- [x] 外网与体彩概率差值告警（超过阈值高亮）—— 首版 5pp 阈值已在仪表盘实现
+- [ ] 完场后自动复盘：预测 vs 实际赛果（结合 FIFA 比分 + 结算模块）
+- [ ] 扩充 `team_name_map.json` 或自动从 FIFA/体彩代码别名同步
 
 ### P3 · 架构与工程
 
@@ -326,9 +340,9 @@ python -m unittest discover -s tests -v
 | 项目 | 数据类型 | 可联动方式 |
 |------|----------|------------|
 | `worldcup2026` | 赛程、比分、Varzesh3 实时比分 | 可提供 match_id / 队名对照 |
-| `worldcup-insight` | 体彩固定奖金、外网欧赔 | 当前**未打通**，需自建映射 |
+| `worldcup-insight` | 体彩固定奖金、外网欧赔 | **已部分打通**：`provider_ids.fifa_match` 可对照 |
 
-潜在联动：用 worldcup2026 的赛程驱动 `worldcup-insight` 该分析哪场；赛果回填用于复盘。
+潜在联动：用 worldcup2026 的赛程驱动 `worldcup-insight` 该分析哪场；赛果回填用于复盘（P1.5 待做 FIFA 比分合并结算）。
 
 ---
 
@@ -336,14 +350,15 @@ python -m unittest discover -s tests -v
 
 | 维度 | 完成度 | 说明 |
 |------|--------|------|
-| 核心分析逻辑 | **90%** | 去水、变动、融合均已实现 |
-| 体彩数据接入 | **75%** | 可用但 WAF 不稳定，依赖缓存 |
-| 外网辅盘 | **70%** | FOX 可用，Odds API 需 Key |
+| 核心分析逻辑 | **92%** | 去水、变动、融合 + FIFA 上下文信号已接入 |
+| 体彩数据接入 | **78%** | 双实现并存，桥接层已索引三源 |
+| 外网辅盘 | **80%** | Polymarket 优先，FOX/Odds API 回退 |
+| 三源联动 | **85%** | P1.5 已完成：桥接、doctor、FIFA 复盘、统一 HTTP、交叉模式 |
 | CLI 工具链 | **85%** | 入口略多，待整合 |
-| 可视化 | **65%** | 功能有，稳定性和 UX 待加强 |
-| 测试 | **75%** | 30 项单元测试，缺集成/E2E |
-| 文档 | **60%** | README 部分过时，本文档补位 |
-| 生产就绪 | **40%** | 个人开发/演示可用，未做部署与监控 |
+| 可视化 | **78%** | 三源状态、差值高亮、模式切换、FIFA 结算列 |
+| 测试 | **80%** | 69+ 项单元测试，缺集成/E2E |
+| 文档 | **70%** | README + PROGRESS 已更新联动规划 |
+| 生产就绪 | **42%** | 个人开发/演示可用，未做部署与监控 |
 
 ---
 
@@ -351,6 +366,8 @@ python -m unittest discover -s tests -v
 
 | 日期 | 说明 |
 |------|------|
+| 2026-06-30 | P1.5 三源联动完成：unified_bridge、FIFA 复盘、HTTP 统一、交叉模式 |
+| 2026-06-30 | 合并 master 三源接口；新增 P1.5 联动规划并实现 unified_bridge |
 | 2026-06-29 | 初版：汇总 dev/jun-odds 分支全部已完成功能、已知问题与优化路线图 |
 
 ---

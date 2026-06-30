@@ -8,8 +8,10 @@ from zoneinfo import ZoneInfo
 
 from .bet_simulator import settle_against_results
 from .prediction_journal import list_open_entries, load_journal, update_entry
+from .unified_bridge import fetch_fifa_fixture_score, resolve_fifa_match_id
 from .sporttery_api import (
     BEIJING_TZ,
+    HAD_RESULT_KEYS,
     SportteryApiError,
     fetch_fixed_bonus_detail,
     fetch_results_by_date,
@@ -73,6 +75,25 @@ def settle_open_predictions(*, lookback_days: int = 7) -> dict[str, Any]:
             stake_crs=float(entry.get("stake_crs") or 50),
         )
         row["recorded_at"] = entry.get("recorded_at")
+
+        fifa_id = resolve_fifa_match_id(entry)
+        if fifa_id:
+            fifa_actual = fetch_fifa_fixture_score(fifa_id)
+            if fifa_actual:
+                row["fifa_actual"] = fifa_actual
+                predicted_key = entry.get("direction_key")
+                row["direction_hit_fifa"] = predicted_key == fifa_actual.get("outcome_key")
+                predicted_score = str(entry.get("predicted_score", "")).replace("-", ":")
+                row["score_hit_fifa"] = predicted_score == fifa_actual.get("score_label")
+                sporttery_outcome = HAD_RESULT_KEYS.get(
+                    str((results.get("had") or {}).get("combination", "")).upper()
+                )
+                row["sporttery_fifa_had_agree"] = (
+                    sporttery_outcome == fifa_actual.get("outcome_key")
+                    if sporttery_outcome
+                    else None
+                )
+
         if result_map.get(match_id, {}).get("list_item"):
             row["official_list"] = result_map[match_id]["list_item"]
         settled_rows.append(row)

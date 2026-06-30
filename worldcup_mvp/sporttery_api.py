@@ -4,16 +4,15 @@ from __future__ import annotations
 
 import json
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from .team_names import resolve_team
+from .http_client import DataSourceError, HttpJsonClient
 
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
+SPORTTERY_BASE_URL = "https://webapi.sporttery.cn"
 
 MATCH_CALC_URL = (
     "https://webapi.sporttery.cn/gateway/uniform/football/getMatchCalculatorV1.qry"
@@ -41,6 +40,20 @@ MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = (0.8, 2.0, 4.0)
 RETRYABLE_HTTP_CODES = {403, 429, 500, 502, 503, 504}
 
+_sporttery_http: HttpJsonClient | None = None
+
+
+def _get_sporttery_http() -> HttpJsonClient:
+    global _sporttery_http
+    if _sporttery_http is None:
+        _sporttery_http = HttpJsonClient(
+            SPORTTERY_BASE_URL,
+            provider_name="中国体彩网",
+            timeout=15.0,
+            max_retries=0,
+        )
+    return _sporttery_http
+
 
 class SportteryApiError(RuntimeError):
     """体彩 API 请求失败。"""
@@ -51,19 +64,16 @@ def _should_retry_http(code: int) -> bool:
 
 
 def _request_once(url: str, params: dict[str, str] | None = None, *, timeout: float = 15.0) -> dict[str, Any]:
-    query = urllib.parse.urlencode(params or {})
-    full_url = f"{url}?{query}" if query else url
-    request = urllib.request.Request(full_url, headers=DEFAULT_HEADERS)
+    path = url.removeprefix(f"{SPORTTERY_BASE_URL}/")
+    client = _get_sporttery_http()
+    client.timeout = timeout
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        error = SportteryApiError(f"HTTP {exc.code}: {detail[:200]}")
-        error.http_code = exc.code  # type: ignore[attr-defined]
+        payload = client.get_json(path, query=params or {}, headers=DEFAULT_HEADERS)
+    except DataSourceError as exc:
+        error = SportteryApiError(str(exc))
+        if "HTTP 403" in str(exc):
+            error.http_code = 403  # type: ignore[attr-defined]
         raise error from exc
-    except urllib.error.URLError as exc:
-        raise SportteryApiError(str(exc.reason)) from exc
 
     if not payload.get("success"):
         raise SportteryApiError(payload.get("errorMessage") or "体彩 API 返回失败")

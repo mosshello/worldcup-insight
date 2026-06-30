@@ -68,6 +68,7 @@ def record_predictions(
             "confidence": prediction.get("confidence"),
             "had_odds": prediction.get("had_odds"),
             "crs_odds": prediction.get("crs_odds"),
+            "provider_ids": prediction.get("provider_ids"),
             "stake_had": stake_had,
             "stake_crs": stake_crs,
             "status": "open",

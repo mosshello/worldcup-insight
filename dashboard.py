@@ -23,6 +23,7 @@ from worldcup_mvp.dashboard_data import (
     get_upcoming_score_predictions,
     list_history_files,
 )
+from worldcup_mvp.unified_bridge import get_provider_health
 from worldcup_mvp.settlement import get_settlement_summary, settle_open_predictions
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -113,8 +114,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self._send_file(target)
                 return
 
+            if route == "/api/doctor":
+                self._send_json(get_provider_health())
+                return
+
             if route == "/api/overview":
-                self._send_json(get_overview())
+                mode = (query.get("mode") or ["sporttery"])[0]
+                self._send_json(get_overview(mode=mode))
                 return
 
             if route == "/api/histories":
