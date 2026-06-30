@@ -1,0 +1,53 @@
+{
+  "data_as_of": "2026-06-28T23:00:00+08:00",
+  "source": "开赛前公开赔率、球队数据与伤停预览",
+  "sources": [
+    "https://www.mansionbet.com/ca/world-cup-betting-tips/tips-best-bets-june-28/",
+    "https://www.si.com/soccer/south-africa-vs-canada-world-cup-preview-predictions-lineups-6-28-26",
+    "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/south-africa-canada-live-stream-team-news-tickets"
+  ],
+  "odds_format": "decimal",
+  "matches": [
+    {
+      "id": "wc2026-r32-rsa-can",
+      "competition": "2026 世界杯",
+      "stage": "淘汰赛",
+      "fixture_date": "2026-06-28（赛事当地日期）",
+      "kickoff_beijing": "2026-06-29T03:00:00+08:00",
+      "home": "南非",
+      "away": "加拿大",
+      "odds": {"home": 5.33, "draw": 3.40, "away": 1.76},
+      "tournament_rules": {
+        "format": "knockout",
+        "prediction_scope": "90_minutes",
+        "extra_time_if_draw": true,
+        "penalties_if_still_draw": true
+      },
+      "team_context": {
+        "home": {
+          "group_stats": {"played": 3, "points": 4, "goals_for": 2, "goals_against": 3, "finish": 2},
+          "absences": [
+            {"player": "特姆巴·兹瓦内", "status": "suspended", "impact": 0.7, "note": "红牌停赛"}
+          ],
+          "scorers": [
+            {"player": "塔佩洛·马塞科", "goals": 1},
+            {"player": "特博霍·莫科纳", "goals": 1}
+          ]
+        },
+        "away": {
+          "group_stats": {"played": 3, "points": 4, "goals_for": 8, "goals_against": 3, "finish": 2},
+          "absences": [
+            {"player": "伊斯梅尔·科内", "status": "out", "impact": 0.7, "note": "腿部重伤、赛事报销"},
+            {"player": "斯蒂芬·欧斯塔基奥", "status": "doubtful", "impact": 0.8, "note": "赛前出场存疑"},
+            {"player": "阿方索·戴维斯", "status": "doubtful", "impact": 0.9, "note": "尚未在本届赛事出场"}
+          ],
+          "scorers": [
+            {"player": "乔纳森·戴维", "goals": 3},
+            {"player": "赛尔·拉林", "note": "小组赛进球点"}
+          ]
+        }
+      },
+      "actual_result": {"home_goals": 0, "away_goals": 1, "outcome": "away"}
+    }
+  ]
+}

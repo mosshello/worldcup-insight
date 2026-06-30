@@ -1,9 +1,11 @@
+.env
+.env.local
 __pycache__/
 *.py[cod]
 *.pyo
 .Python
 .venv/
 venv/
-.env
 data/odds_live_feed.json
 data/cache/
+data/snapshots/
