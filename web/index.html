@@ -75,8 +75,22 @@
       </div>
       <p class="date-filter-note" id="date-filter-note"></p>
       <div class="match-grid" id="sporttery-grid"></div>
-      <div class="stats-row" id="sporttery-stats"></div>
-      <div class="stats-row" id="bet-simulation"></div>
+      <div class="stats-row detail-stats-row" id="sporttery-stats"></div>
+      <div class="bet-detail-wrap">
+        <div class="bet-detail-head">
+          <div>
+            <h3 class="bet-detail-title">假设投注模拟</h3>
+            <p class="hint">调整金额后即时刷新单场盈亏估算；下方为自 2026-06-30 起的实盘结算与训练语料概况。</p>
+          </div>
+          <div class="stake-controls">
+            <label>胜平负金额 <input type="number" id="stake-had" value="100" min="2" step="2"></label>
+            <label>猜比分金额 <input type="number" id="stake-crs" value="50" min="2" step="2"></label>
+            <button type="button" id="settle-btn" class="primary-btn">执行结算</button>
+          </div>
+        </div>
+        <div class="stats-row bet-simulation-row" id="bet-simulation"></div>
+        <div class="stats-row settlement-inline" id="settlement-summary"></div>
+      </div>
       <div class="chart-grid sporttery-charts">
         <article class="chart-card">
           <h3>体彩胜平负概率</h3>
@@ -112,6 +126,10 @@
           <ul id="match-intelligence"></ul>
           <p class="hint" id="intelligence-coverage"></p>
         </article>
+        <article class="analysis-card wide" id="direction-shift-card">
+          <h3>水位转向 / 冷门提醒</h3>
+          <ul id="direction-shift-analysis"></ul>
+        </article>
         <article class="analysis-card wide" id="pool-analysis-card">
           <h3>多玩法分析（总进球 / 半全场 / 凯利）</h3>
           <ul id="pool-analysis"></ul>
@@ -124,21 +142,6 @@
       </div>
     </section>
 
-    <section class="panel settlement-panel">
-      <div class="panel-head split">
-        <div>
-          <h2>假设投注结算</h2>
-          <p>基于预测日志与体彩官方赛果（getFixedBonus matchResultList）对比盈亏，仅供演示。</p>
-        </div>
-        <div class="stake-controls">
-          <label>胜平负金额 <input type="number" id="stake-had" value="100" min="2" step="2"></label>
-          <label>猜比分金额 <input type="number" id="stake-crs" value="50" min="2" step="2"></label>
-          <button type="button" id="settle-btn" class="primary-btn">执行结算</button>
-        </div>
-      </div>
-      <div class="stats-row" id="settlement-summary"></div>
-      <div id="settlement-results"></div>
-    </section>
   </div>
 
   <script src="/static/app.js"></script>

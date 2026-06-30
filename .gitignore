@@ -9,3 +9,5 @@ venv/
 data/odds_live_feed.json
 data/cache/
 data/snapshots/
+data/training/*
+!data/training/historical_outcomes.example.json

@@ -23,6 +23,49 @@ function confidenceClass(level) {
   return "low";
 }
 
+function renderShiftBadge(shift) {
+  if (!shift?.available || shift.severity === "none") return "";
+  if (shift.direction_flipped) {
+    return `<span class="shift-badge shift-high">⚠ 方向转向</span>`;
+  }
+  if (shift.severity === "high" || shift.severity === "medium") {
+    return `<span class="shift-badge shift-${shift.severity}">⚠ 冷门信号</span>`;
+  }
+  if (shift.severity === "low") {
+    return `<span class="shift-badge shift-low">SP 变动</span>`;
+  }
+  return "";
+}
+
+function renderDirectionShift(shift) {
+  const list = document.getElementById("direction-shift-analysis");
+  const card = document.getElementById("direction-shift-card");
+  if (!list || !card) return;
+
+  if (!shift?.available) {
+    list.innerHTML = `<li class="empty-note">SP 历史不足 2 个节点，暂无法判断方向转向。</li>`;
+    return;
+  }
+
+  const severityClass =
+    shift.severity === "high" ? "delta-alert" : shift.severity === "medium" ? "shift-medium-text" : "";
+  const headline = shift.direction_flipped
+    ? `初盘 ${shift.opening_label} → 现盘 ${shift.current_label}`
+    : `当前 SP 首选：${shift.current_label}`;
+
+  const meta = [
+    `<li><strong>${headline}</strong></li>`,
+    `<li>历史节点 ${shift.history_points} 个 · 严重度 ${shift.severity}</li>`,
+  ];
+  if (shift.upset_candidates?.length) {
+    meta.push(`<li>冷门受热：${shift.upset_candidates.join("、")}</li>`);
+  }
+  const bullets = (shift.alerts?.length ? shift.alerts : shift.summary_bullets || [])
+    .map((line) => `<li class="${severityClass}">${line}</li>`)
+    .join("");
+  list.innerHTML = meta.join("") + bullets;
+}
+
 function pct(value) {
   return `${(value * 100).toFixed(1)}%`;
 }
@@ -346,6 +389,7 @@ function clearMatchDetail() {
   document.getElementById("foreign-compare").innerHTML = `<li class="empty-note">暂无选中赛事</li>`;
   renderMatchIntelligence(null);
   renderPoolAnalysis(null);
+  renderDirectionShift(null);
   renderDataSources({});
   Object.values(charts).forEach((chart) => chart?.destroy?.());
   charts = {};
@@ -413,6 +457,7 @@ function renderPendingMatchDetail(match) {
     `<li class="empty-note">待开售场次暂无体彩主盘，暂不计算外网差值。</li>`;
   renderMatchIntelligence(null);
   renderPoolAnalysis(null);
+  renderDirectionShift(null);
   renderDataSources({ data_sources: { sporttery: true, unified: false, foreign: "待开售" } });
   Object.values(charts).forEach((chart) => chart?.destroy?.());
   charts = {};
@@ -437,7 +482,10 @@ function renderSportteryCards(options = {}) {
       <article class="match-card sporttery-card ${item.unified_linked ? "unified-linked" : ""} ${item.analysis_available === false ? "pending-sale" : ""}" data-match-id="${item.match_id}">
         <div class="card-top">
           <h3>${item.home} vs ${item.away}</h3>
-          <span class="countdown-badge">${item.countdown_label || "待定"}</span>
+          <div class="card-badges">
+            ${renderShiftBadge(item.direction_shift)}
+            <span class="countdown-badge">${item.countdown_label || "待定"}</span>
+          </div>
         </div>
         <div class="stage">${sanitizeCardText(item.region_label) || `${item.league || "竞彩"} · ${(item.kickoff_beijing || "待定").slice(0, 16)}`}</div>
         <div class="tag-row">${renderDataTags(item.data_tags)}</div>
@@ -578,6 +626,7 @@ async function loadSportteryDetail(matchId) {
 
   renderMatchIntelligence(payload.match_intelligence);
   renderPoolAnalysis(payload.pool_analysis);
+  renderDirectionShift(payload.direction_shift || prediction.direction_shift);
   renderDataSources(payload);
 
   const compare = document.getElementById("foreign-compare");
@@ -679,18 +728,27 @@ function chartOptions() {
 
 function renderSettlementSummary() {
   const summary = overview.settlement_summary || {};
+  const epoch = summary.settlement_epoch || "2026-06-30";
   document.getElementById("settlement-summary").innerHTML = `
     <div class="stat-card">
       <div class="label">待结算</div>
       <div class="value">${summary.open_count || 0} 场</div>
+      <div class="hint">实盘预测日志</div>
     </div>
     <div class="stat-card">
-      <div class="label">已结算</div>
+      <div class="label">实盘已结算</div>
       <div class="value">${summary.settled_count || 0} 场</div>
+      <div class="hint">自 ${epoch} 起累计</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">训练样本</div>
+      <div class="value">${summary.training_count || 0} 条</div>
+      <div class="hint">语料 · 导入 ${summary.training_imported_count || 0} / 实盘 ${summary.training_live_count || 0}</div>
     </div>
     <div class="stat-card">
       <div class="label">累计盈亏</div>
       <div class="value ${(summary.total_pnl || 0) >= 0 ? "positive" : "negative"}">${summary.total_pnl || 0} 元</div>
+      <div class="hint">仅统计实盘已结算场次</div>
     </div>
   `;
 }

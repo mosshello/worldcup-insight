@@ -8,25 +8,72 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from .training_store import SETTLEMENT_EPOCH, archive_dev_settlements
+
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 JOURNAL_FILE = PROJECT_ROOT / "data" / "cache" / "prediction_journal.json"
+JOURNAL_VERSION = 2
 
 
 def _now_iso() -> str:
     return datetime.now(BEIJING_TZ).replace(microsecond=0).isoformat()
 
 
+def _migrate_journal(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    if payload.get("journal_version", 1) >= JOURNAL_VERSION:
+        return payload, False
+
+    entries = payload.get("entries", [])
+    settled = [entry for entry in entries if entry.get("status") == "settled"]
+    open_entries = [entry for entry in entries if entry.get("status") == "open"]
+
+    if settled:
+        archive_dev_settlements(
+            settled,
+            reason="开发期重复结算测试数据，不计入实盘；实盘结算自 settlement_epoch 重新累计。",
+        )
+
+    open_by_id: dict[str, dict[str, Any]] = {}
+    for entry in open_entries:
+        match_id = str(entry.get("match_id", ""))
+        if not match_id:
+            continue
+        previous = open_by_id.get(match_id)
+        if previous is None or entry.get("recorded_at", "") >= previous.get("recorded_at", ""):
+            open_by_id[match_id] = entry
+
+    migrated = {
+        "journal_version": JOURNAL_VERSION,
+        "settlement_epoch": SETTLEMENT_EPOCH,
+        "migrated_at": _now_iso(),
+        "entries": list(open_by_id.values()),
+    }
+    return migrated, True
+
+
 def load_journal() -> dict[str, Any]:
     if not JOURNAL_FILE.exists():
-        return {"entries": []}
+        return {
+            "journal_version": JOURNAL_VERSION,
+            "settlement_epoch": SETTLEMENT_EPOCH,
+            "entries": [],
+        }
     try:
         with JOURNAL_FILE.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
     except (OSError, json.JSONDecodeError):
-        return {"entries": []}
+        return {
+            "journal_version": JOURNAL_VERSION,
+            "settlement_epoch": SETTLEMENT_EPOCH,
+            "entries": [],
+        }
     if not isinstance(payload.get("entries"), list):
-        return {"entries": []}
+        payload["entries"] = []
+
+    payload, changed = _migrate_journal(payload)
+    if changed:
+        _save_journal(payload)
     return payload
 
 
@@ -77,7 +124,10 @@ def record_predictions(
     merged = [entry for entry in entries if entry.get("status") == "settled"]
     merged.extend(indexed.values())
     merged.sort(key=lambda item: item.get("recorded_at", ""), reverse=True)
-    _save_journal({"entries": merged})
+    journal["entries"] = merged
+    journal.setdefault("journal_version", JOURNAL_VERSION)
+    journal.setdefault("settlement_epoch", SETTLEMENT_EPOCH)
+    _save_journal(journal)
 
 
 def update_entry(match_id: str, updates: dict[str, Any]) -> None:
@@ -91,3 +141,13 @@ def update_entry(match_id: str, updates: dict[str, Any]) -> None:
 
 def list_open_entries() -> list[dict[str, Any]]:
     return [entry for entry in load_journal().get("entries", []) if entry.get("status") == "open"]
+
+
+def get_open_direction_key(match_id: str | int) -> str | None:
+    """返回该场次未结算日志中的 direction_key（若有）。"""
+    target = str(match_id)
+    for entry in load_journal().get("entries", []):
+        if entry.get("match_id") == target and entry.get("status") == "open":
+            key = entry.get("direction_key")
+            return str(key) if key else None
+    return None

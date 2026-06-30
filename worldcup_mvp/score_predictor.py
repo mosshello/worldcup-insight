@@ -17,7 +17,25 @@ from .sporttery_api import (
     is_upcoming_match,
 )
 from .sporttery_cache import load_snapshot, save_snapshot
-from .prediction_journal import record_predictions
+from .direction_shift import analyze_direction_shift
+from .prediction_journal import get_open_direction_key, record_predictions
+
+
+def _had_history_from_bonus(bonus: dict[str, Any]) -> list[dict[str, Any]]:
+    history: list[dict[str, Any]] = []
+    for item in bonus.get("hadList") or []:
+        try:
+            history.append(
+                {
+                    "recorded_at": f"{item.get('updateDate', '')}T{item.get('updateTime', '')}",
+                    "home": float(item["h"]),
+                    "draw": float(item["d"]),
+                    "away": float(item["a"]),
+                }
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+    return history
 
 
 def _pool_from_history(item: dict[str, Any]) -> dict[str, Any]:
@@ -120,6 +138,13 @@ def predict_score_for_match(
         )
         hhad_pick, _, _ = _pick_from_probs(hhad_probs)
 
+    direction_shift = analyze_direction_shift(
+        _had_history_from_bonus(bonus),
+        current_direction_key=s_pick,
+        foreign_probs=fox_probs,
+        journal_direction_key=get_open_direction_key(match_id),
+    )
+
     return {
         "match_id": match_id,
         "home": home,
@@ -158,6 +183,7 @@ def predict_score_for_match(
         ),
         "fox_source": fox.get("source") or ("sporttery.cn" if not fox else "fox-sports/fanduel"),
         "direction_note": direction_note,
+        "direction_shift": direction_shift,
     }
 
 

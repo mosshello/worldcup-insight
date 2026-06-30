@@ -352,6 +352,7 @@ python -m unittest discover -s tests -v
 ### P4 · 模型化（长期）
 
 - [ ] 引入历史赛果训练简单基准模型（Elo / Poisson）
+- [x] 实盘结算语料分离：`prediction_journal` 自 2026-06-30 重置；`data/training/historical_outcomes.json` 承接赛后训练样本
 - [ ] 市场定价 + 统计特征融合
 - [ ] 当前阶段**不建议**急于上 ML，先把数据管道做稳
 

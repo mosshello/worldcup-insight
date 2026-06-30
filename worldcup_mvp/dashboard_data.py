@@ -573,9 +573,12 @@ def get_fusion_prediction(
         deltas = probability_deltas(prediction["probabilities"], foreign_probs)
         alerts = delta_alerts(deltas)
 
+    direction_shift = prediction.get("direction_shift") or score_prediction.get("direction_shift")
+
     return {
         "prediction": prediction,
         "score_prediction": score_prediction,
+        "direction_shift": direction_shift,
         "history": history,
         "series": build_sporttery_series(history),
         "context_analysis": context_analysis,

@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from .analyzer import OUTCOME_LABELS, analyze_match
+from .direction_shift import analyze_direction_shift
+from .prediction_journal import get_open_direction_key
 
 
 def _devig(odds: dict[str, float]) -> dict[str, float]:
@@ -134,6 +136,7 @@ def predict_match(
                 "说明存在赢球但难穿盘或平局防线的结构分歧。"
             )
 
+    direction_shift: dict[str, Any] | None = None
     if sporttery_history:
         had_trend = _trend_summary(sporttery_history.get("had_history", []), "胜平负")
         hhad_trend = _trend_summary(sporttery_history.get("hhad_history", []), "让球胜平负")
@@ -141,6 +144,15 @@ def predict_match(
             analysis.append(had_trend)
         if hhad_trend:
             analysis.append(hhad_trend)
+        direction_shift = analyze_direction_shift(
+            sporttery_history.get("had_history", []),
+            current_direction_key=pick,
+            foreign_probs=foreign_probs,
+            journal_direction_key=get_open_direction_key(sporttery_match["match_id"]),
+        )
+        if direction_shift.get("available"):
+            for alert in direction_shift.get("alerts") or []:
+                analysis.append(f"⚠ {alert}")
 
     if foreign_note:
         analysis.append(foreign_note + (f"（来源：{foreign_source}）" if foreign_source else ""))
@@ -177,5 +189,6 @@ def predict_match(
             "probabilities": foreign_probs,
         },
         "analysis": analysis,
+        "direction_shift": direction_shift,
         "sporttery": sporttery_match,
     }

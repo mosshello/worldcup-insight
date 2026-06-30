@@ -8,6 +8,12 @@ from zoneinfo import ZoneInfo
 
 from .bet_simulator import settle_against_results
 from .prediction_journal import list_open_entries, load_journal, update_entry
+from .training_store import (
+    SETTLEMENT_EPOCH,
+    append_outcome,
+    build_outcome_from_settlement,
+    get_training_summary,
+)
 from .unified_bridge import fetch_fifa_fixture_score, resolve_fifa_match_id
 from .sporttery_api import (
     BEIJING_TZ,
@@ -96,16 +102,21 @@ def settle_open_predictions(*, lookback_days: int = 7) -> dict[str, Any]:
 
         if result_map.get(match_id, {}).get("list_item"):
             row["official_list"] = result_map[match_id]["list_item"]
+
+        settled_at = datetime.now(BEIJING_TZ).replace(microsecond=0).isoformat()
+        row["settled_at"] = settled_at
+
         settled_rows.append(row)
 
         update_entry(
             match_id,
             {
                 "status": "settled",
-                "settled_at": datetime.now(BEIJING_TZ).replace(microsecond=0).isoformat(),
+                "settled_at": settled_at,
                 "settlement": row,
             },
         )
+        append_outcome(build_outcome_from_settlement(entry, row))
 
     settled_count = sum(1 for row in settled_rows if row.get("status") == "settled")
     total_pnl = sum(row.get("total_pnl", 0) for row in settled_rows if row.get("status") == "settled")
@@ -120,18 +131,25 @@ def settle_open_predictions(*, lookback_days: int = 7) -> dict[str, Any]:
 
 
 def get_settlement_summary() -> dict[str, Any]:
-    """汇总已结算与待结算预测。"""
-    entries = load_journal().get("entries", [])
+    """汇总实盘结算与训练语料概况。"""
+    journal = load_journal()
+    entries = journal.get("entries", [])
+    epoch = journal.get("settlement_epoch") or SETTLEMENT_EPOCH
     settled = [entry for entry in entries if entry.get("status") == "settled"]
     open_entries = [entry for entry in entries if entry.get("status") == "open"]
     total_pnl = sum(
         (entry.get("settlement") or {}).get("total_pnl", 0)
         for entry in settled
     )
+    training = get_training_summary()
     return {
         "open_count": len(open_entries),
         "settled_count": len(settled),
         "total_pnl": round(total_pnl, 2),
+        "settlement_epoch": epoch,
+        "training_count": training.get("training_count", 0),
+        "training_live_count": training.get("live_count", 0),
+        "training_imported_count": training.get("imported_count", 0),
         "open": open_entries[:20],
         "recent_settled": settled[:20],
     }

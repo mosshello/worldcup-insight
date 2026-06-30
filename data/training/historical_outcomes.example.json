@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "purpose": "historical match outcomes for baseline model training",
+  "settlement_epoch": "2026-06-30",
+  "updated_at": "2026-06-30T00:00:00+08:00",
+  "records": []
+}
