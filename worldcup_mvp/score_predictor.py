@@ -10,11 +10,13 @@ from .fox_scraper import _fetch_page, parse_moneyline_blocks
 from .fusion_predictor import _devig, _pick_from_probs
 from .sporttery_api import (
     SportteryApiError,
+    enrich_match_timing,
     fetch_fixed_bonus,
     fetch_upcoming_matches,
     is_upcoming_match,
 )
 from .sporttery_cache import load_snapshot, save_snapshot
+from .prediction_journal import record_predictions
 
 
 def _pool_from_history(item: dict[str, Any]) -> dict[str, Any]:
@@ -124,6 +126,8 @@ def predict_score_for_match(
         "league": sporttery_match.get("league"),
         "match_num": sporttery_match.get("match_num"),
         "kickoff_beijing": sporttery_match.get("kickoff_beijing"),
+        "hours_until_kickoff": sporttery_match.get("hours_until_kickoff"),
+        "countdown_label": sporttery_match.get("countdown_label"),
         "direction": OUTCOME_LABELS[s_pick],
         "direction_key": s_pick,
         "second": OUTCOME_LABELS[s_second],
@@ -131,6 +135,12 @@ def predict_score_for_match(
         "aligned_with_fox": aligned,
         "predicted_score": primary,
         "alt_scores": alt_scores,
+        "had_odds": {
+            "home": had_hist["home"],
+            "draw": had_hist["draw"],
+            "away": had_hist["away"],
+        },
+        "crs_odds": crs_top[0][2] if crs_top else None,
         "sporttery_had": f"{had_hist['home']:.2f} / {had_hist['draw']:.2f} / {had_hist['away']:.2f}",
         "sporttery_hhad": (
             f"让{hhad_hist['goal_line']:+.0f} → "
@@ -151,12 +161,13 @@ def predict_score_for_match(
 
 def predict_upcoming_scores() -> list[dict[str, Any]]:
     """拉取体彩全部未开赛赛事并逐场预测。"""
-    matches = fetch_upcoming_matches()
+    matches = [enrich_match_timing(match) for match in fetch_upcoming_matches()]
     if not matches:
         return []
     fox_map = _load_fox_map()
     predictions = [predict_score_for_match(match, fox_map=fox_map) for match in matches]
     save_snapshot(matches=matches, predictions=predictions)
+    record_predictions(predictions)
     return predictions
 
 

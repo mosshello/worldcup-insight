@@ -4,11 +4,14 @@ const OUTCOME_COLORS = {
   draw: "#f59e0b",
   away: "#ef4444",
 };
+const REFRESH_STORAGE_KEY = "dashboardAutoRefreshSeconds";
 
 let overview = null;
 let predictions = [];
 let activeMatchId = null;
 let charts = {};
+let refreshTimer = null;
+let countdownTimer = null;
 
 function confidenceClass(level) {
   if (level === "高") return "high";
@@ -18,6 +21,18 @@ function confidenceClass(level) {
 
 function pct(value) {
   return `${(value * 100).toFixed(1)}%`;
+}
+
+function getMatchIdFromUrl() {
+  const matched = window.location.pathname.match(/^\/match\/([^/]+)/);
+  return matched ? decodeURIComponent(matched[1]) : null;
+}
+
+function setMatchUrl(matchId) {
+  const nextPath = `/match/${encodeURIComponent(matchId)}`;
+  if (window.location.pathname !== nextPath) {
+    window.history.pushState({ matchId }, "", nextPath);
+  }
 }
 
 async function fetchJson(url) {
@@ -55,7 +70,10 @@ function renderSportteryCards() {
   grid.innerHTML = predictions
     .map((item) => `
       <article class="match-card sporttery-card" data-match-id="${item.match_id}">
-        <h3>${item.home} vs ${item.away}</h3>
+        <div class="card-top">
+          <h3>${item.home} vs ${item.away}</h3>
+          <span class="countdown-badge">${item.countdown_label || "待定"}</span>
+        </div>
         <div class="stage">${item.league || "竞彩"} · ${item.kickoff_beijing || "待定"}</div>
         <div class="odds-line">
           <span>方向 ${item.direction}</span>
@@ -73,11 +91,58 @@ function renderSportteryCards() {
     card.addEventListener("click", () => loadSportteryDetail(card.dataset.matchId));
   });
 
-  loadSportteryDetail(predictions[0].match_id);
+  const urlMatchId = getMatchIdFromUrl();
+  const initialId = urlMatchId && predictions.some((item) => item.match_id === urlMatchId)
+    ? urlMatchId
+    : predictions[0].match_id;
+  loadSportteryDetail(initialId);
+}
+
+function stakeValues() {
+  const stakeHad = Number(document.getElementById("stake-had").value) || 100;
+  const stakeCrs = Number(document.getElementById("stake-crs").value) || 50;
+  return { stakeHad, stakeCrs };
+}
+
+async function renderBetSimulation(matchId) {
+  const panel = document.getElementById("bet-simulation");
+  const { stakeHad, stakeCrs } = stakeValues();
+  try {
+    const sim = await fetchJson(
+      `/api/bet/simulate?match_id=${encodeURIComponent(matchId)}&stake_had=${stakeHad}&stake_crs=${stakeCrs}`
+    );
+    const had = sim.had;
+    const crs = sim.crs;
+    panel.innerHTML = `
+      <div class="stat-card">
+        <div class="label">假设总投入</div>
+        <div class="value">${sim.total_stake} 元</div>
+        <div class="hint">胜平负 ${stakeHad} + 猜比分 ${stakeCrs}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">胜平负（${had ? had.pick : "—"}）</div>
+        <div class="value">${had ? had.profit_if_win : "—"} 元</div>
+        <div class="hint">${had ? `中奖返还 ${had.return_if_win} 元 · 赔率 ${had.odds}` : "无数据"}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">猜比分（${crs ? crs.pick : "—"}）</div>
+        <div class="value">${crs ? crs.profit_if_win : "—"} 元</div>
+        <div class="hint">${crs ? `中奖返还 ${crs.return_if_win} 元 · 赔率 ${crs.odds}` : "无数据"}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">最佳 / 最差</div>
+        <div class="value">${sim.best_case_profit} / ${sim.worst_case_loss} 元</div>
+        <div class="hint">${sim.disclaimer}</div>
+      </div>
+    `;
+  } catch (error) {
+    panel.innerHTML = `<p class="empty-note">模拟投注加载失败：${error.message}</p>`;
+  }
 }
 
 async function loadSportteryDetail(matchId) {
   activeMatchId = matchId;
+  setMatchUrl(matchId);
   const cached = predictions.find((item) => item.match_id === matchId);
 
   document.querySelectorAll(".sporttery-card").forEach((card) => {
@@ -86,7 +151,8 @@ async function loadSportteryDetail(matchId) {
 
   if (cached) {
     document.getElementById("prediction-direction").textContent = cached.direction;
-    document.getElementById("prediction-confidence").textContent = `比分 ${cached.predicted_score} · 信心 ${cached.confidence}`;
+    document.getElementById("prediction-confidence").textContent =
+      `比分 ${cached.predicted_score} · 信心 ${cached.confidence}`;
     document.getElementById("prediction-confidence").className =
       `badge-confidence tag ${confidenceClass(cached.confidence)}`;
   }
@@ -105,6 +171,11 @@ async function loadSportteryDetail(matchId) {
       <div class="label">预测比分</div>
       <div class="value">${score.predicted_score}</div>
       <div class="hint">${(score.alt_scores || []).slice(0, 2).join("；") || "无备选"}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">距开赛</div>
+      <div class="value" style="font-size:18px">${cached?.countdown_label || "待定"}</div>
+      <div class="hint">${cached?.kickoff_beijing || ""}</div>
     </div>
     <div class="stat-card">
       <div class="label">体彩返还率</div>
@@ -137,6 +208,7 @@ async function loadSportteryDetail(matchId) {
   }
 
   renderSportteryCharts(payload);
+  await renderBetSimulation(matchId);
 }
 
 function shortTimeLabel(value) {
@@ -213,15 +285,156 @@ function chartOptions() {
   };
 }
 
-async function init() {
+function renderSettlementSummary() {
+  const summary = overview.settlement_summary || {};
+  document.getElementById("settlement-summary").innerHTML = `
+    <div class="stat-card">
+      <div class="label">待结算</div>
+      <div class="value">${summary.open_count || 0} 场</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">已结算</div>
+      <div class="value">${summary.settled_count || 0} 场</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">累计盈亏</div>
+      <div class="value ${(summary.total_pnl || 0) >= 0 ? "positive" : "negative"}">${summary.total_pnl || 0} 元</div>
+    </div>
+  `;
+}
+
+function renderSettlementResults(payload) {
+  const container = document.getElementById("settlement-results");
+  const rows = payload.results || [];
+  if (!rows.length) {
+    container.innerHTML = `<p class="empty-note">${payload.message || "暂无结算记录"}</p>`;
+    return;
+  }
+  container.innerHTML = `
+    <div class="settlement-table-wrap">
+      <table class="settlement-table">
+        <thead>
+          <tr>
+            <th>场次</th>
+            <th>状态</th>
+            <th>预测</th>
+            <th>实际</th>
+            <th>盈亏</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              <td>${row.home || ""} vs ${row.away || row.match_id || ""}</td>
+              <td>${row.status}</td>
+              <td>${row.predicted_had || "—"} / ${row.predicted_score || "—"}</td>
+              <td>${row.actual_had || "—"} / ${row.actual_score || "—"}</td>
+              <td class="${(row.total_pnl || 0) >= 0 ? "positive" : "negative"}">${row.total_pnl ?? "—"}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function refreshOverview(options = {}) {
+  const { preserveMatch = true } = options;
   overview = await fetchJson("/api/overview");
   renderMeta();
+  renderSettlementSummary();
   renderSportteryCards();
-  document.getElementById("refresh-btn").addEventListener("click", async () => {
-    overview = await fetchJson("/api/overview");
-    renderMeta();
-    renderSportteryCards();
+  if (preserveMatch && activeMatchId) {
+    const stillExists = predictions.some((item) => item.match_id === activeMatchId);
+    if (stillExists) {
+      await loadSportteryDetail(activeMatchId);
+    }
+  }
+  document.getElementById("refresh-hint").textContent =
+    `上次刷新 ${new Date().toLocaleTimeString("zh-CN")}`;
+}
+
+function setupAutoRefresh(seconds) {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+  localStorage.setItem(REFRESH_STORAGE_KEY, String(seconds));
+  if (seconds > 0) {
+    refreshTimer = setInterval(() => {
+      refreshOverview({ preserveMatch: true }).catch(console.error);
+    }, seconds * 1000);
+  }
+}
+
+function setupCountdownTicker() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    document.querySelectorAll(".sporttery-card").forEach((card) => {
+      const item = predictions.find((entry) => entry.match_id === card.dataset.matchId);
+      if (!item || item.hours_until_kickoff == null) return;
+      const nextHours = Math.max(0, item.hours_until_kickoff - 1 / 3600);
+      item.hours_until_kickoff = nextHours;
+      const badge = card.querySelector(".countdown-badge");
+      if (badge) {
+        badge.textContent = nextHours <= 0
+          ? "已开赛"
+          : nextHours < 1
+            ? `距开赛 ${Math.max(1, Math.round(nextHours * 60))} 分钟`
+            : nextHours < 24
+              ? `距开赛 ${nextHours.toFixed(1)} 小时`
+              : `距开赛 ${(nextHours / 24).toFixed(1)} 天`;
+      }
+    });
+  }, 60000);
+}
+
+async function init() {
+  const select = document.getElementById("auto-refresh-select");
+  const saved = localStorage.getItem(REFRESH_STORAGE_KEY);
+  if (saved !== null) select.value = saved;
+  setupAutoRefresh(Number(select.value));
+
+  select.addEventListener("change", () => setupAutoRefresh(Number(select.value)));
+
+  document.getElementById("refresh-btn").addEventListener("click", () => {
+    refreshOverview({ preserveMatch: true });
   });
+
+  document.getElementById("share-match-btn").addEventListener("click", async () => {
+    if (!activeMatchId) return;
+    const url = `${window.location.origin}/match/${encodeURIComponent(activeMatchId)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      document.getElementById("share-match-btn").textContent = "已复制";
+      setTimeout(() => {
+        document.getElementById("share-match-btn").textContent = "分享链接";
+      }, 1500);
+    } catch {
+      window.prompt("复制单场链接", url);
+    }
+  });
+
+  ["stake-had", "stake-crs"].forEach((id) => {
+    document.getElementById(id).addEventListener("change", () => {
+      if (activeMatchId) renderBetSimulation(activeMatchId);
+    });
+  });
+
+  document.getElementById("settle-btn").addEventListener("click", async () => {
+    const payload = await fetchJson("/api/settlement/run");
+    renderSettlementResults(payload);
+    overview = await fetchJson("/api/overview");
+    renderSettlementSummary();
+  });
+
+  window.addEventListener("popstate", (event) => {
+    const matchId = event.state?.matchId || getMatchIdFromUrl();
+    if (matchId) loadSportteryDetail(matchId).catch(console.error);
+  });
+
+  await refreshOverview({ preserveMatch: false });
+  setupCountdownTicker();
 }
 
 init().catch((error) => {

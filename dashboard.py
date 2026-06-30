@@ -13,6 +13,9 @@ from typing import Any
 
 from worldcup_mvp.cache_refresher import refresh_sporttery_cache, start_background_refresh
 from worldcup_mvp.dashboard_data import (
+    export_predictions_csv,
+    export_predictions_payload,
+    get_bet_simulation,
     get_fusion_prediction,
     get_history_dashboard,
     get_overview,
@@ -20,6 +23,7 @@ from worldcup_mvp.dashboard_data import (
     get_upcoming_score_predictions,
     list_history_files,
 )
+from worldcup_mvp.settlement import get_settlement_summary, settle_open_predictions
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 WEB_ROOT = PROJECT_ROOT / "web"
@@ -28,7 +32,7 @@ _CLIENT_GONE_ERRORS = (ConnectionAbortedError, ConnectionResetError, BrokenPipeE
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
-    server_version = "WorldcupInsightDashboard/1.1"
+    server_version = "WorldcupInsightDashboard/1.2"
 
     def log_message(self, format: str, *args: Any) -> None:
         print(f"[dashboard] {self.address_string()} - {format % args}")
@@ -51,6 +55,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
         except _CLIENT_GONE_ERRORS:
             return
 
+    def _send_download(self, content: bytes, filename: str, content_type: str) -> None:
+        try:
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self._safe_write(content)
+        except _CLIENT_GONE_ERRORS:
+            return
+
     def _send_file(self, path: Path) -> None:
         if not path.exists() or not path.is_file():
             self.send_error(HTTPStatus.NOT_FOUND)
@@ -69,12 +84,23 @@ class DashboardHandler(BaseHTTPRequestHandler):
         except _CLIENT_GONE_ERRORS:
             return
 
+    def _parse_query(self) -> dict[str, list[str]]:
+        return urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+
+    def _float_query(self, query: dict[str, list[str]], key: str, default: float) -> float:
+        raw = (query.get(key) or [str(default)])[0]
+        try:
+            return float(raw)
+        except ValueError:
+            return default
+
     def do_GET(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
         route = parsed.path
+        query = self._parse_query()
 
         try:
-            if route in ("/", "/index.html"):
+            if route in ("/", "/index.html") or route.startswith("/match/"):
                 self._send_file(WEB_ROOT / "index.html")
                 return
 
@@ -103,13 +129,49 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self._send_json(get_upcoming_score_predictions())
                 return
 
+            if route == "/api/export/predictions.json":
+                payload = export_predictions_payload()
+                body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+                self._send_download(body, "predictions.json", "application/json; charset=utf-8")
+                return
+
+            if route == "/api/export/predictions.csv":
+                csv_text = export_predictions_csv()
+                self._send_download(
+                    csv_text.encode("utf-8-sig"),
+                    "predictions.csv",
+                    "text/csv; charset=utf-8",
+                )
+                return
+
             if route == "/api/cache/refresh":
                 self._send_json(refresh_sporttery_cache())
                 return
 
+            if route == "/api/settlement/summary":
+                self._send_json(get_settlement_summary())
+                return
+
+            if route == "/api/settlement/run":
+                lookback = int((query.get("lookback") or ["7"])[0])
+                self._send_json(settle_open_predictions(lookback_days=lookback))
+                return
+
+            if route == "/api/bet/simulate":
+                match_id = (query.get("match_id") or [None])[0]
+                stake_had = self._float_query(query, "stake_had", 100.0)
+                stake_crs = self._float_query(query, "stake_crs", 50.0)
+                self._send_json(
+                    get_bet_simulation(
+                        match_id=match_id,
+                        stake_had=stake_had,
+                        stake_crs=stake_crs,
+                    )
+                )
+                return
+
             if route.startswith("/api/sporttery/predict/"):
                 match_id = urllib.parse.unquote(route.removeprefix("/api/sporttery/predict/"))
-                query = urllib.parse.parse_qs(parsed.query)
                 foreign = (query.get("foreign") or ["fox"])[0]
                 self._send_json(get_fusion_prediction(match_id=match_id, foreign_source=foreign))
                 return
@@ -138,6 +200,12 @@ def main() -> int:
         default=300.0,
         help="后台刷新体彩缓存间隔（秒），0 表示关闭",
     )
+    parser.add_argument(
+        "--refresh-interval",
+        type=int,
+        default=60,
+        help="前端建议自动刷新间隔（秒），0 表示关闭",
+    )
     args = parser.parse_args()
 
     if not WEB_ROOT.exists():
@@ -154,6 +222,8 @@ def main() -> int:
     print(f"访问地址：{url}")
     if args.cache_interval > 0:
         print(f"缓存刷新：每 {args.cache_interval:.0f} 秒")
+    if args.refresh_interval > 0:
+        print(f"前端刷新建议：每 {args.refresh_interval} 秒")
     print("按 Ctrl+C 停止服务")
     try:
         server.serve_forever()

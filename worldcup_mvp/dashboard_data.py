@@ -2,24 +2,43 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 from pathlib import Path
 from typing import Any
 
 from .analyzer import OUTCOME_LABELS, analyze_match
+from .bet_simulator import simulate_prediction_bet
 from .env_config import get_odds_api_key
 from .fox_scraper import fetch_fox_snapshot
 from .fusion_predictor import predict_match
 from .movement_analyzer import analyze_movement
 from .odds_snapshot import load_history
 from .score_predictor import list_upcoming_matches, predict_score_for_match, predict_upcoming_scores
-from .sporttery_api import SportteryApiError, fetch_odds_history, fetch_upcoming_matches, find_match
+from .settlement import get_settlement_summary, settle_open_predictions
+from .sporttery_api import SportteryApiError, enrich_match_timing, fetch_odds_history, fetch_upcoming_matches, find_match
 from .sporttery_cache import load_snapshot, save_snapshot
 from .the_odds_api import find_snapshot
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MATCHES = PROJECT_ROOT / "data" / "matches_2026-06-29.json"
 HISTORY_GLOB = "odds_history_*.json"
+
+
+def _enrich_prediction_timing(prediction: dict[str, Any]) -> dict[str, Any]:
+    if prediction.get("countdown_label"):
+        return prediction
+    kickoff = prediction.get("kickoff_beijing") or ""
+    if len(kickoff) < 19:
+        return prediction
+    enriched = enrich_match_timing(
+        {"match_date": kickoff[:10], "match_time": kickoff[11:19]}
+    )
+    updated = dict(prediction)
+    updated["hours_until_kickoff"] = enriched["hours_until_kickoff"]
+    updated["countdown_label"] = enriched["countdown_label"]
+    return updated
 
 
 def _history_label(path: Path) -> str:
@@ -189,12 +208,13 @@ def get_sporttery_matches() -> dict[str, Any]:
         return payload
     cached = load_snapshot()
     if cached:
+        matches = [enrich_match_timing(match) for match in cached["matches"]]
         return {
             "success": True,
             "source": "sporttery.cn",
             "source_url": "https://www.sporttery.cn/jc/zqszsc/",
-            "matches": cached["matches"],
-            "match_count": len(cached["matches"]),
+            "matches": matches,
+            "match_count": len(matches),
             "cached": True,
             "cached_at": cached.get("cached_at"),
         }
@@ -216,11 +236,14 @@ def get_upcoming_score_predictions() -> dict[str, Any]:
     except SportteryApiError:
         cached = load_snapshot()
         if cached and cached.get("predictions"):
+            predictions = [
+                _enrich_prediction_timing(item) for item in cached["predictions"]
+            ]
             return {
                 "success": True,
                 "source": "sporttery.cn",
                 "count": len(cached["predictions"]),
-                "predictions": cached["predictions"],
+                "predictions": predictions,
                 "cached": True,
                 "cached_at": cached.get("cached_at"),
             }
@@ -264,4 +287,61 @@ def get_overview(data_dir: Path | None = None) -> dict[str, Any]:
         "sporttery": sporttery,
         "predictions": predictions,
         "histories": histories,
+        "settlement_summary": get_settlement_summary(),
+    }
+
+
+def export_predictions_payload() -> dict[str, Any]:
+    payload = get_upcoming_score_predictions()
+    return {
+        "exported_at": payload.get("cached_at"),
+        "source": payload.get("source", "sporttery.cn"),
+        "count": payload.get("count", 0),
+        "predictions": payload.get("predictions", []),
+    }
+
+
+def export_predictions_csv() -> str:
+    payload = export_predictions_payload()
+    buffer = io.StringIO()
+    fieldnames = [
+        "match_id",
+        "home",
+        "away",
+        "league",
+        "kickoff_beijing",
+        "countdown_label",
+        "direction",
+        "predicted_score",
+        "confidence",
+        "sporttery_had",
+        "crs_odds",
+    ]
+    writer = csv.DictWriter(buffer, fieldnames=fieldnames, extrasaction="ignore")
+    writer.writeheader()
+    for item in payload["predictions"]:
+        writer.writerow(item)
+    return buffer.getvalue()
+
+
+def get_bet_simulation(
+    *,
+    match_id: str | None = None,
+    stake_had: float = 100.0,
+    stake_crs: float = 50.0,
+) -> dict[str, Any]:
+    payload = get_upcoming_score_predictions()
+    predictions = payload.get("predictions") or []
+    if match_id:
+        selected = next((item for item in predictions if item["match_id"] == str(match_id)), None)
+        if selected is None:
+            raise SportteryApiError(f"未找到预测 matchId={match_id}")
+        return simulate_prediction_bet(selected, stake_had=stake_had, stake_crs=stake_crs)
+
+    return {
+        "count": len(predictions),
+        "simulations": [
+            simulate_prediction_bet(item, stake_had=stake_had, stake_crs=stake_crs)
+            for item in predictions
+        ],
     }

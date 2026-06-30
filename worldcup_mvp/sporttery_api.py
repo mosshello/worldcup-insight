@@ -18,9 +18,15 @@ BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 MATCH_CALC_URL = (
     "https://webapi.sporttery.cn/gateway/uniform/football/getMatchCalculatorV1.qry"
 )
+MATCH_RESULT_URL = (
+    "https://webapi.sporttery.cn/gateway/uniform/football/getMatchResultV1.qry"
+)
 FIXED_BONUS_URL = (
     "https://webapi.sporttery.cn/gateway/uniform/football/getFixedBonusV1.qry"
 )
+
+HAD_RESULT_KEYS = {"H": "home", "D": "draw", "A": "away"}
+HAD_RESULT_LABELS = {"H": "主胜", "D": "平", "A": "客胜"}
 DEFAULT_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -148,6 +154,38 @@ def parse_kickoff_beijing(match: dict[str, Any]) -> datetime | None:
         return None
 
 
+def hours_until_kickoff(match: dict[str, Any], *, now: datetime | None = None) -> float | None:
+    """距离开赛的剩余小时数；已开赛则返回 0。"""
+    kickoff = parse_kickoff_beijing(match)
+    if kickoff is None:
+        return None
+    current = now or datetime.now(BEIJING_TZ)
+    seconds = (kickoff - current).total_seconds()
+    return max(0.0, seconds / 3600)
+
+
+def format_countdown(hours: float | None) -> str:
+    """人类可读的距开赛文案。"""
+    if hours is None:
+        return "开赛时间待定"
+    if hours <= 0:
+        return "已开赛"
+    if hours < 1:
+        return f"距开赛 {max(1, int(hours * 60))} 分钟"
+    if hours < 24:
+        return f"距开赛 {hours:.1f} 小时"
+    return f"距开赛 {hours / 24:.1f} 天"
+
+
+def enrich_match_timing(match: dict[str, Any], *, now: datetime | None = None) -> dict[str, Any]:
+    """为比赛对象附加倒计时字段。"""
+    hours = hours_until_kickoff(match, now=now)
+    enriched = dict(match)
+    enriched["hours_until_kickoff"] = round(hours, 2) if hours is not None else None
+    enriched["countdown_label"] = format_countdown(hours)
+    return enriched
+
+
 def is_upcoming_match(match: dict[str, Any], *, now: datetime | None = None) -> bool:
     """仍在售且尚未开赛的体彩场次。"""
     if match.get("pools", {}).get("had") is None:
@@ -172,11 +210,54 @@ def fetch_upcoming_matches(*, pool_code: str = "had,hhad") -> list[dict[str, Any
 
 def fetch_fixed_bonus(match_id: str | int) -> dict[str, Any]:
     """拉取单场固定奖金及猜比分历史。"""
+    return fetch_fixed_bonus_detail(match_id)["odds_history"]
+
+
+def fetch_fixed_bonus_detail(match_id: str | int) -> dict[str, Any]:
+    """拉取单场固定奖金、赛果结算与猜比分历史。"""
     payload = _request(
         FIXED_BONUS_URL,
         {"clientCode": "3001", "matchId": str(match_id)},
     )
-    return payload["value"]["oddsHistory"]
+    value = payload["value"]
+    return {
+        "odds_history": value["oddsHistory"],
+        "match_result_list": value.get("matchResultList") or [],
+        "is_cancel": bool(value.get("isCancel")),
+    }
+
+
+def parse_match_result_list(items: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """将体彩 matchResultList 按玩法 code 索引。"""
+    parsed: dict[str, dict[str, Any]] = {}
+    for item in items:
+        code = str(item.get("code", "")).lower()
+        if code:
+            parsed[code] = item
+    return parsed
+
+
+def fetch_results_by_date(
+    begin: str,
+    end: str,
+    *,
+    page: int = 1,
+) -> list[dict[str, Any]]:
+    """按日期范围拉取体彩足球赛果列表。"""
+    payload = _request(
+        MATCH_RESULT_URL,
+        {
+            "matchPage": str(page),
+            "pcOrWap": "0",
+            "leagueId": "",
+            "matchBeginDate": begin,
+            "matchEndDate": end,
+        },
+    )
+    value = payload.get("value") or {}
+    if isinstance(value, dict):
+        return value.get("matchResultList") or []
+    return []
 
 
 def normalize_match(raw: dict[str, Any]) -> dict[str, Any]:
