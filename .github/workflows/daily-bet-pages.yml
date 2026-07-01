@@ -23,7 +23,16 @@ jobs:
         with:
           python-version: "3.12"
       - name: 刷新当日预测与模拟账本
-        run: python -c "from worldcup_mvp.score_predictor import predict_upcoming_scores; predict_upcoming_scores()"
+        run: |
+          python - <<'PY'
+          from worldcup_mvp.cache_refresher import refresh_sporttery_cache
+
+          result = refresh_sporttery_cache()
+          if result.get("success"):
+              print(result.get("message"))
+          else:
+              print(f"实时源不可用，继续发布仓库内最后一次已验证账本：{result.get('error')}")
+          PY
       - name: 生成静态站点
         run: python scripts/generate_pages.py
       - name: 保存账本快照
