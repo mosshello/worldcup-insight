@@ -18,6 +18,7 @@ from .sporttery_api import (
 )
 from .sporttery_cache import load_snapshot, save_snapshot
 from .direction_shift import analyze_direction_shift
+from .daily_bet import record_daily_bet
 from .prediction_journal import get_open_direction_key, record_predictions
 
 
@@ -196,6 +197,7 @@ def predict_upcoming_scores() -> list[dict[str, Any]]:
     predictions = [predict_score_for_match(match, fox_map=fox_map) for match in matches]
     save_snapshot(matches=matches, predictions=predictions)
     record_predictions(predictions)
+    record_daily_bet(predictions)
     return predictions
 
 

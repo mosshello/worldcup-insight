@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "daily_stake": 1000.0,
+  "entries": [
+    {
+      "date": "2026-07-01",
+      "recorded_at": "2026-07-01T21:55:41+08:00",
+      "match_id": "2040352",
+      "match_num": "周三080",
+      "home": "英格兰",
+      "away": "刚果金",
+      "kickoff_beijing": "2026-07-02T00:00:00+08:00",
+      "market": "胜平负单关",
+      "pick": "主胜",
+      "pick_key": "home",
+      "odds": 1.17,
+      "market_probability": 0.7566,
+      "stake": 1000.0,
+      "potential_return": 1170.0,
+      "potential_profit": 170.0,
+      "status": "open",
+      "selection_rule": "当日高信心且内外盘同向场次中，选择胜平负去水概率最高方向",
+      "disclaimer": "仅为模拟记账，不会代替用户真实下注，也不构成投注建议。"
+    }
+  ]
+}

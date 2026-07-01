@@ -127,6 +127,7 @@ python dashboard.py --port 8765
 - 胜平负 / 让球胜平负历史走势
 - 体彩 + 外网融合预测方向与信心
 - 假设投注模拟与赛后结算
+- 每日自动从高信心且内外盘同向场次中只选一个去水概率最高方向，固定模拟 1000 元
 - 自动刷新、导出 JSON/CSV、单场分享链接 `/match/{id}`
 
 ### 外网辅盘（可选）
@@ -150,3 +151,10 @@ python watch_odds.py record --source file --feed data\odds_live_feed.json
 - “胜、平、负”只判断常规 90 分钟（含伤停补时），不判断加时赛或点球大战后的晋级方。
 - 概率是赔率去水后的市场定价，不是训练模型，也不包含阵容、伤停、天气或临场变化。
 - 输出仅用于数据分析演示，不构成投注建议或赛果保证。
+
+### 每日稳健模拟账本与 GitHub Pages
+
+- 公开账本保存于 `data/daily_bets.json`，从 2026-07-01 起按北京销售日每天最多一笔。
+- 每笔固定 1000 元，仅模拟胜平负单关；不会连接购彩账户或执行真实下注。
+- `python scripts/generate_pages.py` 生成 `docs/` 静态站点；Actions 每天北京时间 20:05 自动刷新并部署。
+- 自定义域名由 `docs/CNAME` 指向 `dreamv.top`，域名侧仍需按 GitHub Pages 要求配置 DNS。

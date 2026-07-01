@@ -1,0 +1,44 @@
+name: Daily bet ledger and Pages
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "5 12 * * *"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 刷新当日预测与模拟账本
+        run: python -c "from worldcup_mvp.score_predictor import predict_upcoming_scores; predict_upcoming_scores()"
+      - name: 生成静态站点
+        run: python scripts/generate_pages.py
+      - name: 保存账本快照
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add data/daily_bets.json docs
+          git diff --cached --quiet || git commit -m "chore: 更新每日模拟投注账本"
+          git push
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
