@@ -155,6 +155,7 @@ python watch_odds.py record --source file --feed data\odds_live_feed.json
 ### 每日稳健模拟账本与 GitHub Pages
 
 - 公开账本保存于 `data/daily_bets.json`，从 2026-07-01 起按北京销售日每天最多一笔。
-- 每笔固定 1000 元，仅模拟胜平负单关；不会连接购彩账户或执行真实下注。
+- 每日固定 1000 元模拟预算：默认 600 元用于概率最高的稳健单场、400 元用于前两名组成的二串一；不足两场时全部用于单场。
+- 每次自动刷新都会重算当天方案并幂等覆盖，不需要人工改 JSON；不会连接购彩账户或执行真实下注。
 - `python scripts/generate_pages.py` 生成 `docs/` 静态站点；Actions 每天北京时间 20:05 自动刷新并部署。
 - 自定义域名由 `docs/CNAME` 指向 `dreamv.top`，域名侧仍需按 GitHub Pages 要求配置 DNS。

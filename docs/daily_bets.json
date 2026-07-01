@@ -1,25 +1,75 @@
 {
-  "version": 1,
+  "version": 2,
   "daily_stake": 1000.0,
   "entries": [
     {
       "date": "2026-07-01",
-      "recorded_at": "2026-07-01T21:55:46+08:00",
+      "recorded_at": "2026-07-01T23:09:10+08:00",
+      "total_stake": 1000.0,
       "match_id": "2040352",
       "match_num": "周三080",
       "home": "英格兰",
       "away": "刚果金",
       "kickoff_beijing": "2026-07-02T00:00:00+08:00",
-      "market": "胜平负单关",
+      "market": "胜平负单关 + 二串一",
       "pick": "主胜",
       "pick_key": "home",
       "odds": 1.17,
       "market_probability": 0.7566,
-      "stake": 1000.0,
-      "potential_return": 1170.0,
-      "potential_profit": 170.0,
+      "stake": 600.0,
+      "potential_return": 702.0,
+      "potential_profit": 102.0,
+      "single": {
+        "stake": 600.0,
+        "leg": {
+          "match_id": "2040352",
+          "match_num": "周三080",
+          "home": "英格兰",
+          "away": "刚果金",
+          "kickoff_beijing": "2026-07-02T00:00:00+08:00",
+          "pick": "主胜",
+          "pick_key": "home",
+          "odds": 1.17,
+          "market_probability": 0.7566
+        },
+        "potential_return": 702.0,
+        "potential_profit": 102.0
+      },
+      "parlay": {
+        "type": "2串1",
+        "stake": 400.0,
+        "legs": [
+          {
+            "match_id": "2040352",
+            "match_num": "周三080",
+            "home": "英格兰",
+            "away": "刚果金",
+            "kickoff_beijing": "2026-07-02T00:00:00+08:00",
+            "pick": "主胜",
+            "pick_key": "home",
+            "odds": 1.17,
+            "market_probability": 0.7566
+          },
+          {
+            "match_id": "2040339",
+            "match_num": "周三082",
+            "home": "美国",
+            "away": "波黑",
+            "kickoff_beijing": "2026-07-02T08:00:00+08:00",
+            "pick": "主胜",
+            "pick_key": "home",
+            "odds": 1.22,
+            "market_probability": 0.7256
+          }
+        ],
+        "combined_odds": 1.4274,
+        "combined_probability": 0.549,
+        "potential_return": 570.96,
+        "potential_profit": 170.96,
+        "status": "open"
+      },
       "status": "open",
-      "selection_rule": "当日高信心且内外盘同向场次中，选择胜平负去水概率最高方向",
+      "selection_rule": "单场取当日稳定方向第一名；二串一取前两名；每日自动刷新且同日不重复追加",
       "disclaimer": "仅为模拟记账，不会代替用户真实下注，也不构成投注建议。"
     }
   ]
