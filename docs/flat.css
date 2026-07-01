@@ -1,0 +1,28 @@
+:root{--bg:#f3f7fc;--soft:#ffffff;--card:#ffffff;--card2:#eef5ff;--line:#d9e4f2;--text:#152238;--muted:#63738a;--green:#12b981;--blue:#2878ff;--orange:#ff9f1c;--shadow:none}
+body{background:#f3f7fc;color:var(--text)}
+.page{padding-top:32px}
+.eyebrow{color:#2878ff}
+.subtitle,.panel-head p,.match-card p{color:var(--muted)}
+.meta div,.summary div,.panel,.strategy-card{background:#fff;border:1px solid var(--line);box-shadow:none}
+.meta div{border-radius:10px}
+.summary div{border-radius:12px;border-top:4px solid #2878ff}
+.summary div:nth-child(2){border-top-color:#12b981}
+.summary div:nth-child(3){border-top-color:#8b5cf6}
+.summary div:nth-child(4){border-top-color:#ff9f1c}
+.summary strong{color:#152238}
+.profit{color:#07966b!important}
+.panel{border-radius:14px}
+.strategy-card{border-radius:12px}
+.strategy-card.primary{background:#f2fff9;border:2px solid #66d6ad}
+.match-card{background:#eef5ff;border:1px solid #d6e6ff;border-radius:10px}
+.stats div{background:#f5f8fc;border:1px solid #e4ebf4;border-radius:8px}
+.tag.live,.tag.single{background:#dff8ee;color:#087a58}
+.tag.combo{background:#e3efff;color:#175dcc}
+.pick-side b,.hero-pick{color:#087a58}
+.match-num{color:#2878ff}
+.status{color:#b96800}
+th{background:#f5f8fc;color:#52647b}
+th,td{border-color:#e2e9f2}
+tbody tr:hover{background:#f8fbff}
+.note{background:#fff8e8;border-left-color:#ff9f1c;padding:12px 14px;border-radius:0 8px 8px 0;color:#59687b}
+footer{color:#74839a}
