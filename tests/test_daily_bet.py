@@ -6,7 +6,13 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-from worldcup_mvp.daily_bet import record_daily_bet, select_stable_pick, select_stable_picks
+from worldcup_mvp.daily_bet import (
+    record_daily_bet,
+    select_stable_parlay,
+    select_stable_pick,
+    select_stable_picks,
+    summarize_ledger,
+)
 
 
 def _prediction(match_id: str, odds: float, kickoff: str) -> dict:
@@ -39,6 +45,7 @@ class DailyBetTests(unittest.TestCase):
             predictions = [
                 _prediction("2", 1.16, "2026-07-02T00:00:00+08:00"),
                 _prediction("3", 1.22, "2026-07-02T08:00:00+08:00"),
+                _prediction("4", 1.80, "2026-07-02T10:00:00+08:00"),
             ]
             record_daily_bet(predictions, today=date(2026, 7, 1), path=path)
             record_daily_bet(predictions, today=date(2026, 7, 1), path=path)
@@ -50,7 +57,8 @@ class DailyBetTests(unittest.TestCase):
             self.assertEqual(entry["parlay"]["stake"], 400.0)
             self.assertEqual(len(entry["parlay"]["legs"]), 2)
             self.assertEqual(entry["single"]["potential_return"], 696.0)
-            self.assertEqual(entry["parlay"]["potential_return"], 566.08)
+            self.assertGreaterEqual(entry["parlay"]["combined_odds"], 2.0)
+            self.assertEqual(entry["parlay"]["potential_return"], 835.2)
 
     def test_ranks_two_distinct_matches(self) -> None:
         picks = select_stable_picks(
@@ -62,13 +70,33 @@ class DailyBetTests(unittest.TestCase):
     def test_custom_budget_keeps_sixty_forty_split(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             entry = record_daily_bet(
-                [_prediction("2", 1.16, "2026-07-02T00:00:00+08:00"), _prediction("3", 1.22, "2026-07-02T08:00:00+08:00")],
+                [_prediction("2", 1.16, "2026-07-02T00:00:00+08:00"), _prediction("3", 1.80, "2026-07-02T08:00:00+08:00")],
                 stake=2000,
                 today=date(2026, 7, 1),
                 path=Path(tmp) / "daily_bets.json",
             )
             self.assertEqual(entry["single"]["stake"], 1200.0)
             self.assertEqual(entry["parlay"]["stake"], 800.0)
+
+    def test_parlay_rejects_pairs_below_two(self) -> None:
+        selected = select_stable_parlay(
+            [_prediction("2", 1.16, "2026-07-02T00:00:00+08:00"), _prediction("3", 1.22, "2026-07-02T08:00:00+08:00")],
+            business_date="2026-07-01",
+        )
+        self.assertEqual(selected, [])
+
+    def test_summarizes_investment_realized_and_open_profit(self) -> None:
+        summary = summarize_ledger(
+            {
+                "entries": [
+                    {"total_stake": 1000, "status": "settled", "realized_pnl": 150},
+                    {"total_stake": 1000, "status": "open", "single": {"potential_profit": 100}, "parlay": {"potential_profit": 400}},
+                ]
+            }
+        )
+        self.assertEqual(summary["total_invested"], 2000)
+        self.assertEqual(summary["realized_profit"], 150)
+        self.assertEqual(summary["open_potential_profit"], 500)
 
 
 if __name__ == "__main__":

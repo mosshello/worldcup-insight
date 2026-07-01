@@ -4,7 +4,7 @@
   "entries": [
     {
       "date": "2026-07-01",
-      "recorded_at": "2026-07-01T23:09:10+08:00",
+      "recorded_at": "2026-07-01T23:21:34+08:00",
       "total_stake": 1000.0,
       "match_id": "2040352",
       "match_num": "周三080",
@@ -51,25 +51,27 @@
             "market_probability": 0.7566
           },
           {
-            "match_id": "2040339",
-            "match_num": "周三082",
-            "home": "美国",
-            "away": "波黑",
-            "kickoff_beijing": "2026-07-02T08:00:00+08:00",
+            "match_id": "2040353",
+            "match_num": "周三081",
+            "home": "比利时",
+            "away": "塞内加尔",
+            "kickoff_beijing": "2026-07-02T04:00:00+08:00",
             "pick": "主胜",
             "pick_key": "home",
-            "odds": 1.22,
-            "market_probability": 0.7256
+            "odds": 1.97,
+            "market_probability": 0.4493
           }
         ],
-        "combined_odds": 1.4274,
-        "combined_probability": 0.549,
-        "potential_return": 570.96,
-        "potential_profit": 170.96,
+        "combined_odds": 2.3049,
+        "minimum_odds": 2.0,
+        "combined_probability": 0.3399,
+        "potential_return": 921.96,
+        "potential_profit": 521.96,
         "status": "open"
       },
       "status": "open",
-      "selection_rule": "单场取当日稳定方向第一名；二串一取前两名；每日自动刷新且同日不重复追加",
+      "realized_pnl": null,
+      "selection_rule": "单场取稳定方向第一名；二串一须组合SP≥2.00，并取联合去水概率最高组合",
       "disclaimer": "仅为模拟记账，不会代替用户真实下注，也不构成投注建议。"
     }
   ]

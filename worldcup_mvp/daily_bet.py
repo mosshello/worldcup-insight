@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import date, datetime, timedelta, timezone
+from itertools import combinations
 from pathlib import Path
 from typing import Any
 BEIJING_TZ = timezone(timedelta(hours=8), name="Asia/Shanghai")
@@ -11,6 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DAILY_BETS_FILE = PROJECT_ROOT / "data" / "daily_bets.json"
 DEFAULT_DAILY_STAKE = 1000.0
 SINGLE_STAKE_RATIO = 0.6
+MIN_PARLAY_ODDS = 2.0
 
 
 def _devig_probability(odds: dict[str, Any], pick: str) -> float:
@@ -59,6 +61,54 @@ def select_stable_picks(
     return ranked
 
 
+def select_stable_parlay(
+    predictions: list[dict[str, Any]], *, business_date: str, min_odds: float = MIN_PARLAY_ODDS
+) -> list[dict[str, Any]]:
+    """选择联合概率最高且组合 SP 达到下限的二串一。"""
+    candidates = select_stable_picks(
+        predictions, business_date=business_date, limit=len(predictions)
+    )
+    pairs: list[tuple[float, float, list[dict[str, Any]]]] = []
+    for first, second in combinations(candidates, 2):
+        first_pick = str(first["direction_key"])
+        second_pick = str(second["direction_key"])
+        combined_odds = float(first["had_odds"][first_pick]) * float(
+            second["had_odds"][second_pick]
+        )
+        if combined_odds < min_odds:
+            continue
+        joint_probability = float(first["market_probability"]) * float(
+            second["market_probability"]
+        )
+        pairs.append((joint_probability, combined_odds, [first, second]))
+    if not pairs:
+        return []
+    pairs.sort(key=lambda item: (-item[0], item[1]))
+    return pairs[0][2]
+
+
+def summarize_ledger(payload: dict[str, Any]) -> dict[str, float | int]:
+    """汇总模拟账本投入、已实现盈利和未结算潜在盈利。"""
+    entries = payload.get("entries") or []
+    total_invested = sum(float(item.get("total_stake", item.get("stake", 0))) for item in entries)
+    settled = [item for item in entries if item.get("status") == "settled"]
+    open_entries = [item for item in entries if item.get("status") != "settled"]
+    realized_profit = sum(float(item.get("realized_pnl") or 0) for item in settled)
+    open_potential_profit = sum(
+        float((item.get("single") or {}).get("potential_profit", item.get("potential_profit", 0)))
+        + float((item.get("parlay") or {}).get("potential_profit", 0))
+        for item in open_entries
+    )
+    return {
+        "entry_count": len(entries),
+        "settled_count": len(settled),
+        "open_count": len(open_entries),
+        "total_invested": round(total_invested, 2),
+        "realized_profit": round(realized_profit, 2),
+        "open_potential_profit": round(open_potential_profit, 2),
+    }
+
+
 def load_daily_bets(path: Path = DAILY_BETS_FILE) -> dict[str, Any]:
     if not path.exists():
         return {"version": 1, "daily_stake": DEFAULT_DAILY_STAKE, "entries": []}
@@ -76,32 +126,33 @@ def record_daily_bet(
     """按北京日期幂等写入当日一笔模拟投注。"""
     local_today = today or datetime.now(BEIJING_TZ).date()
     day = local_today.isoformat()
-    selected = select_stable_picks(predictions, business_date=day, limit=2)
-    if not selected:
+    ranked = select_stable_picks(predictions, business_date=day, limit=len(predictions))
+    if not ranked:
         return None
 
-    primary = selected[0]
+    primary = ranked[0]
+    parlay_selected = select_stable_parlay(predictions, business_date=day)
     pick = str(primary["direction_key"])
     odds = float(primary["had_odds"][pick])
-    has_parlay = len(selected) >= 2
+    has_parlay = len(parlay_selected) == 2
     single_stake = float(stake) * SINGLE_STAKE_RATIO if has_parlay else float(stake)
     parlay_stake = float(stake) - single_stake if has_parlay else 0.0
-    legs: list[dict[str, Any]] = []
-    for item in selected[:2]:
+    def as_leg(item: dict[str, Any]) -> dict[str, Any]:
         item_pick = str(item["direction_key"])
-        legs.append(
-            {
-                "match_id": str(item.get("match_id")),
-                "match_num": item.get("match_num"),
-                "home": item.get("home"),
-                "away": item.get("away"),
-                "kickoff_beijing": item.get("kickoff_beijing"),
-                "pick": item.get("direction"),
-                "pick_key": item_pick,
-                "odds": round(float(item["had_odds"][item_pick]), 2),
-                "market_probability": round(float(item["market_probability"]), 4),
-            }
-        )
+        return {
+            "match_id": str(item.get("match_id")),
+            "match_num": item.get("match_num"),
+            "home": item.get("home"),
+            "away": item.get("away"),
+            "kickoff_beijing": item.get("kickoff_beijing"),
+            "pick": item.get("direction"),
+            "pick_key": item_pick,
+            "odds": round(float(item["had_odds"][item_pick]), 2),
+            "market_probability": round(float(item["market_probability"]), 4),
+        }
+
+    single_leg = as_leg(primary)
+    legs = [as_leg(item) for item in parlay_selected]
     combined_odds = 1.0
     combined_probability = 1.0
     for leg in legs:
@@ -126,7 +177,7 @@ def record_daily_bet(
         "potential_profit": round(single_stake * (odds - 1), 2),
         "single": {
             "stake": round(single_stake, 2),
-            "leg": legs[0],
+            "leg": single_leg,
             "potential_return": round(single_stake * odds, 2),
             "potential_profit": round(single_stake * (odds - 1), 2),
         },
@@ -136,6 +187,7 @@ def record_daily_bet(
                 "stake": round(parlay_stake, 2),
                 "legs": legs,
                 "combined_odds": round(combined_odds, 4),
+                "minimum_odds": MIN_PARLAY_ODDS,
                 "combined_probability": round(combined_probability, 4),
                 "potential_return": round(parlay_stake * combined_odds, 2),
                 "potential_profit": round(parlay_stake * (combined_odds - 1), 2),
@@ -145,7 +197,8 @@ def record_daily_bet(
             else None
         ),
         "status": "open",
-        "selection_rule": "单场取当日稳定方向第一名；二串一取前两名；每日自动刷新且同日不重复追加",
+        "realized_pnl": None,
+        "selection_rule": "单场取稳定方向第一名；二串一须组合SP≥2.00，并取联合去水概率最高组合",
         "disclaimer": "仅为模拟记账，不会代替用户真实下注，也不构成投注建议。",
     }
     ledger = load_daily_bets(path)
