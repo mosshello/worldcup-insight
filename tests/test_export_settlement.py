@@ -1,7 +1,9 @@
 """导出与结算数据测试。"""
 
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from worldcup_mvp.dashboard_data import export_predictions_csv, export_predictions_payload
@@ -46,6 +48,22 @@ class ExportTests(unittest.TestCase):
 
 
 class SettlementModuleTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        root = Path(self.temp_dir.name)
+        self.patchers = [
+            patch("worldcup_mvp.prediction_journal.JOURNAL_FILE", root / "prediction_journal.json"),
+            patch("worldcup_mvp.training_store.TRAINING_FILE", root / "historical_outcomes.json"),
+            patch("worldcup_mvp.training_store.ARCHIVE_DEV_FILE", root / "archive.json"),
+        ]
+        for patcher in self.patchers:
+            patcher.start()
+
+    def tearDown(self) -> None:
+        for patcher in reversed(self.patchers):
+            patcher.stop()
+        self.temp_dir.cleanup()
+
     @patch("worldcup_mvp.settlement.fetch_fifa_fixture_score")
     @patch("worldcup_mvp.settlement.fetch_fixed_bonus_detail")
     def test_settle_open_predictions(

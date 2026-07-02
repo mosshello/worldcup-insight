@@ -55,16 +55,19 @@ class DashboardHandlerTests(unittest.TestCase):
 
 
 class CacheRefresherTests(unittest.TestCase):
-    @patch("worldcup_mvp.cache_refresher.predict_upcoming_scores")
+    @patch("worldcup_mvp.cache_refresher.get_upcoming_score_predictions")
     def test_refresh_success(self, mock_predict: MagicMock) -> None:
         from worldcup_mvp.cache_refresher import refresh_sporttery_cache
 
-        mock_predict.return_value = [{"match_id": "1"}, {"match_id": "2"}]
+        mock_predict.return_value = {
+            "success": True,
+            "predictions": [{"match_id": "1"}, {"match_id": "2"}],
+        }
         result = refresh_sporttery_cache()
         self.assertTrue(result["success"])
         self.assertEqual(result["count"], 2)
 
-    @patch("worldcup_mvp.cache_refresher.predict_upcoming_scores")
+    @patch("worldcup_mvp.cache_refresher.get_upcoming_score_predictions")
     def test_refresh_api_error(self, mock_predict: MagicMock) -> None:
         from worldcup_mvp.cache_refresher import refresh_sporttery_cache
         from worldcup_mvp.sporttery_api import SportteryApiError

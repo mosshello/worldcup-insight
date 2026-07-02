@@ -45,13 +45,29 @@ def _fetch_result_map(begin: str, end: str) -> dict[str, dict[str, Any]]:
     return merged
 
 
-def settle_open_predictions(*, lookback_days: int = 7) -> dict[str, Any]:
+def _entry_kickoff(entry: dict[str, Any]) -> datetime | None:
+    value = entry.get("kickoff_beijing")
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo is not None else None
+
+
+def settle_open_predictions(
+    *,
+    lookback_days: int = 7,
+    now: datetime | None = None,
+) -> dict[str, Any]:
     """尝试结算所有未结预测；优先从 getFixedBonus 读取官方赛果。"""
     open_entries = list_open_entries()
     if not open_entries:
         return {"success": True, "settled": 0, "pending": 0, "results": [], "message": "暂无待结算预测"}
 
-    today = datetime.now(BEIJING_TZ).date()
+    current = now or datetime.now(BEIJING_TZ)
+    today = current.date()
     begin = (today - timedelta(days=lookback_days)).isoformat()
     end = today.isoformat()
     result_map = _fetch_result_map(begin, end)
@@ -61,6 +77,19 @@ def settle_open_predictions(*, lookback_days: int = 7) -> dict[str, Any]:
 
     for entry in open_entries:
         match_id = str(entry["match_id"])
+        kickoff = _entry_kickoff(entry)
+        if kickoff is None:
+            pending += 1
+            settled_rows.append(
+                {"match_id": match_id, "status": "invalid", "message": "缺少有效的带时区开赛时间"}
+            )
+            continue
+        if current < kickoff:
+            pending += 1
+            settled_rows.append(
+                {"match_id": match_id, "status": "pre_kickoff", "kickoff_beijing": kickoff.isoformat()}
+            )
+            continue
         try:
             detail = fetch_fixed_bonus_detail(match_id)
         except SportteryApiError as exc:
@@ -103,7 +132,7 @@ def settle_open_predictions(*, lookback_days: int = 7) -> dict[str, Any]:
         if result_map.get(match_id, {}).get("list_item"):
             row["official_list"] = result_map[match_id]["list_item"]
 
-        settled_at = datetime.now(BEIJING_TZ).replace(microsecond=0).isoformat()
+        settled_at = current.replace(microsecond=0).isoformat()
         row["settled_at"] = settled_at
 
         settled_rows.append(row)
@@ -116,7 +145,7 @@ def settle_open_predictions(*, lookback_days: int = 7) -> dict[str, Any]:
                 "settlement": row,
             },
         )
-        append_outcome(build_outcome_from_settlement(entry, row))
+        row["training_ingested"] = append_outcome(build_outcome_from_settlement(entry, row))
 
     settled_count = sum(1 for row in settled_rows if row.get("status") == "settled")
     total_pnl = sum(row.get("total_pnl", 0) for row in settled_rows if row.get("status") == "settled")

@@ -10,16 +10,12 @@ from .fox_scraper import _fetch_page, parse_moneyline_blocks
 from .fusion_predictor import _devig, _pick_from_probs
 from .sporttery_api import (
     SportteryApiError,
-    enrich_match_timing,
     fetch_announced_matches,
     fetch_fixed_bonus,
-    fetch_upcoming_matches,
-    is_upcoming_match,
 )
-from .sporttery_cache import load_snapshot, save_snapshot
+from .sporttery_cache import load_snapshot
 from .direction_shift import analyze_direction_shift
-from .daily_bet import record_daily_bet
-from .prediction_journal import get_open_direction_key, record_predictions
+from .prediction_journal import get_open_direction_key
 
 
 def _had_history_from_bonus(bonus: dict[str, Any]) -> list[dict[str, Any]]:
@@ -186,19 +182,6 @@ def predict_score_for_match(
         "direction_note": direction_note,
         "direction_shift": direction_shift,
     }
-
-
-def predict_upcoming_scores() -> list[dict[str, Any]]:
-    """拉取体彩全部未开赛赛事并逐场预测。"""
-    matches = [enrich_match_timing(match) for match in fetch_upcoming_matches()]
-    if not matches:
-        return []
-    fox_map = _load_fox_map()
-    predictions = [predict_score_for_match(match, fox_map=fox_map) for match in matches]
-    save_snapshot(matches=matches, predictions=predictions)
-    record_predictions(predictions)
-    record_daily_bet(predictions)
-    return predictions
 
 
 def list_upcoming_matches() -> dict[str, Any]:

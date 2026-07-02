@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,7 @@ ARCHIVE_DEV_FILE = TRAINING_DIR / "archive_dev_settlements.json"
 
 SCHEMA_VERSION = 1
 SETTLEMENT_EPOCH = "2026-06-30"
+VALID_HAD_LABELS = {"主胜", "平", "客胜"}
 
 
 def _now_iso() -> str:
@@ -109,11 +111,57 @@ def build_outcome_from_settlement(
     }
 
 
+def _aware_datetime(value: Any, field: str) -> tuple[datetime | None, str | None]:
+    if not isinstance(value, str) or not value:
+        return None, f"{field}缺失"
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None, f"{field}格式无效"
+    if parsed.tzinfo is None:
+        return None, f"{field}缺少时区"
+    return parsed, None
+
+
+def validate_outcome_record(record: dict[str, Any]) -> list[str]:
+    """校验训练记录，阻止时间泄漏、模拟赛果和不完整标签入库。"""
+    errors: list[str] = []
+    if not str(record.get("sporttery_match_id") or ""):
+        errors.append("sporttery_match_id缺失")
+    if not record.get("home") or not record.get("away"):
+        errors.append("对阵信息缺失")
+
+    kickoff, error = _aware_datetime(record.get("kickoff_beijing"), "kickoff_beijing")
+    if error:
+        errors.append(error)
+    predicted = record.get("predicted") if isinstance(record.get("predicted"), dict) else {}
+    recorded_at, error = _aware_datetime(predicted.get("recorded_at"), "predicted.recorded_at")
+    if error:
+        errors.append(error)
+    settlement = record.get("settlement") if isinstance(record.get("settlement"), dict) else {}
+    settled_at, error = _aware_datetime(settlement.get("settled_at"), "settlement.settled_at")
+    if error:
+        errors.append(error)
+
+    if kickoff and recorded_at and recorded_at >= kickoff:
+        errors.append("预测时间不得晚于或等于开赛时间")
+    if kickoff and settled_at and settled_at < kickoff:
+        errors.append("结算时间不得早于开赛时间")
+
+    actual = record.get("actual") if isinstance(record.get("actual"), dict) else {}
+    score = actual.get("score")
+    if not isinstance(score, str) or not re.fullmatch(r"\d+:\d+", score):
+        errors.append("actual.score缺失或格式无效")
+    if actual.get("had") not in VALID_HAD_LABELS:
+        errors.append("actual.had缺失或无效")
+    return errors
+
+
 def append_outcome(record: dict[str, Any]) -> bool:
     """追加一条训练语料；同 sporttery_match_id + source 不重复写入。"""
     match_id = str(record.get("sporttery_match_id") or "")
     source = str(record.get("source") or "")
-    if not match_id:
+    if not match_id or validate_outcome_record(record):
         return False
 
     corpus = load_training_corpus()
@@ -131,15 +179,44 @@ def append_outcome(record: dict[str, Any]) -> bool:
     return True
 
 
+def audit_training_corpus() -> dict[str, Any]:
+    """只读审计当前语料，列出不允许参与训练的记录。"""
+    corpus = load_training_corpus()
+    records = corpus.get("records") or []
+    invalid_records: list[dict[str, Any]] = []
+    for record in records:
+        errors = validate_outcome_record(record)
+        if errors:
+            invalid_records.append(
+                {
+                    "sporttery_match_id": record.get("sporttery_match_id"),
+                    "home": record.get("home"),
+                    "away": record.get("away"),
+                    "errors": errors,
+                }
+            )
+    return {
+        "total_count": len(records),
+        "valid_count": len(records) - len(invalid_records),
+        "invalid_count": len(invalid_records),
+        "invalid_records": invalid_records,
+        "settlement_epoch": corpus.get("settlement_epoch") or SETTLEMENT_EPOCH,
+        "updated_at": corpus.get("updated_at"),
+    }
+
+
 def get_training_summary() -> dict[str, Any]:
     corpus = load_training_corpus()
     records = corpus.get("records") or []
     live_count = sum(1 for item in records if item.get("source") == "live_settlement")
     imported_count = sum(1 for item in records if item.get("source") == "imported")
+    audit = audit_training_corpus()
     return {
         "training_count": len(records),
         "live_count": live_count,
         "imported_count": imported_count,
         "settlement_epoch": corpus.get("settlement_epoch") or SETTLEMENT_EPOCH,
         "updated_at": corpus.get("updated_at"),
+        "valid_count": audit["valid_count"],
+        "invalid_count": audit["invalid_count"],
     }

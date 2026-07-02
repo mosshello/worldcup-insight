@@ -102,8 +102,7 @@
 |------|------|
 | `python predict.py list` | 列出体彩未开赛赛事 |
 | `python predict.py predict --home X --away Y` | 单场融合预测 |
-| `python scripts/today_score_predict.py list` | 同上（动态拉取） |
-| `python scripts/today_score_predict.py predict` | 全部未开赛比分预测 |
+| `python predict.py slate` | 全部未开赛场次完整融合分析 |
 
 ### 3.6 可视化仪表盘（dev/jun-odds · 基本完成）
 
@@ -130,8 +129,7 @@ worldcup-insight/
 ├── predict.py              # 体彩融合方向预测
 ├── watch_odds.py           # 盘口采集 + 变动分析
 ├── dashboard.py            # Web 仪表盘 HTTP 服务
-├── scripts/
-│   └── today_score_predict.py   # 未开赛比分批量预测
+├── scripts/                     # 数据维护与静态页面生成
 ├── web/
 │   ├── index.html          # 仪表盘页面
 │   ├── app.js              # 前端逻辑
@@ -259,8 +257,8 @@ git checkout dev/jun-odds
 python main.py
 
 # 体彩未开赛列表 + 比分预测
-python scripts/today_score_predict.py list
-python scripts/today_score_predict.py predict
+python predict.py list
+python predict.py slate
 
 # 融合方向预测
 python predict.py predict --home 法国 --away 瑞典
@@ -343,7 +341,7 @@ python -m unittest discover -s tests -v
 
 ### P3 · 架构与工程
 
-- [ ] 统一 `predict.py` 与 `today_score_predict.py`（避免重复入口）
+- [x] 统一预测入口为 `predict.py`，批量 `slate` 与单场 `predict` 共用完整融合链路
 - [ ] README 路径更新为当前仓库地址
 - [ ] 考虑轻量依赖（如 `httpx`）替代 urllib，改善 WAF 兼容性
 - [ ] Docker 一键启动 dashboard + 定时采集
@@ -351,7 +349,7 @@ python -m unittest discover -s tests -v
 
 ### P4 · 模型化（长期）
 
-- [ ] 引入历史赛果训练简单基准模型（Elo / Poisson）
+- [ ] 引入历史赛果训练简单基准模型（Elo / Poisson）；训练方案与数据门槛已文档化
 - [x] 实盘结算语料分离：`prediction_journal` 自 2026-06-30 重置；`data/training/historical_outcomes.json` 承接赛后训练样本
 - [ ] 市场定价 + 统计特征融合
 - [ ] 当前阶段**不建议**急于上 ML，先把数据管道做稳

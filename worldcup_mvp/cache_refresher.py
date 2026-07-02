@@ -5,14 +5,17 @@ from __future__ import annotations
 import threading
 from typing import Any
 
-from .score_predictor import predict_upcoming_scores
+from .dashboard_data import get_upcoming_score_predictions
 from .sporttery_api import SportteryApiError
 
 
 def refresh_sporttery_cache() -> dict[str, Any]:
     """拉取最新未开赛赛事并写入本地缓存。"""
     try:
-        predictions = predict_upcoming_scores()
+        payload = get_upcoming_score_predictions()
+        if not payload.get("success"):
+            return {"success": False, "error": payload.get("error", "完整分析失败")}
+        predictions = payload.get("predictions") or []
         return {
             "success": True,
             "count": len(predictions),

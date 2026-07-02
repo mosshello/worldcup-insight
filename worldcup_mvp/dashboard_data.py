@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 from .analyzer import OUTCOME_LABELS, analyze_match
 from .bet_simulator import simulate_prediction_bet
+from .daily_bet import record_daily_bet
 from .env_config import get_odds_api_key
 from .fox_scraper import fetch_fox_snapshot
 from .fusion_predictor import predict_match
@@ -20,7 +21,8 @@ from .odds_snapshot import load_history
 from .local_match_bundle import has_overlay_entry, load_local_match_bundle
 from .match_intelligence import build_intelligence_for_sporttery, normalize_venue, safe_display_text
 from .pool_analytics import build_pool_analysis
-from .score_predictor import list_upcoming_matches, predict_score_for_match, predict_upcoming_scores
+from .prediction_journal import record_predictions
+from .score_predictor import list_upcoming_matches, predict_score_for_match
 from .settlement import get_settlement_summary, settle_open_predictions
 from .sporttery_api import (
     SportteryApiError,
@@ -483,29 +485,41 @@ def _pending_prediction_from_match(match: dict[str, Any]) -> dict[str, Any]:
 
 def get_upcoming_score_predictions() -> dict[str, Any]:
     try:
-        predictions = predict_upcoming_scores()
         matches = [enrich_match_timing(match) for match in fetch_announced_matches()]
-        prediction_by_id = {str(item.get("match_id")): item for item in predictions}
         merged_predictions: list[dict[str, Any]] = []
         for match in matches:
-            prediction = prediction_by_id.get(str(match.get("match_id")))
-            if prediction:
-                merged_predictions.append(
-                    {
-                        **prediction,
-                        "business_date": match.get("business_date") or prediction.get("business_date"),
-                        "sale_status": "selling",
-                        "analysis_available": True,
-                        "match_status": match.get("match_status"),
-                    }
-                )
-            else:
+            if match.get("analysis_available") is False or not (match.get("pools") or {}).get("had"):
                 merged_predictions.append(_pending_prediction_from_match(match))
+                continue
+
+            full = _build_fusion_prediction(match, foreign_source="auto")
+            score_prediction = full["score_prediction"]
+            merged_predictions.append(
+                {
+                    **score_prediction,
+                    "business_date": match.get("business_date") or score_prediction.get("business_date"),
+                    "sale_status": "selling",
+                    "analysis_available": True,
+                    "match_status": match.get("match_status"),
+                    "provider_ids": full.get("provider_ids"),
+                    "fusion_prediction": full.get("prediction"),
+                    "pool_analysis": full.get("pool_analysis"),
+                    "context_analysis": full.get("context_analysis"),
+                    "match_intelligence": full.get("match_intelligence"),
+                    "probability_deltas_pp": full.get("probability_deltas_pp"),
+                    "probability_delta_alerts": full.get("probability_delta_alerts"),
+                    "data_sources": full.get("data_sources"),
+                    "pipeline_status": full.get("pipeline_status"),
+                }
+            )
         index_days = _unified_index_days(matches)
         load_unified_index_merged(days=index_days, force=False)
         predictions = [
             enrich_prediction_record(item) for item in merged_predictions
         ]
+        completed = [item for item in predictions if item.get("pipeline_status") == "complete"]
+        record_predictions(completed)
+        record_daily_bet(completed)
         save_snapshot(matches=matches, predictions=predictions)
         return {
             "success": True,
@@ -532,14 +546,12 @@ def get_upcoming_score_predictions() -> dict[str, Any]:
         return {"success": False, "error": "体彩 API 暂不可用，且无本地缓存", "predictions": []}
 
 
-def get_fusion_prediction(
+def _build_fusion_prediction(
+    match: dict[str, Any],
     *,
-    match_id: str | None = None,
-    home: str | None = None,
-    away: str | None = None,
     foreign_source: str = "auto",
 ) -> dict[str, Any]:
-    match = find_match(match_id=match_id, home=home, away=away, upcoming_only=True)
+    """对已匹配场次执行完整分析链，供单场和批量入口共同复用。"""
     history = fetch_odds_history(match["match_id"])
     foreign_odds, foreign_src = _fetch_foreign_odds(
         match["home"],
@@ -575,6 +587,20 @@ def get_fusion_prediction(
 
     direction_shift = prediction.get("direction_shift") or score_prediction.get("direction_shift")
 
+    data_sources = {
+        "sporttery": True,
+        "unified": unified_match is not None,
+        "foreign": foreign_src,
+        "intelligence": (match_intelligence or {}).get("data_sources") or [],
+        "pool_ttg": (pool_analysis or {}).get("coverage", {}).get("ttg", False),
+        "pool_hafu": (pool_analysis or {}).get("coverage", {}).get("hafu", False),
+        "kelly_vs_foreign": (pool_analysis or {}).get("coverage", {}).get(
+            "kelly_vs_foreign", False
+        ),
+    }
+    required = ("sporttery", "pool_ttg", "pool_hafu")
+    pipeline_status = "complete" if all(data_sources.get(key) for key in required) else "degraded"
+
     return {
         "prediction": prediction,
         "score_prediction": score_prediction,
@@ -590,15 +616,20 @@ def get_fusion_prediction(
         "probability_delta_threshold_pp": PROBABILITY_DELTA_ALERT_PP,
         "foreign_source_requested": foreign_source,
         "foreign_source_resolved": foreign_src,
-        "data_sources": {
-            "sporttery": True,
-            "unified": unified_match is not None,
-            "foreign": foreign_src,
-            "intelligence": (match_intelligence or {}).get("data_sources") or [],
-            "pool_ttg": (pool_analysis or {}).get("coverage", {}).get("ttg", False),
-            "pool_hafu": (pool_analysis or {}).get("coverage", {}).get("hafu", False),
-        },
+        "pipeline_status": pipeline_status,
+        "data_sources": data_sources,
     }
+
+
+def get_fusion_prediction(
+    *,
+    match_id: str | None = None,
+    home: str | None = None,
+    away: str | None = None,
+    foreign_source: str = "auto",
+) -> dict[str, Any]:
+    match = find_match(match_id=match_id, home=home, away=away, upcoming_only=True)
+    return _build_fusion_prediction(match, foreign_source=foreign_source)
 
 
 def get_overview(data_dir: Path | None = None, *, mode: str = "sporttery") -> dict[str, Any]:

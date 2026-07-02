@@ -10,6 +10,7 @@ from worldcup_mvp.prediction_journal import JOURNAL_FILE, load_journal
 from worldcup_mvp.training_store import (
     TRAINING_FILE,
     append_outcome,
+    audit_training_corpus,
     build_outcome_from_settlement,
     get_training_summary,
     load_training_corpus,
@@ -25,12 +26,35 @@ class TrainingStoreTests(unittest.TestCase):
                     "sporttery_match_id": "2040345",
                     "home": "科特迪瓦",
                     "away": "挪威",
+                    "kickoff_beijing": "2026-07-01T01:00:00+08:00",
+                    "predicted": {"recorded_at": "2026-06-30T20:00:00+08:00"},
+                    "actual": {"had": "客胜", "score": "1:2"},
+                    "settlement": {"settled_at": "2026-07-01T03:00:00+08:00"},
                     "source": "live_settlement",
                 }
                 self.assertTrue(append_outcome(record))
                 self.assertFalse(append_outcome(record))
                 summary = get_training_summary()
                 self.assertEqual(summary["training_count"], 1)
+                self.assertEqual(summary["invalid_count"], 0)
+
+    def test_rejects_pre_kickoff_settlement(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            training_path = Path(tmp) / "historical_outcomes.json"
+            with patch("worldcup_mvp.training_store.TRAINING_FILE", training_path):
+                record = {
+                    "sporttery_match_id": "2040353",
+                    "home": "比利时",
+                    "away": "塞内加尔",
+                    "kickoff_beijing": "2026-07-02T04:00:00+08:00",
+                    "predicted": {"recorded_at": "2026-07-01T20:00:00+08:00"},
+                    "actual": {"had": "平", "score": "2:2"},
+                    "settlement": {"settled_at": "2026-07-01T21:00:00+08:00"},
+                    "source": "live_settlement",
+                }
+                self.assertFalse(append_outcome(record))
+                audit = audit_training_corpus()
+                self.assertEqual(audit["total_count"], 0)
 
     def test_build_outcome_from_settlement(self) -> None:
         entry = {
@@ -39,6 +63,8 @@ class TrainingStoreTests(unittest.TestCase):
             "away": "挪威",
             "direction_key": "away",
             "predicted_score": "1-2",
+            "kickoff_beijing": "2026-07-01T01:00:00+08:00",
+            "recorded_at": "2026-06-30T20:00:00+08:00",
         }
         row = {
             "actual_had": "客胜",

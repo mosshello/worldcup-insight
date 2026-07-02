@@ -95,17 +95,21 @@ python -m unittest discover -s tests -v
 | **The Odds API** | `--source api` | 外网 h2h + spreads，需 API Key |
 | **本地 feed** | `--source file` | 手动写入 JSON |
 
-### 比分预测（未开赛赛事）
+### 完整预测流程（未开赛赛事）
 
 ```powershell
-python scripts/today_score_predict.py list
-python scripts/today_score_predict.py predict
-python scripts/today_score_predict.py predict --json
-
 python predict.py list
+python predict.py slate
+python predict.py slate --json
 python predict.py predict --home 巴西 --away 日本
 python predict.py predict --match-id 2040337 --json
+python predict.py audit-training --json
 ```
+
+`slate` 与单场 `predict` 共用完整融合链路：体彩 HAD/HHAD、历史走势、外部参考、
+总进球/半全场、凯利偏差、FIFA 上下文与赛前情报。输出中的 `pipeline_status`
+为 `complete` 才会写入预测日志和每日模拟账本；可选数据缺失会明确标为降级，
+不会静默冒充完整分析。
 
 ### 体彩快照采集
 
@@ -151,6 +155,18 @@ python watch_odds.py record --source file --feed data\odds_live_feed.json
 - “胜、平、负”只判断常规 90 分钟（含伤停补时），不判断加时赛或点球大战后的晋级方。
 - 概率是赔率去水后的市场定价，不是训练模型，也不包含阵容、伤停、天气或临场变化。
 - 输出仅用于数据分析演示，不构成投注建议或赛果保证。
+
+### 模型训练
+
+当前生产预测仍是市场定价与透明启发式融合，不是已训练模型。训练语料必须先通过：
+
+```powershell
+python predict.py audit-training
+```
+
+只有“预测时间早于开赛、结算时间不早于开赛、赛果完整”的记录才允许入库。
+Poisson/Elo 的数据准备、时间切分、校准和上线门槛见
+[模型训练方案](docs/model-training.md)。
 
 ### 每日稳健模拟账本与 GitHub Pages
 
