@@ -6,16 +6,23 @@ const OUTCOME_COLORS = {
 };
 const REFRESH_STORAGE_KEY = "dashboardAutoRefreshSeconds";
 const DATA_MODE_STORAGE_KEY = "dashboardDataMode";
-const DATE_TAB_STORAGE_KEY = "dashboardDateTabOffset";
+const DATE_TAB_STORAGE_KEY = "dashboardDateTabDate";
+const AI_FLOAT_MINIMIZED_KEY = "dashboardAiFloatMinimized";
 
 let overview = null;
 let allPredictions = [];
 let predictions = [];
 let activeMatchId = null;
-let selectedDateOffset = 0;
+let selectedDate = "";
+let dateTabsExpanded = false;
 let charts = {};
 let refreshTimer = null;
 let countdownTimer = null;
+let aiAnalyzeStatus = null;
+let aiChatByMatch = {};
+let aiReviewCache = {};
+let aiAutoReviewPending = new Set();
+let aiSending = false;
 
 function confidenceClass(level) {
   if (level === "高") return "high";
@@ -233,6 +240,323 @@ async function fetchJson(url) {
   return response.json();
 }
 
+async function postJson(url, body) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || `请求失败：${response.status}`);
+  }
+  return payload;
+}
+
+function getAiChatHistory(matchId) {
+  if (!aiChatByMatch[matchId]) {
+    aiChatByMatch[matchId] = [];
+  }
+  return aiChatByMatch[matchId];
+}
+
+function renderAiStatusBadge() {
+  const badge = document.getElementById("ai-status-badge");
+  const hint = document.getElementById("ai-analysis-hint");
+  const sendBtn = document.getElementById("ai-send-btn");
+  if (!badge) return;
+
+  if (!aiAnalyzeStatus) {
+    badge.textContent = "检测中…";
+    badge.className = "ai-status-badge";
+    return;
+  }
+
+  if (aiAnalyzeStatus.configured) {
+    badge.textContent = `DeepSeek · ${aiAnalyzeStatus.model || "deepseek-chat"}`;
+    badge.className = "ai-status-badge ready";
+    if (hint) {
+      hint.textContent = "已连接 DeepSeek。选中左侧赛事后，可提问验证冷门假设（分析基于当前场次数据，非投注建议）。";
+    }
+    if (sendBtn) sendBtn.disabled = aiSending;
+  } else {
+    badge.textContent = "未配置 API Key";
+    badge.className = "ai-status-badge missing";
+    if (hint) {
+      hint.textContent = "服务端未配置 DEEPSEEK_API_KEY：本地请在 .env 设置后重启 dashboard；线上请在 GitHub Secrets 或服务器环境变量配置（勿提交到公开仓库）。已生成的复盘仍可从缓存读取。";
+    }
+    if (sendBtn) sendBtn.disabled = aiSending;
+  }
+}
+
+function escapeHtml(text) {
+  return String(text || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderInlineMarkdown(text) {
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/`(.+?)`/g, "<code>$1</code>");
+}
+
+function renderMarkdown(text) {
+  const lines = String(text || "").split("\n");
+  const html = [];
+  let inList = false;
+
+  const closeList = () => {
+    if (inList) {
+      html.push("</ul>");
+      inList = false;
+    }
+  };
+
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    const trimmed = line.trim();
+
+    if (/^[-*] /.test(trimmed)) {
+      if (!inList) {
+        html.push("<ul>");
+        inList = true;
+      }
+      html.push(`<li>${renderInlineMarkdown(trimmed.replace(/^[-*] /, ""))}</li>`);
+      continue;
+    }
+
+    closeList();
+
+    if (!trimmed) {
+      continue;
+    }
+
+    if (/^#{1,3}\s/.test(trimmed)) {
+      const level = trimmed.match(/^#+/)[0].length;
+      const tag = level === 1 ? "h4" : level === 2 ? "h5" : "h6";
+      html.push(`<${tag}>${renderInlineMarkdown(trimmed.replace(/^#+\s*/, ""))}</${tag}>`);
+      continue;
+    }
+
+    html.push(`<p>${renderInlineMarkdown(trimmed)}</p>`);
+  }
+
+  closeList();
+  return html.join("") || `<p>${renderInlineMarkdown(text)}</p>`;
+}
+
+function formatAiChatContent(item) {
+  if (item.role === "assistant loading") {
+    return escapeHtml(item.content);
+  }
+  if (item.role === "assistant") {
+    return renderMarkdown(item.content);
+  }
+  return escapeHtml(item.content).replace(/\n/g, "<br>");
+}
+
+function renderAiChatLog(matchId) {
+  const log = document.getElementById("ai-chat-log");
+  if (!log) return;
+  const history = getAiChatHistory(matchId);
+  if (!history.length) {
+    log.innerHTML = `<div class="ai-chat-bubble assistant">选择快捷问题，或在下方输入你的冷门假设，AI 将基于当前场次的 SP、外网、多玩法与情报数据作答。</div>`;
+    return;
+  }
+  log.innerHTML = history
+    .map((item) => {
+      const roleClass = item.role === "assistant loading" ? "assistant loading" : item.role;
+      return `<div class="ai-chat-bubble ${roleClass}">${formatAiChatContent(item)}</div>`;
+    })
+    .join("");
+  log.scrollTop = log.scrollHeight;
+}
+
+function isAiInputAllowed(match) {
+  if (!match) return Boolean(activeMatchId);
+  if (match.analysis_available === false) return false;
+  return true;
+}
+
+function syncAiInputState(match) {
+  const input = document.getElementById("ai-question-input");
+  const sendBtn = document.getElementById("ai-send-btn");
+  const matchId = match?.match_id || activeMatchId;
+  const allowed = isAiInputAllowed(match);
+  const ready = Boolean(aiAnalyzeStatus?.configured) && !aiSending && allowed;
+  if (input) {
+    input.disabled = !ready;
+    input.readOnly = false;
+    input.placeholder = allowed
+      ? "例如：我感觉客队会爆冷，盘口和数据是否支持？"
+      : "请先选择左侧未开售/未开赛赛事";
+  }
+  if (sendBtn) sendBtn.disabled = !ready || !matchId;
+}
+
+function renderAiAnalysisPanel(match, options = {}) {
+  const { disabled = false, reason = "" } = options;
+  renderAiStatusBadge();
+  const input = document.getElementById("ai-question-input");
+  const sendBtn = document.getElementById("ai-send-btn");
+  const hint = document.getElementById("ai-analysis-hint");
+  if (!document.getElementById("ai-float-panel")) return;
+
+  if (disabled || !isAiInputAllowed(match)) {
+    renderAiChatLog("");
+    if (input) {
+      input.value = "";
+      input.disabled = true;
+    }
+    if (sendBtn) sendBtn.disabled = true;
+    if (hint && reason) hint.textContent = reason;
+    const log = document.getElementById("ai-chat-log");
+    if (log) {
+      log.innerHTML = `<div class="ai-chat-bubble assistant">${reason || "当前场次不支持 AI 分析。"}</div>`;
+    }
+    return;
+  }
+
+  if (hint) {
+    hint.textContent = match?.card_type === "finished"
+      ? "已完场复盘模式：可追问预测偏差原因、是否具备冷门信号等（基于赛前快照 + 实际赛果）。"
+      : "已连接 DeepSeek。选中左侧赛事后，可提问验证冷门假设（分析基于当前场次数据，非投注建议）。";
+  }
+  syncAiInputState(match);
+  renderAiChatLog(match?.match_id || activeMatchId || "");
+}
+
+async function sendAiQuestion(question) {
+  const trimmed = (question || "").trim();
+  const input = document.getElementById("ai-question-input");
+  const sendBtn = document.getElementById("ai-send-btn");
+  if (!trimmed || !activeMatchId || aiSending || !aiAnalyzeStatus?.configured) return;
+
+  aiSending = true;
+  if (sendBtn) sendBtn.disabled = true;
+  if (input) input.disabled = true;
+
+  const history = getAiChatHistory(activeMatchId);
+  const priorHistory = history.slice();
+  history.push({ role: "user", content: trimmed });
+  history.push({ role: "assistant loading", content: "分析中，正在汇总 SP / 外网 / 多玩法上下文…" });
+  renderAiChatLog(activeMatchId);
+
+  try {
+    const payload = await postJson("/api/analyze/chat", {
+      match_id: activeMatchId,
+      question: trimmed,
+      history: priorHistory,
+      foreign: "auto",
+    });
+    history.pop();
+    if (payload.success) {
+      history.push({ role: "assistant", content: payload.reply });
+    } else {
+      history.push({ role: "assistant", content: `分析失败：${payload.error || "未知错误"}` });
+    }
+  } catch (error) {
+    history.pop();
+    history.push({ role: "assistant", content: `分析失败：${error.message}` });
+  } finally {
+    aiSending = false;
+    if (input) input.value = "";
+    const cached = predictions.find((item) => item.match_id === activeMatchId);
+    syncAiInputState(cached || { match_id: activeMatchId });
+    renderAiChatLog(activeMatchId);
+  }
+}
+
+async function loadAiReviewCache() {
+  try {
+    const payload = await fetchJson("/api/analyze/reviews");
+    aiReviewCache = payload.reviews || {};
+  } catch {
+    aiReviewCache = {};
+  }
+}
+
+function finishedNeedsAutoReview(match) {
+  if (!match || match.card_type !== "finished") return false;
+  if (match.settlement_status !== "settled") return false;
+  return match.had_won === false || match.crs_won === false;
+}
+
+function applyAutoReviewToChat(matchId, review) {
+  if (!review?.reply) return;
+  const history = getAiChatHistory(matchId);
+  const marker = "【自动复盘】";
+  if (history.some((item) => item.role === "assistant" && String(item.content).includes(marker))) {
+    return;
+  }
+  history.length = 0;
+  history.push({ role: "user", content: review.question || "请复盘本场预测偏差。" });
+  history.push({ role: "assistant", content: `${marker}\n\n${review.reply}` });
+  renderAiChatLog(matchId);
+}
+
+async function maybeAutoReviewFinished(match) {
+  if (!match?.match_id || !finishedNeedsAutoReview(match)) return;
+
+  const matchId = match.match_id;
+  let review = aiReviewCache[matchId];
+  if (review?.reply) {
+    applyAutoReviewToChat(matchId, review);
+    return;
+  }
+
+  if (!aiAnalyzeStatus?.configured || aiAutoReviewPending.has(matchId)) return;
+
+  aiAutoReviewPending.add(matchId);
+  const history = getAiChatHistory(matchId);
+  history.length = 0;
+  history.push({ role: "assistant loading", content: "正在自动生成完场偏差复盘…" });
+  renderAiChatLog(matchId);
+
+  try {
+    const payload = await postJson("/api/analyze/auto-review", { match_id: matchId });
+    if (payload.success && payload.reply) {
+      aiReviewCache[matchId] = payload;
+      applyAutoReviewToChat(matchId, payload);
+    } else if (payload.cached && payload.reply) {
+      aiReviewCache[matchId] = payload;
+      applyAutoReviewToChat(matchId, payload);
+    } else {
+      history.length = 0;
+      history.push({
+        role: "assistant",
+        content: payload.error
+          ? `自动复盘未生成：${payload.error}`
+          : "自动复盘未生成，可手动提问或等待后台刷新。",
+      });
+      renderAiChatLog(matchId);
+    }
+  } catch (error) {
+    history.length = 0;
+    history.push({ role: "assistant", content: `自动复盘失败：${error.message}` });
+    renderAiChatLog(matchId);
+  } finally {
+    aiAutoReviewPending.delete(matchId);
+    syncAiInputState(match);
+  }
+}
+
+async function loadAiAnalyzeStatus() {
+  try {
+    aiAnalyzeStatus = await fetchJson("/api/analyze/status");
+  } catch (error) {
+    aiAnalyzeStatus = { configured: false, provider: "deepseek" };
+    console.error(error);
+  }
+  renderAiStatusBadge();
+  const cached = predictions.find((item) => item.match_id === activeMatchId);
+  syncAiInputState(cached || (activeMatchId ? { match_id: activeMatchId } : null));
+}
+
 function renderMeta() {
   const sporttery = overview.sporttery || {};
   const predictionsMeta = overview.predictions || {};
@@ -283,13 +607,96 @@ function renderMeta() {
     `当前 ${visible} 场 · 全部 ${stats.total_upcoming || 0} 场 ${cacheHint}${unifiedHint}${modeHint}`;
 }
 
+function shiftIsoDate(isoDate, deltaDays) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const dt = new Date(Date.UTC(year, month - 1, day + deltaDays));
+  return dt.toISOString().slice(0, 10);
+}
+
+function getAllDateTabs() {
+  const stats = overview?.dashboard_stats || {};
+  if (!dateTabsExpanded && Array.isArray(stats.date_tabs_default) && stats.date_tabs_default.length) {
+    return stats.date_tabs_default;
+  }
+  return stats.date_tabs || [];
+}
+
+function getOlderDateTabs() {
+  const stats = overview?.dashboard_stats || {};
+  if (typeof stats.older_date_count === "number" && stats.older_date_count > 0 && Array.isArray(stats.date_tabs)) {
+    const yesterday = getYesterdayDate();
+    if (yesterday) {
+      return stats.date_tabs.filter((tab) => tab.date && tab.date < yesterday);
+    }
+  }
+  const yesterday = getYesterdayDate();
+  if (!yesterday) return [];
+  return (overview?.dashboard_stats?.date_tabs || []).filter((tab) => tab.date && tab.date < yesterday);
+}
+
+function getVisibleDateTabs() {
+  return getAllDateTabs();
+}
+
+function getYesterdayDate() {
+  const stats = overview?.dashboard_stats || {};
+  if (stats.yesterday_date) return stats.yesterday_date;
+  const yesterdayTab = (stats.date_tabs || []).find((tab) => tab.label === "昨日");
+  if (yesterdayTab?.date) return yesterdayTab.date;
+  if (stats.beijing_date) return shiftIsoDate(stats.beijing_date, -1);
+  return "";
+}
+
+function findDateTab(dateValue) {
+  return (overview?.dashboard_stats?.date_tabs || []).find((tab) => tab.date === dateValue)
+    || getAllDateTabs()[0];
+}
+
+function sanitizeDateTabState() {
+  const yesterday = getYesterdayDate();
+  if (!yesterday) return;
+  if (!dateTabsExpanded && selectedDate && selectedDate < yesterday) {
+    selectedDate = yesterday;
+    localStorage.setItem(DATE_TAB_STORAGE_KEY, selectedDate);
+  }
+}
+
+function normalizeSelectedDate() {
+  sanitizeDateTabState();
+  const visible = getVisibleDateTabs();
+  const exists = visible.some((tab) => tab.date === selectedDate);
+  if (exists || (!selectedDate && visible.some((tab) => !tab.date))) {
+    return;
+  }
+  selectedDate = pickDefaultDate();
+  localStorage.setItem(DATE_TAB_STORAGE_KEY, selectedDate);
+}
+
+function setAiFloatMinimized(minimized) {
+  const widget = document.getElementById("ai-float-widget");
+  if (!widget) return;
+  widget.classList.toggle("minimized", minimized);
+  localStorage.setItem(AI_FLOAT_MINIMIZED_KEY, minimized ? "1" : "0");
+}
+
+function setupAiFloatWidget() {
+  document.getElementById("ai-float-fab")?.addEventListener("click", () => {
+    setAiFloatMinimized(false);
+  });
+  document.getElementById("ai-float-minimize")?.addEventListener("click", () => {
+    setAiFloatMinimized(true);
+  });
+  const minimized = localStorage.getItem(AI_FLOAT_MINIMIZED_KEY) === "1";
+  setAiFloatMinimized(minimized);
+}
+
 function renderHeroDashboard(stats) {
   const panel = document.getElementById("hero-dashboard");
   if (!panel || !stats.date_tabs) return;
 
   const tabs = stats.date_tabs;
   const buckets = stats.date_buckets || {};
-  const todayTab = tabs[selectedDateOffset] || tabs[0];
+  const todayTab = findDateTab(selectedDate) || tabs[0];
   const bucketKey = todayTab?.date ?? "";
   const bucket = buckets[bucketKey] || buckets[""] || { total: 0, unified: 0, high_confidence: 0 };
 
@@ -323,13 +730,12 @@ function renderHeroDashboard(stats) {
 }
 
 function getSelectedDate() {
-  const tabs = overview?.dashboard_stats?.date_tabs || [];
-  return tabs[selectedDateOffset]?.date || tabs[0]?.date || "";
+  return selectedDate;
 }
 
 function filterPredictions() {
-  const selectedDate = getSelectedDate();
-  return allPredictions.filter((item) => !selectedDate || item.match_date === selectedDate);
+  const selected = getSelectedDate();
+  return allPredictions.filter((item) => !selected || item.match_date === selected);
 }
 
 function renderDateTabs() {
@@ -337,25 +743,52 @@ function renderDateTabs() {
   const note = document.getElementById("date-filter-note");
   if (!container) return;
 
-  const tabs = overview?.dashboard_stats?.date_tabs || [];
+  normalizeSelectedDate();
+  const tabs = getVisibleDateTabs();
+  const olderTabs = getOlderDateTabs();
+  const olderCount = overview?.dashboard_stats?.older_date_count ?? olderTabs.length;
   const buckets = overview?.dashboard_stats?.date_buckets || {};
-  container.innerHTML = tabs
-    .map((tab, index) => {
+  const tabButtons = tabs
+    .map((tab) => {
       const bucket = buckets[tab.date] || { total: 0, unified: 0 };
-      const active = index === selectedDateOffset ? "active" : "";
+      const active = tab.date === selectedDate ? "active" : "";
       const dateLabel = tab.date ? tab.date.slice(5) : "全部";
-      return `<button type="button" class="date-tab ${active}" data-offset="${index}" role="tab">
+      return `<button type="button" class="date-tab ${active}" data-date="${tab.date}" role="tab">
         <span class="date-tab-label">${tab.label}</span>
         <span class="date-tab-sub">${dateLabel} · ${bucket.total}场${bucket.unified ? ` · 三源${bucket.unified}` : ""}</span>
       </button>`;
     })
     .join("");
 
-  container.querySelectorAll(".date-tab").forEach((btn) => {
+  const expandButton = olderCount
+    ? dateTabsExpanded
+      ? `<button type="button" class="date-tab date-tab-expand" data-action="collapse">收起更早</button>`
+      : `<button type="button" class="date-tab date-tab-expand" data-action="expand">展开更早 · ${olderCount}天</button>`
+    : "";
+
+  container.innerHTML = tabButtons + expandButton;
+
+  container.querySelectorAll(".date-tab[data-date]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      selectedDateOffset = Number(btn.dataset.offset);
-      localStorage.setItem(DATE_TAB_STORAGE_KEY, String(selectedDateOffset));
+      selectedDate = btn.dataset.date || "";
+      localStorage.setItem(DATE_TAB_STORAGE_KEY, selectedDate);
       renderMeta();
+      renderHeroDashboard(overview.dashboard_stats || {});
+      renderSportteryCards({ preserveMatch: true });
+    });
+  });
+
+  container.querySelectorAll(".date-tab-expand").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dateTabsExpanded = btn.dataset.action === "expand";
+      if (!dateTabsExpanded) {
+        sanitizeDateTabState();
+      }
+      renderMeta();
+      renderHeroDashboard(overview.dashboard_stats || {});
+      renderDateTabs();
       renderSportteryCards({ preserveMatch: true });
     });
   });
@@ -391,27 +824,63 @@ function clearMatchDetail() {
   renderPoolAnalysis(null);
   renderDirectionShift(null);
   renderDataSources({});
+  renderAiAnalysisPanel(null, { disabled: true, reason: "请选择左侧赛事后再进行 AI 分析。" });
   Object.values(charts).forEach((chart) => chart?.destroy?.());
   charts = {};
 }
 
-function pickDefaultDateTab() {
-  const tabs = overview?.dashboard_stats?.date_tabs || [];
+function pickDefaultDate() {
+  const tabs = getAllDateTabs();
   const buckets = overview?.dashboard_stats?.date_buckets || {};
-  let fallback = 0;
-  for (let i = 0; i < tabs.length; i += 1) {
-    const tab = tabs[i];
-    if (!tab.date) {
-      fallback = i;
-      continue;
-    }
+  const preds = overview?.predictions?.predictions || [];
+  const yesterday = getYesterdayDate();
+
+  for (const tab of tabs) {
+    if (!tab.date) continue;
+    if (yesterday && tab.date < yesterday && !dateTabsExpanded) continue;
+    const hasFinishedReview = preds.some(
+      (item) => item.match_date === tab.date && item.card_type === "finished"
+    );
+    if (hasFinishedReview) return tab.date;
+  }
+
+  for (const tab of tabs) {
+    if (!tab.date) continue;
+    if (yesterday && tab.date < yesterday && !dateTabsExpanded) continue;
+    const hasFinished = preds.some(
+      (item) =>
+        item.match_date === tab.date &&
+        (item.card_type === "finished" || tab.label === "昨日")
+    );
+    if (hasFinished) return tab.date;
+  }
+
+  for (const tab of tabs) {
+    if (!tab.date) continue;
+    if (yesterday && tab.date < yesterday && !dateTabsExpanded) continue;
+    const needsAttention = preds.some(
+      (item) =>
+        item.match_date === tab.date &&
+        (item.lifecycle_phase === "live" ||
+          item.lifecycle_phase === "awaiting_result" ||
+          item.track_source === "journal")
+    );
+    if (needsAttention) return tab.date;
+  }
+
+  for (const tab of tabs) {
+    if (!tab.date) continue;
+    if (yesterday && tab.date < yesterday && !dateTabsExpanded) continue;
     const bucket = buckets[tab.date] || {};
     if (bucket.total > 0) {
-      if (tab.label === "今天") return i;
-      if (fallback === 0) fallback = i;
+      if (tab.label === "今天") return tab.date;
+      if (tab.label === "昨日") return tab.date;
     }
   }
-  return fallback;
+
+  const visible = getVisibleDateTabs();
+  const firstDated = visible.find((tab) => tab.date);
+  return firstDated?.date || "";
 }
 
 function sanitizeCardText(text) {
@@ -459,6 +928,56 @@ function renderPendingMatchDetail(match) {
   renderPoolAnalysis(null);
   renderDirectionShift(null);
   renderDataSources({ data_sources: { sporttery: true, unified: false, foreign: "待开售" } });
+  renderAiAnalysisPanel(match, {
+    disabled: true,
+    reason: "待开售场次暂无 SP 走势，请在固定奖金开放后再使用 AI 分析。",
+  });
+  Object.values(charts).forEach((chart) => chart?.destroy?.());
+  charts = {};
+}
+
+function renderFinishedMatchDetail(match) {
+  const hadHit = match.had_won === true ? "方向命中" : match.had_won === false ? "方向偏差" : "待赛果";
+  const scoreHit = match.crs_won === true ? "比分命中" : match.crs_won === false ? "比分偏差" : "待赛果";
+  document.getElementById("prediction-direction").textContent = match.actual_had || match.direction || "已完场";
+  document.getElementById("prediction-confidence").textContent =
+    `${hadHit} · ${scoreHit}`;
+  document.getElementById("prediction-confidence").className =
+    `badge-confidence tag ${match.had_won && match.crs_won ? "high" : match.had_won ? "mid" : "low"}`;
+
+  document.getElementById("sporttery-stats").innerHTML = `
+    <div class="stat-card">
+      <div class="label">预测方向</div>
+      <div class="value">${match.direction || "—"}</div>
+      <div class="hint">${match.predicted_score ? `预测比分 ${match.predicted_score}` : "赛前预测快照"}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">实际赛果</div>
+      <div class="value">${match.actual_had || "待出"}</div>
+      <div class="hint">${match.actual_score ? `实际比分 ${match.actual_score}` : "等待体彩官方赛果"}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">结算结果</div>
+      <div class="value">${match.settlement_status === "settled" ? `${match.total_pnl || 0} 元` : "待结算"}</div>
+      <div class="hint">${hadHit} · ${scoreHit}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">训练样本</div>
+      <div class="value">${match.had_won === false || match.crs_won === false ? "已入库" : "无需纠偏"}</div>
+      <div class="hint">方向或比分不一致时进入训练语料</div>
+    </div>
+  `;
+  document.getElementById("bet-simulation").innerHTML = "";
+  document.getElementById("fusion-analysis").innerHTML =
+    [match.direction_note || "已完场复盘。"].map((line) => `<li>${line}</li>`).join("");
+  document.getElementById("foreign-compare").innerHTML =
+    `<li class="empty-note">已完场场次展示预测复盘，不再计算实时外网差值。</li>`;
+  renderMatchIntelligence(null);
+  renderPoolAnalysis(null);
+  renderDirectionShift(null);
+  renderDataSources({ data_sources: { sporttery: true, unified: Boolean(match.unified_linked), foreign: "复盘" } });
+  renderAiAnalysisPanel(match);
+  maybeAutoReviewFinished(match).catch(console.error);
   Object.values(charts).forEach((chart) => chart?.destroy?.());
   charts = {};
 }
@@ -479,11 +998,11 @@ function renderSportteryCards(options = {}) {
 
   grid.innerHTML = predictions
     .map((item) => `
-      <article class="match-card sporttery-card ${item.unified_linked ? "unified-linked" : ""} ${item.analysis_available === false ? "pending-sale" : ""}" data-match-id="${item.match_id}">
+      <article class="match-card sporttery-card ${item.unified_linked ? "unified-linked" : ""} ${item.analysis_available === false ? "pending-sale" : ""} ${item.card_type === "finished" ? "finished-card" : ""} ${item.lifecycle_phase === "live" ? "lifecycle-live" : ""} ${item.lifecycle_phase === "awaiting_result" ? "lifecycle-awaiting" : ""}" data-match-id="${item.match_id}">
         <div class="card-top">
           <h3>${item.home} vs ${item.away}</h3>
           <div class="card-badges">
-            ${renderShiftBadge(item.direction_shift)}
+            ${item.card_type === "finished" ? `<span class="shift-badge shift-medium">${item.date_tab_label || "已完场"}</span>` : renderShiftBadge(item.direction_shift)}
             <span class="countdown-badge">${item.countdown_label || "待定"}</span>
           </div>
         </div>
@@ -491,9 +1010,9 @@ function renderSportteryCards(options = {}) {
         <div class="tag-row">${renderDataTags(item.data_tags)}</div>
         <div class="odds-line">
           <span>${item.match_num || "—"}</span>
-          <span>${item.analysis_available === false ? "状态" : "方向"} ${item.direction}</span>
-          <span>比分 ${item.predicted_score}</span>
-          <span class="tag ${confidenceClass(item.confidence)}">${item.confidence}</span>
+          <span>${item.card_type === "finished" ? "预测" : item.analysis_available === false ? "状态" : "方向"} ${item.direction}</span>
+          <span>${item.card_type === "finished" && item.actual_had ? `实际 ${item.actual_had}` : `比分 ${item.predicted_score}`}</span>
+          <span class="tag ${confidenceClass(item.confidence)}">${item.card_type === "finished" ? (item.settlement_status === "settled" ? (item.had_won && item.crs_won ? "命中" : "偏差") : "待赛果") : item.confidence}</span>
         </div>
         <div class="odds-line">
           <span>体彩 ${item.sporttery_had}</span>
@@ -580,6 +1099,13 @@ async function loadSportteryDetail(matchId) {
     return;
   }
 
+  if (cached?.card_type === "finished") {
+    renderFinishedMatchDetail(cached);
+    return;
+  }
+
+  renderAiAnalysisPanel(cached);
+
   const payload = await fetchJson(`/api/sporttery/predict/${encodeURIComponent(matchId)}?foreign=auto`);
   const prediction = payload.prediction;
   const score = payload.score_prediction || cached;
@@ -650,6 +1176,7 @@ async function loadSportteryDetail(matchId) {
 
   renderSportteryCharts(payload);
   await renderBetSimulation(matchId);
+  renderAiAnalysisPanel(cached);
 }
 
 function shortTimeLabel(value) {
@@ -742,8 +1269,8 @@ function renderSettlementSummary() {
     </div>
     <div class="stat-card">
       <div class="label">训练样本</div>
-      <div class="value">${summary.training_count || 0} 条</div>
-      <div class="hint">语料 · 导入 ${summary.training_imported_count || 0} / 实盘 ${summary.training_live_count || 0}</div>
+      <div class="value">${summary.training_samples || summary.training_miss_count || 0} 条</div>
+      <div class="hint">预测偏差 ${summary.training_miss_count || 0} · 语料 ${summary.training_count || 0}</div>
     </div>
     <div class="stat-card">
       <div class="label">累计盈亏</div>
@@ -795,8 +1322,11 @@ async function refreshOverview(options = {}) {
   const mode = document.getElementById("data-mode-select").value;
   overview = await fetchJson(`/api/overview?mode=${encodeURIComponent(mode)}`);
   if (resetDateTab || !preserveMatch) {
-    selectedDateOffset = pickDefaultDateTab();
-    localStorage.setItem(DATE_TAB_STORAGE_KEY, String(selectedDateOffset));
+    dateTabsExpanded = false;
+    selectedDate = pickDefaultDate();
+    localStorage.setItem(DATE_TAB_STORAGE_KEY, selectedDate);
+  } else {
+    sanitizeDateTabState();
   }
   renderMeta();
   renderSettlementSummary();
@@ -830,6 +1360,7 @@ function setupCountdownTicker() {
     document.querySelectorAll(".sporttery-card").forEach((card) => {
       const item = predictions.find((entry) => entry.match_id === card.dataset.matchId);
       if (!item || item.hours_until_kickoff == null) return;
+      if (item.lifecycle_phase && item.lifecycle_phase !== "upcoming") return;
       const nextHours = Math.max(0, item.hours_until_kickoff - 1 / 3600);
       item.hours_until_kickoff = nextHours;
       const badge = card.querySelector(".countdown-badge");
@@ -852,15 +1383,19 @@ async function init() {
   const saved = localStorage.getItem(REFRESH_STORAGE_KEY);
   const savedMode = localStorage.getItem(DATA_MODE_STORAGE_KEY);
   const savedDateTab = localStorage.getItem(DATE_TAB_STORAGE_KEY);
+  dateTabsExpanded = false;
+  if (savedDateTab !== null) {
+    selectedDate = savedDateTab;
+  }
+  setupAiFloatWidget();
   if (saved !== null) select.value = saved;
   if (savedMode) modeSelect.value = savedMode;
-  if (savedDateTab !== null) selectedDateOffset = Number(savedDateTab) || 0;
   setupAutoRefresh(Number(select.value));
 
   select.addEventListener("change", () => setupAutoRefresh(Number(select.value)));
   modeSelect.addEventListener("change", () => {
     localStorage.setItem(DATA_MODE_STORAGE_KEY, modeSelect.value);
-    selectedDateOffset = 0;
+    selectedDate = "";
     refreshOverview({ preserveMatch: false, resetDateTab: true });
   });
 
@@ -894,6 +1429,28 @@ async function init() {
     overview = await fetchJson("/api/overview");
     renderSettlementSummary();
   });
+
+  document.getElementById("ai-send-btn")?.addEventListener("click", () => {
+    const input = document.getElementById("ai-question-input");
+    sendAiQuestion(input?.value || "").catch(console.error);
+  });
+  document.getElementById("ai-question-input")?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendAiQuestion(event.target.value).catch(console.error);
+    }
+  });
+  document.querySelectorAll(".ai-prompt-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const prompt = btn.dataset.prompt || "";
+      const input = document.getElementById("ai-question-input");
+      if (input) input.value = prompt;
+      sendAiQuestion(prompt).catch(console.error);
+    });
+  });
+
+  await loadAiAnalyzeStatus();
+  await loadAiReviewCache();
 
   window.addEventListener("popstate", (event) => {
     const matchId = event.state?.matchId || getMatchIdFromUrl();

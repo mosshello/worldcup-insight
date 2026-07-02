@@ -80,6 +80,26 @@ def _load_fox_map() -> dict[tuple[str, str], dict[str, Any]]:
         return {}
 
 
+def _latest_pool_from_bonus(
+    bonus: dict[str, Any],
+    list_key: str,
+    *,
+    fallback: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    items = bonus.get(list_key) or []
+    if items:
+        return _pool_from_history(items[-1])
+    if fallback:
+        line = fallback.get("goal_line")
+        return {
+            "home": float(fallback["home"]),
+            "draw": float(fallback["draw"]),
+            "away": float(fallback["away"]),
+            "goal_line": float(line) if line not in (None, "") else None,
+        }
+    return {}
+
+
 def predict_score_for_match(
     sporttery_match: dict[str, Any],
     *,
@@ -110,8 +130,15 @@ def predict_score_for_match(
     confidence = _confidence(s_gap, aligned)
 
     bonus = fetch_fixed_bonus(match_id)
-    had_hist = _pool_from_history(bonus["hadList"][-1])
-    hhad_hist = _pool_from_history(bonus["hhadList"][-1]) if bonus.get("hhadList") else {}
+    had_hist = _latest_pool_from_bonus(bonus, "hadList", fallback=had)
+    if not had_hist:
+        had_hist = {
+            "home": float(had["home"]),
+            "draw": float(had["draw"]),
+            "away": float(had["away"]),
+            "goal_line": None,
+        }
+    hhad_hist = _latest_pool_from_bonus(bonus, "hhadList", fallback=hhad or None)
 
     crs_top = top_crs_scores(bonus)
     primary = f"{crs_top[0][0]}-{crs_top[0][1]}" if crs_top else "—"

@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from .sporttery_api import parse_kickoff_beijing
+
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TRAINING_DIR = PROJECT_ROOT / "data" / "training"
@@ -77,11 +79,17 @@ def build_outcome_from_settlement(
     settlement_row: dict[str, Any],
 ) -> dict[str, Any]:
     """将实盘结算结果转为训练语料记录。"""
+    had_won = bool(settlement_row.get("had_won"))
+    crs_won = bool(settlement_row.get("crs_won"))
+    direction_hit = had_won
+    score_hit = crs_won
+    use_for_training = not direction_hit or not score_hit
     return {
-        "sporttery_match_id": str(entry.get("match_id", "")),
+        "sporttery_match_id": str(entry.get("match_id") or entry.get("sporttery_match_id") or ""),
         "home": entry.get("home"),
         "away": entry.get("away"),
         "kickoff_beijing": entry.get("kickoff_beijing"),
+        "business_date": entry.get("business_date"),
         "stage": entry.get("stage"),
         "provider_ids": entry.get("provider_ids"),
         "predicted": {
@@ -99,13 +107,25 @@ def build_outcome_from_settlement(
             "fifa": settlement_row.get("fifa_actual"),
         },
         "settlement": {
-            "had_won": settlement_row.get("had_won"),
-            "crs_won": settlement_row.get("crs_won"),
+            "had_won": had_won,
+            "crs_won": crs_won,
+            "direction_hit": direction_hit,
+            "score_hit": score_hit,
             "total_pnl": settlement_row.get("total_pnl"),
             "direction_hit_fifa": settlement_row.get("direction_hit_fifa"),
             "score_hit_fifa": settlement_row.get("score_hit_fifa"),
             "settled_at": settlement_row.get("settled_at"),
         },
+        "use_for_training": use_for_training,
+        "training_reason": (
+            "direction_miss"
+            if not direction_hit and score_hit
+            else "score_miss"
+            if direction_hit and not score_hit
+            else "both_miss"
+            if not direction_hit and not score_hit
+            else "full_hit"
+        ),
         "source": "live_settlement",
         "ingested_at": _now_iso(),
     }
@@ -157,26 +177,33 @@ def validate_outcome_record(record: dict[str, Any]) -> list[str]:
     return errors
 
 
-def append_outcome(record: dict[str, Any]) -> bool:
-    """追加一条训练语料；同 sporttery_match_id + source 不重复写入。"""
+def upsert_outcome(record: dict[str, Any]) -> bool:
+    """写入或更新训练语料（按 sporttery_match_id + source）。"""
     match_id = str(record.get("sporttery_match_id") or "")
     source = str(record.get("source") or "")
-    if not match_id or validate_outcome_record(record):
+    if not match_id:
+        return False
+    if validate_outcome_record(record):
         return False
 
     corpus = load_training_corpus()
     records: list[dict[str, Any]] = corpus["records"]
-    for existing in records:
-        if (
-            str(existing.get("sporttery_match_id")) == match_id
-            and str(existing.get("source")) == source
-        ):
-            return False
-
-    records.append(record)
+    replaced = False
+    for index, existing in enumerate(records):
+        if str(existing.get("sporttery_match_id")) == match_id and str(existing.get("source")) == source:
+            records[index] = record
+            replaced = True
+            break
+    if not replaced:
+        records.append(record)
     corpus["records"] = records
     _save_corpus(corpus)
     return True
+
+
+def append_outcome(record: dict[str, Any]) -> bool:
+    """追加一条训练语料；同 sporttery_match_id + source 不重复写入。"""
+    return upsert_outcome(record)
 
 
 def audit_training_corpus() -> dict[str, Any]:
@@ -205,14 +232,44 @@ def audit_training_corpus() -> dict[str, Any]:
     }
 
 
+def prune_future_outcomes(*, now: datetime | None = None) -> int:
+    """移除开赛前被误写入的训练语料。"""
+    current = now or datetime.now(BEIJING_TZ)
+    corpus = load_training_corpus()
+    kept: list[dict[str, Any]] = []
+    removed = 0
+    for record in corpus.get("records", []):
+        kickoff = record.get("kickoff_beijing") or ""
+        if len(kickoff) >= 19:
+            kickoff_dt = parse_kickoff_beijing(
+                {"match_date": kickoff[:10], "match_time": kickoff[11:19]}
+            )
+            if kickoff_dt is not None and kickoff_dt > current:
+                removed += 1
+                continue
+        kept.append(record)
+    if removed:
+        corpus["records"] = kept
+        _save_corpus(corpus)
+    return removed
+
+
 def get_training_summary() -> dict[str, Any]:
     corpus = load_training_corpus()
     records = corpus.get("records") or []
     live_count = sum(1 for item in records if item.get("source") == "live_settlement")
     imported_count = sum(1 for item in records if item.get("source") == "imported")
     audit = audit_training_corpus()
+    training_samples = sum(1 for item in records if item.get("use_for_training"))
+    miss_count = sum(
+        1
+        for item in records
+        if item.get("training_reason") in {"direction_miss", "score_miss", "both_miss"}
+    )
     return {
         "training_count": len(records),
+        "training_samples": training_samples,
+        "training_miss_count": miss_count,
         "live_count": live_count,
         "imported_count": imported_count,
         "settlement_epoch": corpus.get("settlement_epoch") or SETTLEMENT_EPOCH,
@@ -220,3 +277,4 @@ def get_training_summary() -> dict[str, Any]:
         "valid_count": audit["valid_count"],
         "invalid_count": audit["invalid_count"],
     }
+

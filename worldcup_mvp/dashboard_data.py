@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from .ai_analyst import build_finished_fusion_payload, chat_match_analysis
 from .analyzer import OUTCOME_LABELS, analyze_match
 from .bet_simulator import simulate_prediction_bet
 from .daily_bet import record_daily_bet
@@ -21,7 +22,8 @@ from .odds_snapshot import load_history
 from .local_match_bundle import has_overlay_entry, load_local_match_bundle
 from .match_intelligence import build_intelligence_for_sporttery, normalize_venue, safe_display_text
 from .pool_analytics import build_pool_analysis
-from .prediction_journal import record_predictions
+from .finished_review import list_finished_review_cards, sync_finished_matches
+from .prediction_journal import journal_entry_to_prediction, list_open_entries, record_predictions
 from .score_predictor import list_upcoming_matches, predict_score_for_match
 from .settlement import get_settlement_summary, settle_open_predictions
 from .sporttery_api import (
@@ -52,7 +54,7 @@ from .unified_bridge import (
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 DATE_TAB_DAYS = 3  # 仅作 unified 索引最小窗口；Tab 由体彩实际销售日动态生成
 WEEKDAY_ZH = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
-RELATIVE_DAY_LABELS = ("今天", "明天", "后天")
+RELATIVE_DAY_LABELS = ("今天", "明天", "后天", "大后天")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MATCHES = PROJECT_ROOT / "data" / "matches_2026-06-29.json"
@@ -60,8 +62,12 @@ HISTORY_GLOB = "odds_history_*.json"
 
 
 def _enrich_prediction_timing(prediction: dict[str, Any]) -> dict[str, Any]:
-    if prediction.get("countdown_label"):
-        return prediction
+    if prediction.get("card_type") == "finished" or prediction.get("settlement_status") == "settled":
+        updated = dict(prediction)
+        updated["lifecycle_phase"] = "finished"
+        updated["countdown_label"] = prediction.get("countdown_label") or "已完场"
+        return updated
+
     kickoff = prediction.get("kickoff_beijing") or ""
     if len(kickoff) < 19:
         return prediction
@@ -70,7 +76,11 @@ def _enrich_prediction_timing(prediction: dict[str, Any]) -> dict[str, Any]:
     )
     updated = dict(prediction)
     updated["hours_until_kickoff"] = enriched["hours_until_kickoff"]
-    updated["countdown_label"] = enriched["countdown_label"]
+    updated["lifecycle_phase"] = enriched.get("lifecycle_phase")
+    if enriched.get("lifecycle_phase") != "upcoming":
+        updated["countdown_label"] = enriched["countdown_label"]
+    elif not prediction.get("countdown_label"):
+        updated["countdown_label"] = enriched["countdown_label"]
     return updated
 
 
@@ -270,6 +280,8 @@ def _fetch_foreign_odds(
 
 def _kickoff_date(item: dict[str, Any]) -> str:
     """体彩销售日优先（businessDate），与竞彩网「今日场次」口径一致。"""
+    if item.get("card_type") == "finished" and item.get("match_date"):
+        return str(item["match_date"])[:10]
     business = item.get("business_date")
     if business:
         return str(business)[:10]
@@ -284,6 +296,8 @@ def _kickoff_date(item: dict[str, Any]) -> str:
 
 def _relative_day_label(day: date, today: date) -> str:
     offset = (day - today).days
+    if offset == -1:
+        return "昨日"
     if 0 <= offset < len(RELATIVE_DAY_LABELS):
         return RELATIVE_DAY_LABELS[offset]
     return day.strftime("%m-%d")
@@ -369,20 +383,35 @@ def _build_date_buckets(predictions: list[dict[str, Any]]) -> dict[str, dict[str
     return buckets
 
 
+def _split_date_tabs(
+    tabs: list[dict[str, str]],
+    cutoff: str,
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    visible = [tab for tab in tabs if not tab.get("date") or tab["date"] >= cutoff]
+    older = [tab for tab in tabs if tab.get("date") and tab["date"] < cutoff]
+    return visible, older
+
+
 def _dashboard_stats(predictions: list[dict[str, Any]], unified_index: dict[str, Any]) -> dict[str, Any]:
     today = datetime.now(BEIJING_TZ)
+    yesterday = (today.date() - timedelta(days=1)).isoformat()
     high = sum(1 for item in predictions if item.get("confidence") == "高")
     unified_count = sum(1 for item in predictions if item.get("unified_linked"))
     overlay_count = sum(1 for item in predictions if "overlay" in (item.get("data_tags") or []))
+    date_tabs = _build_date_tabs(predictions) if predictions else _beijing_date_labels()
+    date_tabs_default, date_tabs_older = _split_date_tabs(date_tabs, yesterday)
     return {
         "beijing_now": today.isoformat(timespec="seconds"),
         "beijing_date": today.date().isoformat(),
+        "yesterday_date": yesterday,
         "total_upcoming": len(predictions),
         "unified_linked": unified_count,
         "high_confidence": high,
         "overlay_matches": overlay_count,
         "unified_index_total": unified_index.get("match_count", 0),
-        "date_tabs": _build_date_tabs(predictions) if predictions else _beijing_date_labels(),
+        "date_tabs": date_tabs,
+        "date_tabs_default": date_tabs_default,
+        "older_date_count": len(date_tabs_older),
         "date_buckets": _build_date_buckets(predictions),
     }
 
@@ -397,10 +426,12 @@ def _enrich_prediction_card(
     by_id = unified_index.get("by_sporttery_id") or {}
     unified_match = by_id.get(str(item.get("match_id")))
     enriched["unified_linked"] = unified_match is not None
-    enriched["data_tags"] = []
+    existing_tags = list(enriched.get("data_tags") or [])
+    enriched["data_tags"] = existing_tags
 
     if unified_match:
-        enriched["data_tags"].append("三源")
+        if "三源" not in enriched["data_tags"]:
+            enriched["data_tags"].append("三源")
         enriched["stage"] = safe_display_text(unified_match.get("stage"), fallback="淘汰赛")
         enriched["fifa_stage"] = safe_display_text(
             (unified_match.get("data_provenance") or {}).get("fifa_stage_name")
@@ -411,18 +442,22 @@ def _enrich_prediction_card(
         if venue_label:
             enriched["venue_label"] = venue_label
     else:
-        enriched["data_tags"].append("体彩")
+        if "体彩" not in enriched["data_tags"]:
+            enriched["data_tags"].append("体彩")
     if enriched.get("analysis_available") is False:
-        enriched["data_tags"].append("待开售")
+        if "待开售" not in enriched["data_tags"]:
+            enriched["data_tags"].append("待开售")
 
     local = load_local_match_bundle(item.get("home", ""), item.get("away", ""))
     if local:
-        enriched["data_tags"].append("本地情报")
+        if "本地情报" not in enriched["data_tags"]:
+            enriched["data_tags"].append("本地情报")
         enriched["stage"] = enriched.get("stage") or local.get("stage")
         enriched["competition"] = local.get("competition") or item.get("league")
 
     if has_overlay_entry(item.get("home", ""), item.get("away", "")):
-        enriched["data_tags"].append("overlay")
+        if "overlay" not in enriched["data_tags"]:
+            enriched["data_tags"].append("overlay")
 
     enriched["region_label"] = (
         f"{item.get('league') or '世界杯'}"
@@ -483,8 +518,60 @@ def _pending_prediction_from_match(match: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _merge_journal_predictions(predictions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """补回已从体彩列表消失、但日志仍待结算的场次。"""
+    merged = list(predictions)
+    seen = {str(item.get("match_id")) for item in merged}
+    for entry in list_open_entries():
+        match_id = str(entry.get("match_id", ""))
+        if not match_id or match_id in seen:
+            continue
+        card = _enrich_prediction_timing(journal_entry_to_prediction(entry))
+        card["match_date"] = _kickoff_date(card)
+        merged.append(card)
+        seen.add(match_id)
+    return merged
+
+
+def _merge_finished_reviews(predictions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """合并已完场复盘卡片；同场次以完场卡覆盖未开赛占位。"""
+    finished_by_id = {
+        str(card.get("match_id")): card
+        for card in list_finished_review_cards(lookback_days=4)
+        if card.get("match_id")
+    }
+    if not finished_by_id:
+        return list(predictions)
+
+    merged: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in predictions:
+        match_id = str(item.get("match_id", ""))
+        if match_id in finished_by_id:
+            merged.append(finished_by_id[match_id])
+            seen.add(match_id)
+        else:
+            merged.append(item)
+            if match_id:
+                seen.add(match_id)
+
+    for match_id, card in finished_by_id.items():
+        if match_id not in seen:
+            merged.append(card)
+    return merged
+
+
+def _auto_settle_finished() -> dict[str, Any] | None:
+    """刷新时尝试结算已完赛场次（体彩赛果已出）。"""
+    try:
+        return sync_finished_matches(lookback_days=4)
+    except Exception:
+        return None
+
+
 def get_upcoming_score_predictions() -> dict[str, Any]:
     try:
+        _auto_settle_finished()
         matches = [enrich_match_timing(match) for match in fetch_announced_matches()]
         merged_predictions: list[dict[str, Any]] = []
         for match in matches:
@@ -512,6 +599,9 @@ def get_upcoming_score_predictions() -> dict[str, Any]:
                     "pipeline_status": full.get("pipeline_status"),
                 }
             )
+        merged_predictions = _merge_journal_predictions(merged_predictions)
+        merged_predictions = _merge_finished_reviews(merged_predictions)
+        merged_predictions = [_enrich_prediction_timing(item) for item in merged_predictions]
         index_days = _unified_index_days(matches)
         load_unified_index_merged(days=index_days, force=False)
         predictions = [
@@ -635,6 +725,7 @@ def get_fusion_prediction(
 def get_overview(data_dir: Path | None = None, *, mode: str = "sporttery") -> dict[str, Any]:
     directory = data_dir or PROJECT_ROOT / "data"
     histories = list_history_files(directory)
+    auto_settlement = _auto_settle_finished()
     sporttery = get_sporttery_matches()
     predictions = get_upcoming_score_predictions() if sporttery.get("success") else {
         "success": False,
@@ -677,6 +768,7 @@ def get_overview(data_dir: Path | None = None, *, mode: str = "sporttery") -> di
         "sporttery": sporttery,
         "predictions": predictions,
         "histories": histories,
+        "auto_settlement": auto_settlement,
         "settlement_summary": get_settlement_summary(),
         "provider_health": provider_health,
         "dashboard_stats": dashboard_stats,
@@ -746,3 +838,34 @@ def get_bet_simulation(
             for item in predictions
         ],
     }
+
+
+def _find_prediction_card(match_id: str) -> dict[str, Any] | None:
+    payload = get_upcoming_score_predictions()
+    for item in payload.get("predictions") or []:
+        if str(item.get("match_id")) == str(match_id):
+            return item
+    return None
+
+
+def run_match_chat_analysis(
+    *,
+    match_id: str,
+    question: str,
+    history: list[dict[str, Any]] | None = None,
+    foreign_source: str = "auto",
+) -> dict[str, Any]:
+    """加载单场融合上下文并调用 DeepSeek 对话分析。"""
+    card = _find_prediction_card(match_id)
+    if card and card.get("card_type") == "finished":
+        return chat_match_analysis(build_finished_fusion_payload(card), question, history=history)
+    try:
+        fusion = get_fusion_prediction(
+            match_id=match_id,
+            foreign_source=foreign_source,
+        )
+    except SportteryApiError as exc:
+        if card:
+            return chat_match_analysis(build_finished_fusion_payload(card), question, history=history)
+        return {"success": False, "error": str(exc), "configured": True}
+    return chat_match_analysis(fusion, question, history=history)

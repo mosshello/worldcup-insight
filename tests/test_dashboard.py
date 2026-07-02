@@ -1,9 +1,13 @@
 """仪表盘数据聚合测试。"""
 
 import unittest
+from unittest import mock
 from unittest.mock import patch
 
 from worldcup_mvp.dashboard_data import (
+    _enrich_prediction_timing,
+    _merge_finished_reviews,
+    _split_date_tabs,
     build_snapshot_series,
     get_history_dashboard,
     get_overview,
@@ -12,12 +16,33 @@ from worldcup_mvp.dashboard_data import (
 
 
 class DashboardDataTests(unittest.TestCase):
-    def test_overview_has_sporttery(self) -> None:
+    def test_overview_includes_yesterday_date(self) -> None:
         payload = get_overview()
-        self.assertIn("sporttery", payload)
+        stats = payload.get("dashboard_stats") or {}
+        self.assertIn("yesterday_date", stats)
+        self.assertTrue(stats["yesterday_date"])
         self.assertIn("predictions", payload)
         self.assertIn("provider_health", payload)
         self.assertIn("unified_index", payload)
+
+    def test_split_date_tabs_hides_before_yesterday(self) -> None:
+        tabs = [
+            {"date": "", "label": "全部"},
+            {"date": "2026-06-29", "label": "06-29"},
+            {"date": "2026-06-30", "label": "昨日"},
+            {"date": "2026-07-01", "label": "今天"},
+        ]
+        visible, older = _split_date_tabs(tabs, "2026-06-30")
+        self.assertEqual([tab["date"] for tab in visible], ["", "2026-06-30", "2026-07-01"])
+        self.assertEqual(len(older), 1)
+
+    def test_overview_date_tabs_default(self) -> None:
+        payload = get_overview()
+        stats = payload.get("dashboard_stats") or {}
+        self.assertIn("date_tabs_default", stats)
+        default_dates = [tab["date"] for tab in stats["date_tabs_default"] if tab.get("date")]
+        if stats.get("yesterday_date") and stats.get("older_date_count", 0) > 0:
+            self.assertTrue(all(day >= stats["yesterday_date"] for day in default_dates))
 
     def test_history_dashboard(self) -> None:
         payload = get_history_dashboard("odds_history_bra-jpn.json")
@@ -75,10 +100,18 @@ class DashboardDataTests(unittest.TestCase):
             "pipeline_status": "complete",
         }
         with patch(
+            "worldcup_mvp.dashboard_data._auto_settle_finished", return_value={}
+        ), patch(
             "worldcup_mvp.dashboard_data.fetch_announced_matches", return_value=[match]
         ), patch(
             "worldcup_mvp.dashboard_data._build_fusion_prediction", return_value=full
         ) as build, patch(
+            "worldcup_mvp.dashboard_data._merge_journal_predictions", side_effect=lambda items: items
+        ), patch(
+            "worldcup_mvp.dashboard_data._merge_finished_reviews", side_effect=lambda items: items
+        ), patch(
+            "worldcup_mvp.dashboard_data._enrich_prediction_timing", side_effect=lambda item: item
+        ), patch(
             "worldcup_mvp.dashboard_data.load_unified_index_merged", return_value={}
         ), patch(
             "worldcup_mvp.dashboard_data.enrich_prediction_record", side_effect=lambda item: item
@@ -94,6 +127,48 @@ class DashboardDataTests(unittest.TestCase):
         self.assertIn("pool_analysis", payload["predictions"][0])
         build.assert_called_once()
         record.assert_called_once()
+
+    def test_enrich_prediction_timing_preserves_finished(self) -> None:
+        finished = {
+            "match_id": "2040345",
+            "card_type": "finished",
+            "settlement_status": "settled",
+            "lifecycle_phase": "finished",
+            "countdown_label": "已完场",
+            "kickoff_beijing": "2026-07-01T01:00:00+08:00",
+        }
+        enriched = _enrich_prediction_timing(finished)
+        self.assertEqual(enriched["lifecycle_phase"], "finished")
+        self.assertEqual(enriched["countdown_label"], "已完场")
+
+    @mock.patch("worldcup_mvp.dashboard_data.list_finished_review_cards")
+    def test_merge_finished_reviews_replaces_upcoming(
+        self,
+        mock_finished: mock.Mock,
+    ) -> None:
+        mock_finished.return_value = [
+            {
+                "match_id": "2040351",
+                "card_type": "finished",
+                "settlement_status": "settled",
+                "lifecycle_phase": "finished",
+                "countdown_label": "已完场",
+            }
+        ]
+        upcoming = [
+            {
+                "match_id": "2040351",
+                "card_type": "upcoming",
+                "lifecycle_phase": "awaiting_result",
+                "countdown_label": "待出赛果",
+            },
+            {"match_id": "2040400", "card_type": "upcoming"},
+        ]
+        merged = _merge_finished_reviews(upcoming)
+        by_id = {item["match_id"]: item for item in merged}
+        self.assertEqual(by_id["2040351"]["card_type"], "finished")
+        self.assertEqual(by_id["2040351"]["settlement_status"], "settled")
+        self.assertIn("2040400", by_id)
 
 
 if __name__ == "__main__":

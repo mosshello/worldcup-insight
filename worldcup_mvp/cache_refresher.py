@@ -6,20 +6,32 @@ import threading
 from typing import Any
 
 from .dashboard_data import get_upcoming_score_predictions
+from .ai_review_cache import auto_review_finished_deviations
+from .finished_review import sync_finished_matches
 from .sporttery_api import SportteryApiError
 
 
 def refresh_sporttery_cache() -> dict[str, Any]:
-    """拉取最新未开赛赛事并写入本地缓存。"""
+    """拉取最新未开赛赛事并写入本地缓存，同时尝试结算已完场。"""
     try:
+        settlement = sync_finished_matches(lookback_days=4)
         payload = get_upcoming_score_predictions()
         if not payload.get("success"):
             return {"success": False, "error": payload.get("error", "完整分析失败")}
         predictions = payload.get("predictions") or []
+        settled = settlement.get("settled", 0) if settlement else 0
+        message = f"已缓存 {len(predictions)} 场未开赛预测"
+        if settled:
+            message += f"，自动结算 {settled} 场"
+        ai_result = auto_review_finished_deviations(lookback_days=7)
+        if ai_result.get("generated"):
+            message += f"，AI 复盘 {ai_result['generated']} 场"
         return {
             "success": True,
             "count": len(predictions),
-            "message": f"已缓存 {len(predictions)} 场未开赛预测",
+            "settlement": settlement,
+            "ai_reviews": ai_result,
+            "message": message,
         }
     except SportteryApiError as exc:
         return {"success": False, "error": str(exc)}

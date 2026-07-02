@@ -22,9 +22,17 @@ from worldcup_mvp.dashboard_data import (
     get_sporttery_matches,
     get_upcoming_score_predictions,
     list_history_files,
+    run_match_chat_analysis,
+)
+from worldcup_mvp.ai_analyst import get_analyze_status
+from worldcup_mvp.ai_review_cache import (
+    generate_review_for_match_id,
+    get_review,
+    list_reviews,
 )
 from worldcup_mvp.unified_bridge import get_provider_health
 from worldcup_mvp.settlement import get_settlement_summary, settle_open_predictions
+from worldcup_mvp.sporttery_api import SportteryApiError
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 WEB_ROOT = PROJECT_ROOT / "web"
@@ -80,6 +88,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(data)))
+            if path.suffix in (".js", ".css", ".html"):
+                self.send_header("Cache-Control", "no-cache")
             self.end_headers()
             self._safe_write(data)
         except _CLIENT_GONE_ERRORS:
@@ -94,6 +104,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return float(raw)
         except ValueError:
             return default
+
+    def _read_json_body(self) -> dict[str, Any]:
+        length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(length) if length else b"{}"
+        if not raw:
+            return {}
+        return json.loads(raw.decode("utf-8"))
 
     def do_GET(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
@@ -116,6 +133,23 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
             if route == "/api/doctor":
                 self._send_json(get_provider_health())
+                return
+
+            if route == "/api/analyze/status":
+                self._send_json(get_analyze_status())
+                return
+
+            if route == "/api/analyze/reviews":
+                self._send_json(list_reviews())
+                return
+
+            if route == "/api/analyze/review":
+                match_id = (query.get("match_id") or [""])[0]
+                review = get_review(str(match_id))
+                if not review:
+                    self._send_json({"success": False, "error": "暂无缓存复盘"}, status=HTTPStatus.NOT_FOUND)
+                    return
+                self._send_json({"success": True, "review": review})
                 return
 
             if route == "/api/overview":
@@ -194,6 +228,53 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
         except Exception as exc:
             self._send_json({"error": str(exc)}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    def do_POST(self) -> None:
+        parsed = urllib.parse.urlparse(self.path)
+        route = parsed.path
+
+        try:
+            if route == "/api/analyze/chat":
+                body = self._read_json_body()
+                match_id = str(body.get("match_id") or "").strip()
+                question = str(body.get("question") or "").strip()
+                history = body.get("history")
+                foreign = str(body.get("foreign") or "auto").strip() or "auto"
+                if not match_id:
+                    self._send_json({"success": False, "error": "缺少 match_id"}, status=HTTPStatus.BAD_REQUEST)
+                    return
+                if not isinstance(history, list):
+                    history = None
+                try:
+                    self._send_json(
+                        run_match_chat_analysis(
+                            match_id=match_id,
+                            question=question,
+                            history=history,
+                            foreign_source=foreign,
+                        )
+                    )
+                except SportteryApiError as exc:
+                    self._send_json({"success": False, "error": str(exc)})
+                return
+
+            if route == "/api/analyze/auto-review":
+                body = self._read_json_body()
+                match_id = str(body.get("match_id") or "").strip()
+                force = bool(body.get("force"))
+                if not match_id:
+                    self._send_json({"success": False, "error": "缺少 match_id"}, status=HTTPStatus.BAD_REQUEST)
+                    return
+                self._send_json(generate_review_for_match_id(match_id, force=force))
+                return
+
+            self.send_error(HTTPStatus.NOT_FOUND)
+        except json.JSONDecodeError:
+            self._send_json({"success": False, "error": "请求体必须是 JSON"}, status=HTTPStatus.BAD_REQUEST)
+        except _CLIENT_GONE_ERRORS:
+            return
+        except Exception as exc:
+            self._send_json({"success": False, "error": str(exc)}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
 def main() -> int:

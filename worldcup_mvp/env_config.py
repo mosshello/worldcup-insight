@@ -26,3 +26,27 @@ def get_odds_api_key() -> str | None:
     load_dotenv()
     key = os.environ.get("ODDS_API_KEY", "").strip()
     return key or None
+
+
+def get_deepseek_api_key() -> str | None:
+    load_dotenv()
+    key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    return key or None
+
+
+def get_deepseek_model() -> str:
+    load_dotenv()
+    model = os.environ.get("DEEPSEEK_MODEL", "").strip()
+    return model or "deepseek-chat"
+
+
+def get_deepseek_reasoning_effort() -> str | None:
+    load_dotenv()
+    effort = os.environ.get("DEEPSEEK_REASONING_EFFORT", "").strip()
+    return effort or None
+
+
+def get_deepseek_thinking_enabled() -> bool:
+    load_dotenv()
+    raw = os.environ.get("DEEPSEEK_THINKING", "").strip().lower()
+    return raw in ("1", "true", "yes", "enabled", "on")

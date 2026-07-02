@@ -39,6 +39,29 @@ class UpcomingMatchTests(unittest.TestCase):
         now = datetime(2026, 6, 29, tzinfo=BEIJING)
         self.assertFalse(is_upcoming_match(match, now=now))
 
+    def test_trackable_keeps_recently_started(self) -> None:
+        from worldcup_mvp.sporttery_api import is_trackable_announced_match, match_lifecycle_phase
+
+        match = {
+            "match_date": "2026-07-01",
+            "match_time": "01:00:00",
+            "pools": {"had": {"home": 1.5, "draw": 3.5, "away": 5.0}},
+        }
+        now = datetime(2026, 7, 1, 2, 30, tzinfo=BEIJING)
+        self.assertTrue(is_trackable_announced_match(match, now=now))
+        self.assertEqual(match_lifecycle_phase(match, now=now), "live")
+
+    def test_trackable_drops_old_finished(self) -> None:
+        from worldcup_mvp.sporttery_api import is_trackable_announced_match
+
+        match = {
+            "match_date": "2020-01-01",
+            "match_time": "12:00:00",
+            "pools": {"had": {"home": 1.5, "draw": 3.5, "away": 5.0}},
+        }
+        now = datetime(2026, 7, 1, tzinfo=BEIJING)
+        self.assertFalse(is_trackable_announced_match(match, now=now))
+
     def test_without_had_is_excluded(self) -> None:
         match = {"match_date": "2099-01-01", "match_time": "12:00:00", "pools": {"had": None}}
         self.assertFalse(is_upcoming_match(match))

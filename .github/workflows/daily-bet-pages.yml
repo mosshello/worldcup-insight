@@ -33,13 +33,17 @@ jobs:
           else:
               print(f"实时源不可用，继续发布仓库内最后一次已验证账本：{result.get('error')}")
           PY
+      - name: 自动生成完场 AI 复盘
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: python scripts/run_ai_reviews.py
       - name: 生成静态站点
         run: python scripts/generate_pages.py
       - name: 保存账本快照
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add data/daily_bets.json docs
+          git add data/daily_bets.json data/ai_reviews.json docs
           git diff --cached --quiet || git commit -m "chore: 更新每日模拟投注账本"
           git push
       - uses: actions/configure-pages@v5

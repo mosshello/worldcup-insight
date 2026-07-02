@@ -21,6 +21,7 @@ from .sporttery_api import (
     SportteryApiError,
     fetch_fixed_bonus_detail,
     fetch_results_by_date,
+    parse_kickoff_beijing,
     parse_match_result_list,
 )
 
@@ -90,6 +91,7 @@ def settle_open_predictions(
                 {"match_id": match_id, "status": "pre_kickoff", "kickoff_beijing": kickoff.isoformat()}
             )
             continue
+
         try:
             detail = fetch_fixed_bonus_detail(match_id)
         except SportteryApiError as exc:
@@ -177,6 +179,8 @@ def get_settlement_summary() -> dict[str, Any]:
         "total_pnl": round(total_pnl, 2),
         "settlement_epoch": epoch,
         "training_count": training.get("training_count", 0),
+        "training_samples": training.get("training_samples", 0),
+        "training_miss_count": training.get("training_miss_count", 0),
         "training_live_count": training.get("live_count", 0),
         "training_imported_count": training.get("imported_count", 0),
         "open": open_entries[:20],

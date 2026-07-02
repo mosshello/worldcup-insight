@@ -42,6 +42,8 @@ DEFAULT_HEADERS = {
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = (0.8, 2.0, 4.0)
 RETRYABLE_HTTP_CODES = {403, 429, 500, 502, 503, 504}
+MATCH_LIVE_HOURS = 3.0
+MATCH_TRACKING_HOURS = 72.0
 
 _sporttery_http: HttpJsonClient | None = None
 
@@ -193,12 +195,60 @@ def format_countdown(hours: float | None) -> str:
     return f"距开赛 {hours / 24:.1f} 天"
 
 
+def hours_since_kickoff(match: dict[str, Any], *, now: datetime | None = None) -> float | None:
+    """距离开赛已过去的小时数；未开赛返回 None。"""
+    kickoff = parse_kickoff_beijing(match)
+    if kickoff is None:
+        return None
+    current = now or datetime.now(BEIJING_TZ)
+    if kickoff > current:
+        return None
+    return (current - kickoff).total_seconds() / 3600
+
+
+def match_lifecycle_phase(match: dict[str, Any], *, now: datetime | None = None) -> str:
+    """upcoming · live · awaiting_result"""
+    kickoff = parse_kickoff_beijing(match)
+    if kickoff is None:
+        return "upcoming"
+    current = now or datetime.now(BEIJING_TZ)
+    if kickoff > current:
+        return "upcoming"
+    elapsed = hours_since_kickoff(match, now=current) or 0.0
+    if elapsed <= MATCH_LIVE_HOURS:
+        return "live"
+    return "awaiting_result"
+
+
+def lifecycle_countdown_label(match: dict[str, Any], *, now: datetime | None = None) -> str:
+    phase = match_lifecycle_phase(match, now=now)
+    if phase == "live":
+        return "进行中"
+    if phase == "awaiting_result":
+        return "待出赛果"
+    return format_countdown(hours_until_kickoff(match, now=now))
+
+
+def is_trackable_announced_match(match: dict[str, Any], *, now: datetime | None = None) -> bool:
+    """官网已公布且仍在跟踪窗口内（未开赛、进行中、待出赛果）。"""
+    kickoff = parse_kickoff_beijing(match)
+    if kickoff is None:
+        return True
+    current = now or datetime.now(BEIJING_TZ)
+    if kickoff > current:
+        return True
+    elapsed = hours_since_kickoff(match, now=current) or 0.0
+    return elapsed <= MATCH_TRACKING_HOURS
+
+
 def enrich_match_timing(match: dict[str, Any], *, now: datetime | None = None) -> dict[str, Any]:
-    """为比赛对象附加倒计时字段。"""
+    """为比赛对象附加倒计时与生命周期字段。"""
     hours = hours_until_kickoff(match, now=now)
+    phase = match_lifecycle_phase(match, now=now)
     enriched = dict(match)
     enriched["hours_until_kickoff"] = round(hours, 2) if hours is not None else None
-    enriched["countdown_label"] = format_countdown(hours)
+    enriched["lifecycle_phase"] = phase
+    enriched["countdown_label"] = lifecycle_countdown_label(match, now=now)
     return enriched
 
 
@@ -215,11 +265,7 @@ def is_upcoming_match(match: dict[str, Any], *, now: datetime | None = None) -> 
 
 def is_announced_match(match: dict[str, Any], *, now: datetime | None = None) -> bool:
     """官网已公布且尚未开赛的场次，包含待开售。"""
-    kickoff = parse_kickoff_beijing(match)
-    if kickoff is None:
-        return True
-    current = now or datetime.now(BEIJING_TZ)
-    return kickoff > current
+    return is_trackable_announced_match(match, now=now)
 
 
 def fetch_upcoming_matches(*, pool_code: str = "had,hhad") -> list[dict[str, Any]]:
@@ -240,7 +286,7 @@ def fetch_scheduled_matches() -> list[dict[str, Any]]:
         {"clientCode": "3001"},
     )
     matches = _flatten_matches(payload)
-    scheduled = [match for match in matches if is_announced_match(match)]
+    scheduled = [match for match in matches if is_trackable_announced_match(match)]
     scheduled.sort(
         key=lambda item: parse_kickoff_beijing(item)
         or datetime.max.replace(tzinfo=BEIJING_TZ)
@@ -358,6 +404,18 @@ def fetch_matches(*, pool_code: str = "had,hhad") -> list[dict[str, Any]]:
     return _flatten_matches(payload)
 
 
+def _match_from_journal(match_id: str | int) -> dict[str, Any] | None:
+    from .prediction_journal import find_open_entry, journal_entry_to_match
+
+    entry = find_open_entry(match_id)
+    if entry is None:
+        return None
+    match = journal_entry_to_match(entry)
+    if match is None:
+        return None
+    return enrich_match_timing(match)
+
+
 def find_match(
     *,
     home: str | None = None,
@@ -366,11 +424,23 @@ def find_match(
     pool_code: str = "had,hhad",
     upcoming_only: bool = False,
 ) -> dict[str, Any]:
+    if match_id:
+        journal_match = _match_from_journal(match_id)
+        if journal_match is not None:
+            return journal_match
+
     matches = fetch_upcoming_matches(pool_code=pool_code) if upcoming_only else fetch_matches(pool_code=pool_code)
     if match_id:
         for match in matches:
             if match["match_id"] == str(match_id):
                 return match
+        trackable = fetch_scheduled_matches()
+        for match in trackable:
+            if match["match_id"] == str(match_id):
+                return match
+        journal_match = _match_from_journal(match_id)
+        if journal_match is not None:
+            return journal_match
         raise SportteryApiError(f"未找到体彩 matchId={match_id}")
 
     if home and away:

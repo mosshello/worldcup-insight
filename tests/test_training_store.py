@@ -18,7 +18,7 @@ from worldcup_mvp.training_store import (
 
 
 class TrainingStoreTests(unittest.TestCase):
-    def test_append_outcome_dedupes(self) -> None:
+    def test_append_outcome_upserts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             training_path = Path(tmp) / "historical_outcomes.json"
             with patch("worldcup_mvp.training_store.TRAINING_FILE", training_path):
@@ -31,9 +31,11 @@ class TrainingStoreTests(unittest.TestCase):
                     "actual": {"had": "客胜", "score": "1:2"},
                     "settlement": {"settled_at": "2026-07-01T03:00:00+08:00"},
                     "source": "live_settlement",
+                    "use_for_training": True,
                 }
                 self.assertTrue(append_outcome(record))
-                self.assertFalse(append_outcome(record))
+                record["use_for_training"] = False
+                self.assertTrue(append_outcome(record))
                 summary = get_training_summary()
                 self.assertEqual(summary["training_count"], 1)
                 self.assertEqual(summary["invalid_count"], 0)
