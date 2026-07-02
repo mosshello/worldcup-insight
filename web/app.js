@@ -44,7 +44,32 @@ function renderShiftBadge(shift) {
   return "";
 }
 
-function renderDirectionShift(shift) {
+function renderShiftPrediction(shiftPrediction) {
+  if (!shiftPrediction?.active) return "";
+  const initial = shiftPrediction.initial || {};
+  const adjusted = shiftPrediction.adjusted || {};
+  return `
+    <div class="shift-prediction-box">
+      <div class="shift-prediction-head">变盘策略对照 <span class="hint-inline">告警为主 · 临场参考</span></div>
+      <div class="shift-prediction-grid">
+        <div class="shift-prediction-col">
+          <div class="label">${initial.label || "初盘/首次"}</div>
+          <div class="value">${initial.direction || "—"}</div>
+          <div class="hint">比分 ${initial.predicted_score || "—"}</div>
+        </div>
+        <div class="shift-prediction-arrow">→</div>
+        <div class="shift-prediction-col adjusted">
+          <div class="label">${adjusted.label || "变盘后"}</div>
+          <div class="value">${adjusted.direction || "—"}</div>
+          <div class="hint">比分 ${adjusted.predicted_score || "—"}</div>
+        </div>
+      </div>
+      ${shiftPrediction.note ? `<p class="hint shift-prediction-note">${shiftPrediction.note}</p>` : ""}
+    </div>
+  `;
+}
+
+function renderDirectionShift(shift, shiftPrediction) {
   const list = document.getElementById("direction-shift-analysis");
   const card = document.getElementById("direction-shift-card");
   if (!list || !card) return;
@@ -70,7 +95,9 @@ function renderDirectionShift(shift) {
   const bullets = (shift.alerts?.length ? shift.alerts : shift.summary_bullets || [])
     .map((line) => `<li class="${severityClass}">${line}</li>`)
     .join("");
-  list.innerHTML = meta.join("") + bullets;
+  list.innerHTML = meta.join("") + bullets + (shiftPrediction?.active
+    ? `<li class="shift-prediction-wrap">${renderShiftPrediction(shiftPrediction)}</li>`
+    : "");
 }
 
 function pct(value) {
@@ -1014,6 +1041,7 @@ function renderSportteryCards(options = {}) {
           <span>${item.card_type === "finished" && item.actual_had ? `实际 ${item.actual_had}` : `比分 ${item.predicted_score}`}</span>
           <span class="tag ${confidenceClass(item.confidence)}">${item.card_type === "finished" ? (item.settlement_status === "settled" ? (item.had_won && item.crs_won ? "命中" : "偏差") : "待赛果") : item.confidence}</span>
         </div>
+        ${item.shift_prediction?.active && item.shift_prediction.changed ? `<div class="odds-line shift-adjusted-line"><span class="shift-adjusted-hint">变盘后 ${item.shift_prediction.adjusted.direction} · ${item.shift_prediction.adjusted.predicted_score}</span></div>` : ""}
         <div class="odds-line">
           <span>体彩 ${item.sporttery_had}</span>
         </div>
@@ -1105,10 +1133,12 @@ async function loadSportteryDetail(matchId) {
   }
 
   renderAiAnalysisPanel(cached);
+  renderDirectionShift(cached?.direction_shift, cached?.shift_prediction);
 
   const payload = await fetchJson(`/api/sporttery/predict/${encodeURIComponent(matchId)}?foreign=auto`);
   const prediction = payload.prediction;
   const score = payload.score_prediction || cached;
+  const shiftPrediction = payload.shift_prediction || score.shift_prediction || cached?.shift_prediction;
 
   document.getElementById("sporttery-stats").innerHTML = `
     <div class="stat-card">
@@ -1121,6 +1151,17 @@ async function loadSportteryDetail(matchId) {
       <div class="value">${score.predicted_score}</div>
       <div class="hint">${(score.alt_scores || []).slice(0, 2).join("；") || "无备选"}</div>
     </div>
+    ${shiftPrediction?.active ? `
+    <div class="stat-card shift-stat-card">
+      <div class="label">${shiftPrediction.initial?.label || "初盘/首次"}</div>
+      <div class="value">${shiftPrediction.initial?.direction || "—"}</div>
+      <div class="hint">比分 ${shiftPrediction.initial?.predicted_score || "—"}</div>
+    </div>
+    <div class="stat-card shift-stat-card adjusted">
+      <div class="label">${shiftPrediction.adjusted?.label || "变盘后"}</div>
+      <div class="value">${shiftPrediction.adjusted?.direction || "—"}</div>
+      <div class="hint">比分 ${shiftPrediction.adjusted?.predicted_score || "—"}</div>
+    </div>` : ""}
     <div class="stat-card">
       <div class="label">距开赛</div>
       <div class="value" style="font-size:18px">${cached?.countdown_label || "待定"}</div>
@@ -1152,7 +1193,7 @@ async function loadSportteryDetail(matchId) {
 
   renderMatchIntelligence(payload.match_intelligence);
   renderPoolAnalysis(payload.pool_analysis);
-  renderDirectionShift(payload.direction_shift || prediction.direction_shift);
+  renderDirectionShift(payload.direction_shift || prediction.direction_shift, shiftPrediction);
   renderDataSources(payload);
 
   const compare = document.getElementById("foreign-compare");

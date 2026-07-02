@@ -104,6 +104,21 @@ def build_match_context(fusion: dict[str, Any]) -> str:
         for alert in shift.get("alerts") or []:
             lines.append(f"- {alert}")
 
+    shift_pred = fusion.get("shift_prediction") or score.get("shift_prediction") or {}
+    if shift_pred.get("active"):
+        initial = shift_pred.get("initial") or {}
+        adjusted = shift_pred.get("adjusted") or {}
+        lines.extend(
+            [
+                "",
+                "## 变盘策略对照（告警为主，仅供参考）",
+                f"- {initial.get('label') or '初盘'}：{initial.get('direction') or '—'} · 比分 {initial.get('predicted_score') or '—'}",
+                f"- {adjusted.get('label') or '变盘后'}：{adjusted.get('direction') or '—'} · 比分 {adjusted.get('predicted_score') or '—'}",
+            ]
+        )
+        if shift_pred.get("note"):
+            lines.append(f"- 说明：{shift_pred['note']}")
+
     pool_lines = pool.get("summary_bullets") or []
     if pool_lines:
         lines.extend(["", "## 多玩法分析"])

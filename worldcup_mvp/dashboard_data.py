@@ -676,6 +676,7 @@ def _build_fusion_prediction(
         alerts = delta_alerts(deltas)
 
     direction_shift = prediction.get("direction_shift") or score_prediction.get("direction_shift")
+    shift_prediction = score_prediction.get("shift_prediction")
 
     data_sources = {
         "sporttery": True,
@@ -695,6 +696,7 @@ def _build_fusion_prediction(
         "prediction": prediction,
         "score_prediction": score_prediction,
         "direction_shift": direction_shift,
+        "shift_prediction": shift_prediction,
         "history": history,
         "series": build_sporttery_series(history),
         "context_analysis": context_analysis,

@@ -15,7 +15,8 @@ from .sporttery_api import (
 )
 from .sporttery_cache import load_snapshot
 from .direction_shift import analyze_direction_shift
-from .prediction_journal import get_open_direction_key
+from .prediction_journal import find_open_entry, get_open_direction_key
+from .shift_prediction import build_shift_prediction
 
 
 def _had_history_from_bonus(bonus: dict[str, Any]) -> list[dict[str, Any]]:
@@ -168,6 +169,13 @@ def predict_score_for_match(
         foreign_probs=fox_probs,
         journal_direction_key=get_open_direction_key(match_id),
     )
+    shift_prediction = build_shift_prediction(
+        direction_shift,
+        crs_top,
+        journal_entry=find_open_entry(match_id),
+        current_direction_key=s_pick,
+        current_predicted_score=primary,
+    )
 
     return {
         "match_id": match_id,
@@ -208,6 +216,7 @@ def predict_score_for_match(
         "fox_source": fox.get("source") or ("sporttery.cn" if not fox else "fox-sports/fanduel"),
         "direction_note": direction_note,
         "direction_shift": direction_shift,
+        "shift_prediction": shift_prediction,
     }
 
 

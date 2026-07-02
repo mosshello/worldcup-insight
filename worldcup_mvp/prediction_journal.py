@@ -118,7 +118,7 @@ def record_predictions(
                 )
                 if kickoff_dt is not None and kickoff_dt <= now:
                     continue
-        indexed[match_id] = {
+        entry_data = {
             "match_id": match_id,
             "recorded_at": recorded_at,
             "home": prediction.get("home"),
@@ -136,6 +136,20 @@ def record_predictions(
             "stake_crs": stake_crs,
             "status": "open",
         }
+        if previous:
+            if previous.get("initial_direction_key"):
+                entry_data["initial_direction"] = previous.get("initial_direction")
+                entry_data["initial_direction_key"] = previous.get("initial_direction_key")
+                entry_data["initial_predicted_score"] = previous.get("initial_predicted_score")
+            else:
+                entry_data["initial_direction"] = previous.get("direction")
+                entry_data["initial_direction_key"] = previous.get("direction_key")
+                entry_data["initial_predicted_score"] = previous.get("predicted_score")
+        else:
+            entry_data["initial_direction"] = prediction.get("direction")
+            entry_data["initial_direction_key"] = prediction.get("direction_key")
+            entry_data["initial_predicted_score"] = prediction.get("predicted_score")
+        indexed[match_id] = entry_data
 
     merged = [entry for entry in entries if entry.get("status") == "settled"]
     merged.extend(indexed.values())
