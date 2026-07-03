@@ -304,8 +304,79 @@ def fetch_announced_matches(*, pool_code: str = "had,hhad") -> list[dict[str, An
         if selling:
             merged.append({**match, **selling, "sale_status": "selling", "analysis_available": True})
         else:
-            merged.append({**match, "sale_status": "pending", "analysis_available": False})
+            merged.append(_hydrate_selling_match_from_detail(match))
     return merged
+
+
+def _hydrate_selling_match_from_detail(match: dict[str, Any]) -> dict[str, Any]:
+    """计算器列表偶发漏场时，用单场固定奖金恢复盘口。"""
+    pending = {**match, "sale_status": "pending", "analysis_available": False}
+    if match.get("match_status") != "Selling" or not match.get("match_id"):
+        return pending
+    try:
+        history = fetch_fixed_bonus(match["match_id"])
+    except (SportteryApiError, KeyError, TypeError):
+        return pending
+    had_items = history.get("hadList") or []
+    if not had_items:
+        derived_had = _derive_had_from_hafu(history.get("hafuList") or [])
+        hhad_items = history.get("hhadList") or []
+        hhad = _normalize_pool(hhad_items[-1]) if hhad_items else None
+        if derived_had is None or hhad is None:
+            return pending
+        return {
+            **match,
+            "sale_status": "selling",
+            "analysis_available": True,
+            "pools": {"had": derived_had, "hhad": hhad},
+            "odds_recovered_from_detail": True,
+            "had_market_available": False,
+            "had_derived_from": "hafu-no-vig",
+        }
+    had = _normalize_pool(had_items[-1])
+    if had is None:
+        return pending
+    hhad_items = history.get("hhadList") or []
+    hhad = _normalize_pool(hhad_items[-1]) if hhad_items else None
+    return {
+        **match,
+        "sale_status": "selling",
+        "analysis_available": True,
+        "pools": {"had": had, "hhad": hhad},
+        "odds_recovered_from_detail": True,
+        "had_market_available": True,
+    }
+
+
+def _derive_had_from_hafu(items: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """半全场九项去水后汇总90分钟结果，仅作分析概率。"""
+    if not items:
+        return None
+    latest = items[-1]
+    keys = ("hh", "hd", "ha", "dh", "dd", "da", "ah", "ad", "aa")
+    try:
+        implied = {key: 1 / float(latest[key]) for key in keys}
+    except (KeyError, TypeError, ValueError, ZeroDivisionError):
+        return None
+    total = sum(implied.values())
+    if total <= 0:
+        return None
+    probabilities = {key: value / total for key, value in implied.items()}
+    full_time = {
+        "home": sum(probabilities[key] for key in ("hh", "dh", "ah")),
+        "draw": sum(probabilities[key] for key in ("hd", "dd", "ad")),
+        "away": sum(probabilities[key] for key in ("ha", "da", "aa")),
+    }
+    return {
+        "home": 1 / full_time["home"],
+        "draw": 1 / full_time["draw"],
+        "away": 1 / full_time["away"],
+        "trends": {"home": "flat", "draw": "flat", "away": "flat"},
+        "goal_line": None,
+        "updated_at": f"{latest.get('updateDate', '')} {latest.get('updateTime', '')}".strip(),
+        "derived": True,
+        "derived_from": "hafu-no-vig",
+    }
 
 
 def fetch_fixed_bonus(match_id: str | int) -> dict[str, Any]:
@@ -437,7 +508,7 @@ def find_match(
         trackable = fetch_scheduled_matches()
         for match in trackable:
             if match["match_id"] == str(match_id):
-                return match
+                return _hydrate_selling_match_from_detail(match)
         journal_match = _match_from_journal(match_id)
         if journal_match is not None:
             return journal_match

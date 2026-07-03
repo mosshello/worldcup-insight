@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .recent_lineups import RecentLineupError, infer_recent_lineups
+
 from .local_match_bundle import load_local_match_bundle
 from .team_names import resolve_team
 
@@ -492,6 +494,9 @@ def build_intelligence_report(
         "referee_available": bool(referee),
         "home_away_splits": bool(home_split or away_split),
         "style_profiles": home_profile.get("confederation") != "未知",
+        "recent_lineup_inference": bool(
+            home_ctx.get("recent_availability") and away_ctx.get("recent_availability")
+        ),
     }
 
     def _absence_lines(side: str, summary: dict[str, Any]) -> list[str]:
@@ -533,6 +538,10 @@ def build_intelligence_report(
         "style_note": style_note,
         "quotes": manager_quotes,
         "rotation_risk": rotation_risk,
+        "recent_lineups": {
+            "home": home_ctx.get("recent_availability"),
+            "away": away_ctx.get("recent_availability"),
+        },
     }
 
     return {
@@ -548,6 +557,9 @@ def build_intelligence_report(
         "away_absences": away_abs,
         "home_predicted_lineup": home_ctx.get("predicted_lineup"),
         "away_predicted_lineup": away_ctx.get("predicted_lineup"),
+        "home_lineup_detail": home_ctx.get("lineup_detail"),
+        "away_lineup_detail": away_ctx.get("lineup_detail"),
+        "recent_lineup_method": match.get("recent_lineup_method"),
         "home_tactics": home_ctx.get("tactics"),
         "away_tactics": away_ctx.get("tactics"),
         "manager_quotes": manager_quotes,
@@ -625,12 +637,55 @@ def build_intelligence_for_sporttery(
     else:
         base["stage"] = "竞彩在售（FIFA三源未匹配）"
 
+    recent_lineups: dict[str, Any] | None = None
+    home_identity = resolve_team(home)
+    away_identity = resolve_team(away)
+    mapped_national_teams = (
+        home_identity.get("en") != home and away_identity.get("en") != away
+    )
+    if (
+        (sporttery_match.get("league") == "世界杯" or mapped_national_teams)
+        and sporttery_match.get("kickoff_beijing")
+    ):
+        try:
+            recent_lineups = infer_recent_lineups(
+                home=home,
+                away=away,
+                kickoff_beijing=sporttery_match["kickoff_beijing"],
+                home_aliases=(
+                    str(sporttery_match.get("home_en") or ""),
+                    home_identity.get("en", ""),
+                    home_identity.get("abbr", ""),
+                ),
+                away_aliases=(
+                    str(sporttery_match.get("away_en") or ""),
+                    away_identity.get("en", ""),
+                    away_identity.get("abbr", ""),
+                ),
+            )
+        except (RecentLineupError, ValueError):
+            recent_lineups = None
+    if recent_lineups and recent_lineups.get("available"):
+        team_context = dict(base.get("team_context") or {})
+        for side in ("home", "away"):
+            side_context = dict(team_context.get(side) or {})
+            side_context.update(recent_lineups[side] or {})
+            team_context[side] = side_context
+        base["team_context"] = team_context
+        base["recent_lineup_method"] = recent_lineups.get("method")
+
     report = build_intelligence_report(apply_overlay_to_match(base))
     sources = ["体彩"]
     if local:
         sources.append(f"本地({local.get('_source_file', 'matches')})")
     if report.get("coverage", {}).get("overlay_used"):
         sources.append("overlay")
+    if report.get("coverage", {}).get("recent_lineup_inference"):
+        sources.append("ESPN近期确认首发")
+        report["summary_bullets"].append(
+            "预计首发沿用两队最近一场正式比赛的确认首发；"
+            "作为近期可用性基线，不等同于官方伤停确认。"
+        )
     report["data_sources"] = sources
     report["summary_bullets"].append(
         "FIFA 三源索引仅覆盖「赛程日当天且 Polymarket 可匹配」的场次；本场当前为体彩+本地/overlay 情报。"

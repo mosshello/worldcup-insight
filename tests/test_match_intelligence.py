@@ -116,6 +116,29 @@ class MatchIntelligenceTests(unittest.TestCase):
             )
             self.assertIn("summary_bullets", report)
 
+    def test_recent_lineup_coverage_is_separate_from_injury_api(self) -> None:
+        recent = {
+            "predicted_lineup": [f"P{index}" for index in range(1, 12)],
+            "recent_availability": {
+                "status": "recently_started",
+                "official_injury_confirmation": False,
+            },
+        }
+        report = build_intelligence_report(
+            {
+                "home": "Home",
+                "away": "Away",
+                "team_context": {"home": recent, "away": recent},
+                "data_provenance": {
+                    "injuries": "not-available-from-verified-anonymous-public-api"
+                },
+            },
+            overlay={"matches": {}, "teams": {}},
+        )
+        self.assertTrue(report["coverage"]["recent_lineup_inference"])
+        self.assertFalse(report["coverage"]["injury_api"])
+        self.assertEqual(len(report["home_predicted_lineup"]), 11)
+
 
     def test_normalize_venue_fifa_raw_dict(self) -> None:
         fifa_stadium = {

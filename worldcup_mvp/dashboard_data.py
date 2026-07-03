@@ -656,6 +656,18 @@ def _build_fusion_prediction(
         foreign_source=foreign_src,
     )
     score_prediction = predict_score_for_match(match)
+    if match.get("had_market_available") is False:
+        prediction["had_market_available"] = False
+        prediction["probability_source"] = match.get("had_derived_from")
+        prediction["analysis"].insert(
+            1,
+            "本场普通胜平负未开售；90分钟概率由半全场九项去水汇总，不存在可购买的HAD SP。",
+        )
+        score_prediction["had_odds"] = None
+        score_prediction["sporttery_had"] = "未开售（半全场去水推导概率）"
+        score_prediction["direction_note"] = (
+            "普通胜平负未开售；方向仅作预测，不可按推导公平赔率下单。"
+        )
     unified_match = get_unified_match(match["match_id"])
     context_analysis = build_context_analysis_for_sporttery(match, unified_match)
     match_intelligence = build_intelligence_for_sporttery(match, unified_match)

@@ -2,6 +2,7 @@
 
 import unittest
 from datetime import datetime
+from unittest import mock
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
@@ -119,6 +120,75 @@ class UpcomingMatchTests(unittest.TestCase):
         self.assertTrue(announced[0]["analysis_available"])
         self.assertFalse(announced[1]["analysis_available"])
         self.assertEqual(announced[1]["sale_status"], "pending")
+
+    @patch("worldcup_mvp.sporttery_api.fetch_fixed_bonus")
+    @patch("worldcup_mvp.sporttery_api.fetch_upcoming_matches")
+    @patch("worldcup_mvp.sporttery_api.fetch_scheduled_matches")
+    def test_announced_match_recovers_odds_from_fixed_bonus_detail(
+        self,
+        scheduled: mock.Mock,
+        upcoming: mock.Mock,
+        fixed_bonus: mock.Mock,
+    ) -> None:
+        scheduled.return_value = [
+            {
+                "match_id": "9",
+                "home": "A",
+                "away": "B",
+                "match_status": "Selling",
+                "pools": {"had": None, "hhad": None},
+            }
+        ]
+        upcoming.return_value = []
+        fixed_bonus.return_value = {
+            "hadList": [{"h": "1.05", "d": "12.00", "a": "30.00"}],
+            "hhadList": [
+                {"h": "2.10", "d": "3.45", "a": "2.75", "goalLine": "-2"}
+            ],
+        }
+
+        announced = fetch_announced_matches()
+
+        self.assertTrue(announced[0]["analysis_available"])
+        self.assertEqual(announced[0]["sale_status"], "selling")
+        self.assertEqual(announced[0]["pools"]["had"]["home"], 1.05)
+        self.assertEqual(announced[0]["pools"]["hhad"]["goal_line"], -2.0)
+        self.assertTrue(announced[0]["odds_recovered_from_detail"])
+
+    @patch("worldcup_mvp.sporttery_api.fetch_fixed_bonus")
+    @patch("worldcup_mvp.sporttery_api.fetch_upcoming_matches", return_value=[])
+    @patch("worldcup_mvp.sporttery_api.fetch_scheduled_matches")
+    def test_announced_match_derives_unpriced_had_from_hafu(
+        self,
+        scheduled: mock.Mock,
+        _upcoming: mock.Mock,
+        fixed_bonus: mock.Mock,
+    ) -> None:
+        scheduled.return_value = [
+            {
+                "match_id": "10",
+                "match_status": "Selling",
+                "pools": {"had": None, "hhad": None},
+            }
+        ]
+        fixed_bonus.return_value = {
+            "hadList": [],
+            "hhadList": [{"h": "2.06", "d": "3.45", "a": "2.82", "goalLine": "-2"}],
+            "hafuList": [
+                {
+                    "hh": "1.30", "hd": "30", "ha": "100",
+                    "dh": "3.90", "dd": "12.5", "da": "40",
+                    "ah": "20", "ad": "40", "aa": "80",
+                }
+            ],
+        }
+
+        match = fetch_announced_matches()[0]
+
+        self.assertTrue(match["analysis_available"])
+        self.assertFalse(match["had_market_available"])
+        self.assertEqual(match["had_derived_from"], "hafu-no-vig")
+        self.assertLess(match["pools"]["had"]["home"], 2.0)
 
 
 class CrsParserTests(unittest.TestCase):
