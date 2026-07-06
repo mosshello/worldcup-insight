@@ -3,6 +3,45 @@
   "daily_stake": 1000.0,
   "entries": [
     {
+      "date": "2026-07-06",
+      "recorded_at": "2026-07-06T09:24:20+08:00",
+      "total_stake": 1000.0,
+      "match_id": "2040416",
+      "match_num": "周一093",
+      "home": "葡萄牙",
+      "away": "西班牙",
+      "kickoff_beijing": "2026-07-07T03:00:00+08:00",
+      "market": "胜平负单关 + 二串一",
+      "pick": "客胜",
+      "pick_key": "away",
+      "odds": 1.77,
+      "market_probability": 0.5004,
+      "stake": 1000.0,
+      "potential_return": 1770.0,
+      "potential_profit": 770.0,
+      "single": {
+        "stake": 1000.0,
+        "leg": {
+          "match_id": "2040416",
+          "match_num": "周一093",
+          "home": "葡萄牙",
+          "away": "西班牙",
+          "kickoff_beijing": "2026-07-07T03:00:00+08:00",
+          "pick": "客胜",
+          "pick_key": "away",
+          "odds": 1.77,
+          "market_probability": 0.5004
+        },
+        "potential_return": 1770.0,
+        "potential_profit": 770.0
+      },
+      "parlay": null,
+      "status": "open",
+      "realized_pnl": null,
+      "selection_rule": "单场取稳定方向第一名；二串一须组合SP≥2.00，并取联合去水概率最高组合",
+      "disclaimer": "仅为模拟记账，不会代替用户真实下注，也不构成投注建议。"
+    },
+    {
       "date": "2026-07-05",
       "recorded_at": "2026-07-05T00:47:40+08:00",
       "total_stake": 1000.0,
