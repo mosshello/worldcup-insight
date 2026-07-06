@@ -161,7 +161,9 @@ def settle_prediction_if_ready(
 
     try:
         detail = fetch_fixed_bonus_detail(match_id)
-    except SportteryApiError:
+    except SportteryApiError as exc:
+        if getattr(exc, "http_code", None) == 403 or "403" in str(exc):
+            raise
         return None
 
     if not _has_official_results(detail):
@@ -215,8 +217,13 @@ def sync_finished_matches(*, lookback_days: int = 3) -> dict[str, Any]:
     settled_rows: list[dict[str, Any]] = []
     pending = 0
     skipped_future = 0
+    api_blocked = False
+    api_error: str | None = None
 
     for match_id, entry in sources.items():
+        if api_blocked:
+            pending += 1
+            continue
         kickoff = _entry_kickoff_dt(entry)
         if kickoff is not None and kickoff > now:
             skipped_future += 1
@@ -226,20 +233,30 @@ def sync_finished_matches(*, lookback_days: int = 3) -> dict[str, Any]:
 
         journal_entry = find_open_entry(match_id)
         settle_source = journal_entry or entry
-        row = settle_prediction_if_ready(settle_source, now=now)
+        try:
+            row = settle_prediction_if_ready(settle_source, now=now)
+        except SportteryApiError as exc:
+            api_blocked = True
+            api_error = str(exc)
+            pending += 1
+            continue
         if row:
             settled_rows.append(row)
         else:
             pending += 1
 
-    return {
-        "success": True,
+    result = {
+        "success": not api_blocked,
         "settled": len(settled_rows),
         "pending": pending,
         "skipped_future": skipped_future,
         "removed_future_training": removed,
         "results": settled_rows,
     }
+    if api_blocked:
+        result["api_blocked"] = True
+        result["error"] = api_error or "体彩 API 暂不可用"
+    return result
 
 
 def _finished_card_from_entry(

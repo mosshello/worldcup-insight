@@ -191,6 +191,8 @@ def build_finished_fusion_payload(card: dict[str, Any]) -> dict[str, Any]:
             "total_pnl": card.get("total_pnl"),
             "settlement_status": card.get("settlement_status"),
         },
+        "match_intelligence": card.get("match_intelligence") or {},
+        "data_sources": card.get("data_sources") or {},
     }
 
 

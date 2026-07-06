@@ -104,6 +104,73 @@ function pct(value) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function renderProbabilityBars(probabilities) {
+  if (!probabilities) return "";
+  return ["home", "draw", "away"].map((key) => {
+    const value = Number(probabilities[key] || 0);
+    return `<div class="prob-row">
+      <span>${OUTCOME_LABELS[key]}</span>
+      <div class="prob-track"><i style="width:${Math.max(2, value).toFixed(1)}%"></i></div>
+      <strong>${value.toFixed(1)}%</strong>
+    </div>`;
+  }).join("");
+}
+
+function renderSportteryFallbackCompare(payload) {
+  const prediction = payload.prediction || {};
+  const score = payload.score_prediction || {};
+  const pool = payload.pool_analysis || {};
+  const probs = prediction.probabilities || {};
+  const ranking = ["home", "draw", "away"].sort((a, b) => (probs[b] || 0) - (probs[a] || 0));
+  const pick = ranking[0];
+  const second = ranking[1];
+  const gap = ((probs[pick] || 0) - (probs[second] || 0)) * 100;
+  const hhad = prediction.hhad || {};
+  const hhadDirection = hhad.direction || score.hhad_direction;
+  const hhadLine = hhad.goal_line != null ? `让球 ${Number(hhad.goal_line) > 0 ? "+" : ""}${hhad.goal_line}` : "让球盘";
+  const ttgFavorite = pool.ttg?.favorite;
+  const hafuFavorite = pool.hafu?.favorite;
+  const signals = [];
+
+  signals.push(`体彩主盘去水首选 ${OUTCOME_LABELS[pick] || score.direction || "—"}，领先次选 ${gap.toFixed(1)}pp。`);
+  if (hhadDirection) {
+    signals.push(
+      hhadDirection === prediction.direction
+        ? `${hhadLine} 与主盘同向，方向一致性较好。`
+        : `${hhadLine} 指向 ${hhadDirection}，与主盘 ${prediction.direction || score.direction} 存在结构分歧。`
+    );
+  } else {
+    signals.push("暂无让球胜平负有效拆分，净胜球结构需结合比分盘观察。");
+  }
+  if (ttgFavorite) {
+    signals.push(`总进球最热 ${ttgFavorite.label}（SP ${Number(ttgFavorite.odds || 0).toFixed(2)}），用于校验比分大小方向。`);
+  }
+  if (hafuFavorite) {
+    signals.push(`半全场最热 ${hafuFavorite.label}（SP ${Number(hafuFavorite.odds || 0).toFixed(2)}），用于观察节奏是否支持主方向。`);
+  }
+
+  const risk =
+    gap < 4
+      ? "三项概率接近，主方向容错较低。"
+      : gap < 8
+        ? "优势存在但不算厚，建议继续观察临场 SP。"
+        : "主盘优势较清晰，但仍缺外网交叉验证。";
+
+  return `
+    <li class="compare-fallback-card">
+      <div class="compare-title">外网暂不可用，启用体彩内部比对</div>
+      <div class="prob-bars">${renderProbabilityBars({
+        home: (probs.home || 0) * 100,
+        draw: (probs.draw || 0) * 100,
+        away: (probs.away || 0) * 100,
+      })}</div>
+      <ul>
+        ${signals.map((line) => `<li>${line}</li>`).join("")}
+        <li class="${gap < 4 ? "delta-alert" : ""}">${risk}</li>
+      </ul>
+    </li>`;
+}
+
 function renderMatchIntelligence(intel) {
   const list = document.getElementById("match-intelligence");
   const detail = document.getElementById("intelligence-detail");
@@ -112,7 +179,7 @@ function renderMatchIntelligence(intel) {
   if (!list || !card) return;
 
   if (!intel || (!intel.summary_bullets?.length && !intel.detail_sections)) {
-    list.innerHTML = `<li class="empty-note">暂无结构化赛前情报（需三源统一索引或 overlay 数据）。</li>`;
+    list.innerHTML = `<li class="empty-note">暂无赛前情报。世界杯场次接入 FIFA 三源后可自动带出；联赛场次展示 SP 定价与联赛背景。</li>`;
     if (detail) detail.innerHTML = "";
     if (coverageEl) coverageEl.textContent = "";
     return;
@@ -124,10 +191,17 @@ function renderMatchIntelligence(intel) {
       .map((team) => {
         const gs = team.group_stats || {};
         const profile = team.profile || {};
-        const tags = (profile.style_tags || []).slice(0, 3).join(" · ") || "—";
-        const statsText = gs.points != null
-          ? `${gs.points} 分 · ${gs.goals_for || 0}:${gs.goals_against || 0}`
-          : `${profile.region || "—"} · ${profile.confederation || "—"}`;
+        const tags = (profile.style_tags || []).slice(0, 3).join(" · ") || "以 SP 与当期状态为主";
+        let statsText = "";
+        if (gs.points != null) {
+          statsText = `${gs.points} 分 · 进 ${gs.goals_for || 0} 失 ${gs.goals_against || 0}`;
+        } else if (team.market_hint) {
+          statsText = team.market_hint;
+        } else {
+          const region = profile.region && profile.region !== "未知" ? profile.region : (team.league_label || intel.league || "联赛");
+          const conf = profile.confederation && profile.confederation !== "未知" ? profile.confederation : "俱乐部赛事";
+          statsText = `${region} · ${conf}`;
+        }
         return `<div class="intel-team-card">
           <div class="intel-team-head">${team.name}</div>
           <div class="intel-team-meta">${statsText}</div>
@@ -138,15 +212,45 @@ function renderMatchIntelligence(intel) {
 
     const absenceBlock = (side, title) => {
       const lines = (ds.absences || {})[side] || [];
+      const friendly = lines.filter((line) => !/overlay|公开 API|结构化数据/i.test(line));
+      const displayLines = friendly.length ? friendly : lines;
       return `<div class="intel-absence-card">
         <div class="label">${title}</div>
-        ${lines.length
-          ? `<ul>${lines.map((line) => `<li>${line}</li>`).join("")}</ul>`
-          : `<p class="hint">暂无结构化伤停</p>`}
+        ${displayLines.length
+          ? `<ul>${displayLines.map((line) => `<li>${line}</li>`).join("")}</ul>`
+          : `<p class="hint">暂无官方伤停名单</p>`}
       </div>`;
     };
 
+    const limitedBanner = intel.limited
+      ? `<div class="intel-limited-banner">未接入 FIFA 三源，当前以联赛背景、体彩 SP 定价和人工情报为主；伤停名单未核实时不参与模型强结论。</div>`
+      : "";
+    const market = ds.market_snapshot || intel.market_snapshot;
+    const officialUpdates = (ds.official_updates || intel.official_updates || [])
+      .map((item) => {
+        if (typeof item === "string") {
+          return `<li>${item}</li>`;
+        }
+        const title = item.title || "官方更新";
+        const source = item.source || "官方";
+        const summary = item.summary ? `<p>${item.summary}</p>` : "";
+        const link = item.url
+          ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">打开来源</a>`
+          : "";
+        return `<li><strong>${title}</strong><span>${source}</span>${summary}${link}</li>`;
+      })
+      .join("");
+
     detail.innerHTML = `
+      ${limitedBanner}
+      ${market ? `<div class="intel-market-card">
+        <div class="intel-market-head">
+          <span>体彩 SP 定价</span>
+          <strong>首选 ${market.favorite}</strong>
+        </div>
+        <div class="prob-bars">${renderProbabilityBars(market.probabilities)}</div>
+        <p class="hint">SP ${market.had_line} · 作为联赛场次缺少三源时的主要量化参考</p>
+      </div>` : ""}
       <div class="intel-grid">
         ${teamCards}
       </div>
@@ -157,6 +261,7 @@ function renderMatchIntelligence(intel) {
       ${ds.venue ? `<div class="intel-meta-row"><span>场地</span><strong>${ds.venue.label || ds.venue.stadium || "—"}</strong></div>` : ""}
       ${ds.environment?.temperature_c != null ? `<div class="intel-meta-row"><span>气温</span><strong>${ds.environment.temperature_c}°C</strong></div>` : ""}
       ${ds.referee ? `<div class="intel-meta-row"><span>裁判</span><strong>${ds.referee}</strong></div>` : ""}
+      ${officialUpdates ? `<div class="intel-official-card"><div class="label">官方消息</div><ul>${officialUpdates}</ul></div>` : ""}
       ${ds.style_note ? `<div class="intel-style-note">${ds.style_note}</div>` : ""}
       ${ds.rotation_risk ? `<div class="intel-style-note">${ds.rotation_risk}</div>` : ""}
     `;
@@ -192,8 +297,11 @@ function renderMatchIntelligence(intel) {
     cov.style_profiles ? "风格对阵" : null,
     cov.venue_available ? "场地" : null,
     cov.referee_available ? "裁判" : null,
-    cov.overlay_used ? "人工 overlay" : null,
-    cov.injury_api ? "API 伤停" : "伤停需 overlay",
+    cov.official_news_available ? "官方消息" : null,
+    cov.overlay_used ? "人工情报" : null,
+    cov.market_snapshot ? "SP 定价" : null,
+    cov.injury_api ? "API 伤停" : "伤停待核实",
+    intel.limited ? "联赛简版" : null,
   ].filter(Boolean);
   if (coverageEl) {
     const src = (intel.data_sources || []).join(" · ");
@@ -405,7 +513,9 @@ function renderAiChatLog(matchId) {
 
 function isAiInputAllowed(match) {
   if (!match) return Boolean(activeMatchId);
-  if (match.analysis_available === false) return false;
+  if (match.analysis_available === false) {
+    return Boolean(match.ai_context_available || match.match_intelligence?.available);
+  }
   return true;
 }
 
@@ -952,14 +1062,22 @@ function renderDataTags(tags) {
 }
 
 function renderPendingMatchDetail(match) {
-  document.getElementById("prediction-direction").textContent = "待开售";
-  document.getElementById("prediction-confidence").textContent = "比分 —";
+  const partialSelling = match.sale_status === "selling_partial" || match.sale_status === "selling";
+  const statusLabel = partialSelling || match.direction === "已开售" ? "已开售" : "待开售";
+  document.getElementById("prediction-direction").textContent = match.direction || statusLabel;
+  document.getElementById("prediction-confidence").textContent =
+    `比分 ${match.predicted_score || "—"} · ${match.confidence || statusLabel}`;
   document.getElementById("prediction-confidence").className = "badge-confidence tag low";
   document.getElementById("sporttery-stats").innerHTML = `
     <div class="stat-card">
       <div class="label">赛事状态</div>
-      <div class="value">待开售</div>
-      <div class="hint">体彩官网已公布赛程，固定奖金暂未开放</div>
+      <div class="value">${statusLabel}</div>
+      <div class="hint">${partialSelling ? "官网已开售；胜平负 HAD 暂未同步，让球/猜比分已可用" : "体彩官网已公布赛程，固定奖金暂未开放"}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">${partialSelling ? "比分盘" : "预测比分"}</div>
+      <div class="value" style="font-size:18px">${match.predicted_score || "—"}</div>
+      <div class="hint">${(match.alt_scores || []).slice(0, 2).join("；") || "等待固定奖金明细"}</div>
     </div>
     <div class="stat-card">
       <div class="label">开赛时间</div>
@@ -974,21 +1092,26 @@ function renderPendingMatchDetail(match) {
     <div class="stat-card">
       <div class="label">后续补齐</div>
       <div class="value" style="font-size:18px">自动刷新</div>
-      <div class="hint">开售后展示预测、SP走势、ttg/hafu 与凯利偏差</div>
+      <div class="hint">HAD 返回后展示方向预测、SP走势、ttg/hafu 与凯利偏差</div>
     </div>
   `;
   document.getElementById("bet-simulation").innerHTML = "";
   document.getElementById("fusion-analysis").innerHTML =
-    `<li>体彩官网已公布 ${match.home} vs ${match.away}，当前为待开售状态。</li><li>固定奖金开放后，本平台会自动补齐完整分析。</li>`;
+    [
+      match.direction_note || `体彩官网已公布 ${match.home} vs ${match.away}，当前为${statusLabel}状态。`,
+      partialSelling ? "当前可使用 FIFA 官方消息、赛前情报和猜比分固定奖金做辅助判断；不做胜平负方向强结论。" : "固定奖金开放后，本平台会自动补齐完整分析。",
+    ].map((line) => `<li>${line}</li>`).join("");
   document.getElementById("foreign-compare").innerHTML =
-    `<li class="empty-note">待开售场次暂无体彩主盘，暂不计算外网差值。</li>`;
-  renderMatchIntelligence(null);
+    `<li class="empty-note">${partialSelling ? "胜平负 HAD 暂未返回" : "待开售场次暂无体彩主盘"}，暂不计算外网差值。</li>`;
+  renderMatchIntelligence(match.match_intelligence || null);
   renderPoolAnalysis(null);
   renderDirectionShift(null);
-  renderDataSources({ data_sources: { sporttery: true, unified: false, foreign: "待开售" } });
+  renderDataSources({ data_sources: match.data_sources || { sporttery: true, unified: false, foreign: "待 SP" } });
   renderAiAnalysisPanel(match, {
-    disabled: true,
-    reason: "待开售场次暂无 SP 走势，请在固定奖金开放后再使用 AI 分析。",
+    disabled: !isAiInputAllowed(match),
+    reason: isAiInputAllowed(match)
+      ? ""
+      : "待开售场次暂无 SP 走势，请在固定奖金开放后再使用 AI 分析。",
   });
   Object.values(charts).forEach((chart) => chart?.destroy?.());
   charts = {};
@@ -1243,7 +1366,7 @@ async function loadSportteryDetail(matchId) {
       })
       .join("");
   } else {
-    compare.innerHTML = `<li class="empty-note">外网数据暂不可用，仅展示体彩主盘。</li>`;
+    compare.innerHTML = renderSportteryFallbackCompare(payload);
   }
 
   renderSportteryCharts(payload);
