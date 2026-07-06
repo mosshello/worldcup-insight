@@ -593,6 +593,7 @@ function renderMeta() {
   const modeNote = overview.unified_mode_note;
 
   renderHeroDashboard(stats);
+  renderTournamentForecast();
 
   if (health.providers && health.providers.length) {
     const labels = health.providers.map((item) => {
@@ -632,6 +633,36 @@ function renderMeta() {
   const visible = filterPredictions().length;
   document.getElementById("sporttery-status").textContent =
     `当前 ${visible} 场 · 全部 ${stats.total_upcoming || 0} 场 ${cacheHint}${unifiedHint}${modeHint}`;
+}
+
+function renderTournamentForecast() {
+  const forecast = overview?.tournament_forecast || {};
+  const training = overview?.training_report || {};
+  const ranking = document.getElementById("tournament-ranking");
+  const pairs = document.getElementById("final-pairs");
+  const meta = document.getElementById("tournament-meta");
+  const state = document.getElementById("training-state");
+  if (!ranking || !pairs) return;
+
+  const rows = (forecast.rankings || []).slice(0, 8);
+  ranking.innerHTML = rows.map((item, index) => `
+    <div class="tournament-row">
+      <span class="rank-number">${index + 1}</span>
+      <strong>${item.team}</strong>
+      <span>冠军 ${(item.champion_probability * 100).toFixed(1)}%</span>
+      <span>决赛 ${(item.final_probability * 100).toFixed(1)}%</span>
+      <span>亚军 ${(item.runner_up_probability * 100).toFixed(1)}%</span>
+    </div>
+  `).join("");
+  pairs.innerHTML = `<h3>最可能冠亚军对阵</h3>${(forecast.final_pairs || []).slice(0, 5).map((item) => `
+    <div class="final-pair-row"><span>${item.pair}</span><strong>${(item.probability * 100).toFixed(1)}%</strong></div>
+  `).join("")}`;
+  if (meta) meta.textContent = `${forecast.method || "固定对阵树推演"} · 截止 ${forecast.as_of || "—"}`;
+  if (state) {
+    state.textContent = training.activated
+      ? `校准模型 · ${training.valid_samples}场`
+      : `基线模型 · ${training.valid_samples || 0}/${training.minimum_samples || 500}场`;
+  }
 }
 
 function shiftIsoDate(isoDate, deltaDays) {

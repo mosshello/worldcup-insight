@@ -78,6 +78,28 @@ class TrainingStoreTests(unittest.TestCase):
         self.assertEqual(outcome["sporttery_match_id"], "2040345")
         self.assertEqual(outcome["actual"]["score"], "1:2")
         self.assertEqual(outcome["source"], "live_settlement")
+        self.assertTrue(outcome["use_for_training"])
+
+    def test_full_hit_is_still_a_training_sample(self) -> None:
+        entry = {
+            "match_id": "2040999",
+            "home": "阿根廷",
+            "away": "埃及",
+            "direction_key": "home",
+            "predicted_score": "2-0",
+            "kickoff_beijing": "2026-07-08T00:00:00+08:00",
+            "recorded_at": "2026-07-07T12:00:00+08:00",
+        }
+        row = {
+            "actual_had": "主胜",
+            "actual_score": "2:0",
+            "had_won": True,
+            "crs_won": True,
+            "settled_at": "2026-07-08T03:00:00+08:00",
+        }
+        outcome = build_outcome_from_settlement(entry, row)
+        self.assertTrue(outcome["use_for_training"])
+        self.assertEqual(outcome["training_reason"], "full_hit")
 
 
 class JournalMigrationTests(unittest.TestCase):

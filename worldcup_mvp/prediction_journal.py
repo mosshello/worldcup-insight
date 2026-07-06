@@ -131,6 +131,13 @@ def record_predictions(
             "confidence": prediction.get("confidence"),
             "had_odds": prediction.get("had_odds"),
             "crs_odds": prediction.get("crs_odds"),
+            "probabilities": prediction.get("probabilities"),
+            "market_probabilities": prediction.get("market_probabilities"),
+            "pool_snapshot": {
+                "total_goals": prediction.get("total_goals"),
+                "half_full": prediction.get("half_full"),
+                "handicap": prediction.get("handicap"),
+            },
             "provider_ids": prediction.get("provider_ids"),
             "stake_had": stake_had,
             "stake_crs": stake_crs,

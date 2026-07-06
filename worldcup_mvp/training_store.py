@@ -17,7 +17,7 @@ TRAINING_DIR = PROJECT_ROOT / "data" / "training"
 TRAINING_FILE = TRAINING_DIR / "historical_outcomes.json"
 ARCHIVE_DEV_FILE = TRAINING_DIR / "archive_dev_settlements.json"
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SETTLEMENT_EPOCH = "2026-06-30"
 VALID_HAD_LABELS = {"主胜", "平", "客胜"}
 
@@ -46,6 +46,11 @@ def load_training_corpus() -> dict[str, Any]:
         return _default_corpus()
     if not isinstance(payload.get("records"), list):
         payload["records"] = []
+    if int(payload.get("schema_version") or 1) < SCHEMA_VERSION:
+        for record in payload["records"]:
+            record["use_for_training"] = True
+        payload["schema_version"] = SCHEMA_VERSION
+        _save_corpus(payload)
     return payload
 
 
@@ -79,11 +84,17 @@ def build_outcome_from_settlement(
     settlement_row: dict[str, Any],
 ) -> dict[str, Any]:
     """将实盘结算结果转为训练语料记录。"""
+    actual_had = settlement_row.get("actual_had")
+    actual_score = settlement_row.get("actual_score")
+    if not actual_had and isinstance(actual_score, str) and re.fullmatch(r"\d+:\d+", actual_score):
+        home_goals, away_goals = (int(value) for value in actual_score.split(":"))
+        actual_had = "主胜" if home_goals > away_goals else "客胜" if home_goals < away_goals else "平"
     had_won = bool(settlement_row.get("had_won"))
     crs_won = bool(settlement_row.get("crs_won"))
     direction_hit = had_won
     score_hit = crs_won
-    use_for_training = not direction_hit or not score_hit
+    # 命中与失误都必须进入训练集；只保留失误会造成严重的选择偏差。
+    use_for_training = True
     return {
         "sporttery_match_id": str(entry.get("match_id") or entry.get("sporttery_match_id") or ""),
         "home": entry.get("home"),
@@ -99,11 +110,14 @@ def build_outcome_from_settlement(
             "confidence": entry.get("confidence"),
             "had_odds": entry.get("had_odds"),
             "crs_odds": entry.get("crs_odds"),
+            "probabilities": entry.get("probabilities"),
+            "market_probabilities": entry.get("market_probabilities"),
+            "pool_snapshot": entry.get("pool_snapshot"),
             "recorded_at": entry.get("recorded_at"),
         },
         "actual": {
-            "had": settlement_row.get("actual_had"),
-            "score": settlement_row.get("actual_score"),
+            "had": actual_had,
+            "score": actual_score,
             "fifa": settlement_row.get("fifa_actual"),
         },
         "settlement": {

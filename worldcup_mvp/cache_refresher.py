@@ -47,6 +47,18 @@ def _refresh_loop(interval_seconds: float, stop_event: threading.Event) -> None:
         print(f"[cache-refresh] {status}: {detail}")
 
 
+def start_initial_refresh() -> threading.Thread:
+    """异步执行首次刷新，避免上游接口慢时阻塞 HTTP 端口启动。"""
+    def _run() -> None:
+        result = refresh_sporttery_cache()
+        detail = result.get("message") or result.get("error") or result
+        print(f"[cache-refresh] startup: {detail}")
+
+    thread = threading.Thread(target=_run, name="sporttery-initial-refresh", daemon=True)
+    thread.start()
+    return thread
+
+
 def start_background_refresh(
     interval_seconds: float,
 ) -> tuple[threading.Thread | None, threading.Event | None]:

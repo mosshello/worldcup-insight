@@ -1071,6 +1071,46 @@ select {
   cursor: not-allowed;
 }
 
+.tournament-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(260px, 0.85fr);
+  gap: 20px;
+}
+
+.tournament-ranking,
+.final-pairs {
+  border-top: 1px solid var(--line);
+}
+
+.tournament-row {
+  display: grid;
+  grid-template-columns: 28px minmax(90px, 1fr) repeat(3, minmax(92px, auto));
+  gap: 12px;
+  align-items: center;
+  min-height: 42px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.rank-number {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.final-pairs h3 {
+  margin: 12px 0 8px;
+  font-size: 15px;
+}
+
+.final-pair-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
 @media (max-width: 960px) {
   .page {
     padding: 16px;
@@ -1109,6 +1149,16 @@ select {
 
   .analysis-grid {
     grid-template-columns: 1fr;
+  }
+
+  .tournament-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .tournament-row {
+    grid-template-columns: 24px minmax(76px, 1fr) repeat(3, minmax(68px, auto));
+    gap: 6px;
+    font-size: 12px;
   }
 
   .stake-controls {

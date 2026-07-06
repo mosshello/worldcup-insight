@@ -11,7 +11,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from worldcup_mvp.cache_refresher import refresh_sporttery_cache, start_background_refresh
+from worldcup_mvp.cache_refresher import (
+    refresh_sporttery_cache,
+    start_background_refresh,
+    start_initial_refresh,
+)
 from worldcup_mvp.dashboard_data import (
     export_predictions_csv,
     export_predictions_payload,
@@ -298,9 +302,7 @@ def main() -> int:
     if not WEB_ROOT.exists():
         raise SystemExit(f"缺少前端目录：{WEB_ROOT}")
 
-    initial = refresh_sporttery_cache()
-    print(f"[cache-refresh] startup: {initial.get('message') or initial.get('error') or initial}")
-
+    start_initial_refresh()
     _, stop_event = start_background_refresh(args.cache_interval)
 
     server = ThreadingHTTPServer((args.host, args.port), DashboardHandler)

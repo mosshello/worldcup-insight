@@ -18,6 +18,7 @@ from .env_config import get_odds_api_key
 from .fox_scraper import fetch_fox_snapshot
 from .fusion_predictor import predict_match
 from .movement_analyzer import analyze_movement
+from .model_training import build_training_report
 from .odds_snapshot import load_history
 from .local_match_bundle import has_overlay_entry, load_local_match_bundle
 from .match_intelligence import build_intelligence_for_sporttery, normalize_venue, safe_display_text
@@ -36,6 +37,7 @@ from .sporttery_api import (
 )
 from .sporttery_cache import load_snapshot, save_snapshot
 from .the_odds_api import find_snapshot
+from .tournament_forecast import build_tournament_forecast
 from .unified_bridge import (
     PROBABILITY_DELTA_ALERT_PP,
     build_context_analysis,
@@ -784,6 +786,8 @@ def get_overview(data_dir: Path | None = None, *, mode: str = "sporttery") -> di
         "histories": histories,
         "auto_settlement": auto_settlement,
         "settlement_summary": get_settlement_summary(),
+        "training_report": build_training_report(),
+        "tournament_forecast": build_tournament_forecast(),
         "provider_health": provider_health,
         "dashboard_stats": dashboard_stats,
         "mode": mode,

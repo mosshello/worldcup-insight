@@ -7,6 +7,7 @@ from typing import Any
 from .analyzer import OUTCOME_LABELS, analyze_match
 from .direction_shift import analyze_direction_shift
 from .prediction_journal import get_open_direction_key
+from .statistical_model import predict_statistical_match
 
 
 def _devig(odds: dict[str, float]) -> dict[str, float]:
@@ -165,6 +166,11 @@ def predict_match(
         analysis.append("分歧较大或优势不明显，更适合观察走势而非强方向判断。")
 
     analysis.append("输出仅供数据分析演示，不构成投注建议。")
+    statistical_model = predict_statistical_match(
+        sporttery_match["home"],
+        sporttery_match["away"],
+        neutral=bool(sporttery_match.get("neutral", True)),
+    )
 
     return {
         "match_id": sporttery_match["match_id"],
@@ -190,5 +196,6 @@ def predict_match(
         },
         "analysis": analysis,
         "direction_shift": direction_shift,
+        "statistical_model": statistical_model,
         "sporttery": sporttery_match,
     }
