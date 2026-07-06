@@ -8,7 +8,9 @@ import unittest
 from pathlib import Path
 
 from worldcup_mvp.match_intelligence import (
+    ABSENCE_UNAVAILABLE_USER,
     apply_overlay_to_match,
+    build_intelligence_for_sporttery,
     build_intelligence_report,
     compute_home_away_splits,
     normalize_venue,
@@ -63,6 +65,14 @@ class MatchIntelligenceTests(unittest.TestCase):
                 "德国|巴拉圭": {
                     "venue": {"stadium": "Test Arena", "city": "NYC"},
                     "referee": "Test Ref",
+                    "official_updates": [
+                        {
+                            "title": "Match Centre",
+                            "source": "FIFA",
+                            "url": "https://www.fifa.com/match",
+                            "summary": "官方比赛中心",
+                        }
+                    ],
                     "home": {
                         "absences": [
                             {"player": "A", "status": "out", "impact": 0.8, "line": "defense"}
@@ -103,6 +113,8 @@ class MatchIntelligenceTests(unittest.TestCase):
         self.assertTrue(report["coverage"]["overlay_used"])
         self.assertFalse(report["coverage"]["injury_api"])
         self.assertEqual(report["venue"]["stadium"], "Test Arena")
+        self.assertTrue(report["coverage"]["official_news_available"])
+        self.assertEqual(report["detail_sections"]["official_updates"][0]["source"], "FIFA")
         self.assertTrue(any("风格对阵" in line for line in report["summary_bullets"]))
         self.assertTrue(any("施洛特贝克" not in line and "A" in line or "伤停" in line for line in report["summary_bullets"]))
 
@@ -139,6 +151,26 @@ class MatchIntelligenceTests(unittest.TestCase):
         self.assertIsNotNone(venue)
         assert venue is not None
         self.assertIn("Mexico City Stadium", venue["label"])
+
+    def test_sporttery_league_match_uses_market_and_friendly_absence(self) -> None:
+        report = build_intelligence_for_sporttery(
+            {
+                "match_id": "5001",
+                "match_num": "周一001",
+                "home": "天狼星",
+                "away": "米亚尔比",
+                "league": "瑞超",
+                "kickoff_beijing": "2026-07-03T01:00:00+08:00",
+                "pools": {"had": {"home": 2.35, "draw": 3.20, "away": 2.80}},
+            }
+        )
+        self.assertTrue(report.get("limited"))
+        self.assertEqual(report["home_profile"]["region"], "瑞典")
+        self.assertTrue(report.get("market_snapshot"))
+        home_absences = report["detail_sections"]["absences"]["home"]
+        self.assertEqual(home_absences, [ABSENCE_UNAVAILABLE_USER])
+        self.assertTrue(any("市场定价" in line for line in report["summary_bullets"]))
+        self.assertFalse(any("overlay" in line.lower() for line in home_absences))
 
 
 if __name__ == "__main__":

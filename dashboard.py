@@ -298,8 +298,9 @@ def main() -> int:
     if not WEB_ROOT.exists():
         raise SystemExit(f"缺少前端目录：{WEB_ROOT}")
 
+    print("正在刷新体彩缓存…", flush=True)
     initial = refresh_sporttery_cache()
-    print(f"[cache-refresh] startup: {initial.get('message') or initial.get('error') or initial}")
+    print(f"[cache-refresh] startup: {initial.get('message') or initial.get('error') or initial}", flush=True)
 
     _, stop_event = start_background_refresh(args.cache_interval)
 

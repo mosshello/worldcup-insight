@@ -7,12 +7,35 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .analyzer import OUTCOME_LABELS
 from .local_match_bundle import load_local_match_bundle
+from .pool_analytics import devig_probabilities
 from .team_names import resolve_team
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OVERLAY_PATH = PROJECT_ROOT / "data" / "intelligence_overlay.json"
 OVERLAY_EXAMPLE = PROJECT_ROOT / "data" / "intelligence_overlay.example.json"
+
+ABSENCE_UNAVAILABLE_USER = "暂无官方结构化伤停，请以球队赛前公布名单为准。"
+INTELLIGENCE_LIMITED_NOTE = (
+    "本场未接入 FIFA 三源索引，以下以联赛背景与体彩 SP 定价为主；"
+    "世界杯场次可自动带出小组赛与主客场拆分。"
+)
+
+# 常见竞彩联赛 → 背景标签（非世界杯俱乐部赛）
+LEAGUE_PROFILE: dict[str, dict[str, Any]] = {
+    "瑞超": {"region": "瑞典", "competition": "瑞典超级联赛", "style_tags": ["整体跑动", "身体对抗", "定位球"]},
+    "意甲": {"region": "意大利", "competition": "意甲", "style_tags": ["战术纪律", "防守组织", "定位球"]},
+    "西甲": {"region": "西班牙", "competition": "西甲", "style_tags": ["传控", "边路", "技术流"]},
+    "英超": {"region": "英格兰", "competition": "英超", "style_tags": ["高强度", "转换", "身体对抗"]},
+    "德甲": {"region": "德国", "competition": "德甲", "style_tags": ["高位压迫", "转换速度", "体能"]},
+    "法甲": {"region": "法国", "competition": "法甲", "style_tags": ["个人能力", "反击", "边路"]},
+    "荷甲": {"region": "荷兰", "competition": "荷甲", "style_tags": ["进攻足球", "宽度", "青训"]},
+    "葡超": {"region": "葡萄牙", "competition": "葡超", "style_tags": ["技术", "边路", "反击"]},
+    "日职": {"region": "日本", "competition": "J联赛", "style_tags": ["整体跑动", "传切", "纪律性"]},
+    "韩职": {"region": "韩国", "competition": "K联赛", "style_tags": ["体能", "压迫", "转换"]},
+    "美职": {"region": "美国", "competition": "美职联", "style_tags": ["高强度", "身体对抗", "主场氛围"]},
+}
 
 # FIFA 三字母代码 → 足联 + 典型打法标签（启发式，仅供分析文案）
 CONFEDERATION_PROFILE: dict[str, dict[str, Any]] = {
@@ -266,16 +289,93 @@ def extract_venue_from_fifa(item: dict[str, Any]) -> dict[str, Any] | None:
     )
 
 
-def _team_profile(team_name: str, abbr: str | None = None) -> dict[str, Any]:
+def _team_profile(team_name: str, abbr: str | None = None, *, league: str | None = None) -> dict[str, Any]:
     code = (abbr or resolve_team(team_name).get("abbr") or "").upper()
     profile = CONFEDERATION_PROFILE.get(code, {})
+    league_info = LEAGUE_PROFILE.get(str(league or "").strip(), {})
+    if profile:
+        return {
+            "team": team_name,
+            "code": code,
+            "confederation": profile.get("confederation", "未知"),
+            "region": profile.get("region", "未知"),
+            "style_tags": profile.get("style_tags", []),
+            "league_label": league_info.get("competition") or league,
+        }
+    if league_info:
+        return {
+            "team": team_name,
+            "code": code,
+            "confederation": "俱乐部赛事",
+            "region": league_info.get("region", league or "联赛"),
+            "style_tags": league_info.get("style_tags", []),
+            "league_label": league_info.get("competition") or league,
+        }
     return {
         "team": team_name,
         "code": code,
-        "confederation": profile.get("confederation", "未知"),
-        "region": profile.get("region", "未知"),
-        "style_tags": profile.get("style_tags", []),
+        "confederation": "俱乐部赛事" if league else "未知",
+        "region": league or "联赛",
+        "style_tags": ["以当期状态与 SP 定价为主"],
+        "league_label": league,
     }
+
+
+def _market_snapshot_from_pools(pools: dict[str, Any] | None) -> dict[str, Any] | None:
+    had = (pools or {}).get("had") if isinstance(pools, dict) else None
+    if not isinstance(had, dict):
+        return None
+    try:
+        odds = {"home": float(had["home"]), "draw": float(had["draw"]), "away": float(had["away"])}
+    except (KeyError, TypeError, ValueError):
+        return None
+    probs = devig_probabilities(odds)
+    favorite_key = max(probs, key=probs.get)
+    return {
+        "favorite": OUTCOME_LABELS[favorite_key],
+        "favorite_key": favorite_key,
+        "probabilities": {key: round(value * 100, 1) for key, value in probs.items()},
+        "had_line": f"{odds['home']:.2f} / {odds['draw']:.2f} / {odds['away']:.2f}",
+    }
+
+
+def _format_market_bullet(snapshot: dict[str, Any] | None) -> str | None:
+    if not snapshot:
+        return None
+    probs = snapshot.get("probabilities") or {}
+    prob_text = " · ".join(
+        f"{OUTCOME_LABELS[key]} {probs[key]:.1f}%"
+        for key in ("home", "draw", "away")
+        if key in probs
+    )
+    return (
+        f"体彩 SP {snapshot['had_line']}，去水首选 {snapshot['favorite']}"
+        f"（{prob_text}）。"
+    )
+
+
+def _market_quality_bullets(snapshot: dict[str, Any] | None, *, limited: bool) -> list[str]:
+    if not snapshot:
+        return ["市场定价：暂无可用胜平负 SP，赛前情报仅作背景参考。"] if limited else []
+    probs = snapshot.get("probabilities") or {}
+    ordered = sorted(probs.items(), key=lambda item: item[1], reverse=True)
+    if len(ordered) < 2:
+        return []
+    favorite, favorite_prob = ordered[0]
+    second, second_prob = ordered[1]
+    gap = favorite_prob - second_prob
+    bullets = [
+        f"SP 强弱差：{OUTCOME_LABELS[favorite]}领先{OUTCOME_LABELS[second]} {gap:.1f}pp。"
+    ]
+    if gap < 4:
+        bullets.append("市场风险：三项概率接近，方向分歧较大，赛前情报不宜给出强结论。")
+    elif gap < 8:
+        bullets.append("市场风险：首选有优势但不厚，建议结合临场变盘与多玩法确认。")
+    else:
+        bullets.append("市场风险：首选优势较清晰，但缺外网交叉验证时仍需保守解读。")
+    if limited:
+        bullets.append("数据可信度：联赛简版缺少官方伤停与首发，主要依赖 SP 定价和人工补充。")
+    return bullets
 
 
 def style_matchup_note(home_profile: dict[str, Any], away_profile: dict[str, Any]) -> str | None:
@@ -395,20 +495,24 @@ def build_intelligence_report(
     overlay = overlay if overlay is not None else load_intelligence_overlay()
     home = match.get("home", "")
     away = match.get("away", "")
+    league = str(match.get("league") or match.get("competition") or "").strip()
     match_id = str(match.get("provider_ids", {}).get("sporttery_match") or match.get("match_id") or "")
+    market_snapshot = _market_snapshot_from_pools(match.get("pools"))
+    unified_linked = bool(match.get("unified_linked"))
 
     match_overlay = _overlay_for_match(overlay, match_id=match_id or None, home=home, away=away)
     team_context = match.get("team_context") or {}
     home_ctx = merge_overlay_into_context(team_context.get("home") or {}, match_overlay.get("home"))
     away_ctx = merge_overlay_into_context(team_context.get("away") or {}, match_overlay.get("away"))
 
-    home_profile = _team_profile(home, match_overlay.get("home_code"))
-    away_profile = _team_profile(away, match_overlay.get("away_code"))
+    home_profile = _team_profile(home, match_overlay.get("home_code"), league=league)
+    away_profile = _team_profile(away, match_overlay.get("away_code"), league=league)
 
     venue = normalize_venue(match.get("venue") or match_overlay.get("venue"))
     environment = match_overlay.get("environment") or {}
     referee = match_overlay.get("referee")
     manager_quotes = match_overlay.get("manager_quotes") or []
+    official_updates = match_overlay.get("official_updates") or []
 
     home_abs = _absence_impact_summary(home_ctx.get("absences") or [])
     away_abs = _absence_impact_summary(away_ctx.get("absences") or [])
@@ -424,7 +528,13 @@ def build_intelligence_report(
         bullets.append(f"体彩场次：{match['match_num']}（match_id {match_id or '—'}）。")
     competition = match.get("competition") or match.get("league") or "世界杯"
     stage = match.get("stage") or "—"
-    bullets.append(f"赛区/阶段：{competition} · {stage}。")
+    bullets.append(f"赛事：{competition} · {stage}。")
+    market_bullet = _format_market_bullet(market_snapshot)
+    if market_bullet:
+        bullets.append(f"市场定价：{market_bullet}")
+    if not unified_linked and not hs and not aws:
+        bullets.append(INTELLIGENCE_LIMITED_NOTE)
+    bullets.extend(_market_quality_bullets(market_snapshot, limited=not unified_linked and not hs and not aws))
     if match.get("kickoff_beijing") or match.get("kickoff"):
         bullets.append(f"开球时间：{match.get('kickoff_beijing') or match.get('kickoff')}。")
     if match.get("_intelligence_source"):
@@ -460,14 +570,14 @@ def build_intelligence_report(
             f"进攻影响 {home_abs['attack_burden']:.1f}、防守影响 {home_abs['defense_burden']:.1f}。"
         )
     elif _injuries_unavailable(match):
-        bullets.append(f"{home} 伤停：匿名公开 API 无结构化数据，需人工 overlay 补充。")
+        bullets.append(f"{home} 伤停：{ABSENCE_UNAVAILABLE_USER}")
     if away_abs["count"]:
         bullets.append(
             f"{away} 伤停/停赛 {away_abs['count']} 人，"
             f"进攻影响 {away_abs['attack_burden']:.1f}、防守影响 {away_abs['defense_burden']:.1f}。"
         )
     elif _injuries_unavailable(match):
-        bullets.append(f"{away} 伤停：暂无结构化数据，可通过 overlay 或 matches_*.json 补充。")
+        bullets.append(f"{away} 伤停：{ABSENCE_UNAVAILABLE_USER}")
 
     if venue and venue.get("label"):
         bullets.append(f"场地：{venue['label']}。")
@@ -481,6 +591,17 @@ def build_intelligence_report(
     for quote in manager_quotes[:3]:
         bullets.append(f"教练表态：{quote}")
 
+    for update in official_updates[:3]:
+        if isinstance(update, str):
+            bullets.append(f"官方消息：{update}")
+            continue
+        if not isinstance(update, dict):
+            continue
+        title = safe_display_text(update.get("title"), fallback="官方更新")
+        summary = safe_display_text(update.get("summary"), fallback="")
+        source = safe_display_text(update.get("source"), fallback="官方")
+        bullets.append(f"官方消息：{title}（{source}）{('，' + summary) if summary else ''}。")
+
     rotation_risk = match_overlay.get("rotation_risk")
     if rotation_risk:
         bullets.append(f"轮换评估：{rotation_risk}")
@@ -490,8 +611,12 @@ def build_intelligence_report(
         "overlay_used": bool(match_overlay),
         "venue_available": venue is not None,
         "referee_available": bool(referee),
+        "official_news_available": bool(official_updates),
         "home_away_splits": bool(home_split or away_split),
         "style_profiles": home_profile.get("confederation") != "未知",
+        "market_snapshot": bool(market_snapshot),
+        "fifa_linked": unified_linked,
+        "limited_mode": not unified_linked and not hs and not aws,
     }
 
     def _absence_lines(side: str, summary: dict[str, Any]) -> list[str]:
@@ -503,8 +628,20 @@ def build_intelligence_report(
             note = f"（{item['note']}）" if item.get("note") else ""
             lines.append(f"{item.get('player', '未知')} · {status}{note}")
         if not lines and _injuries_unavailable(match):
-            lines.append("公开 API 无结构化伤停，请维护 overlay")
+            lines.append(ABSENCE_UNAVAILABLE_USER)
         return lines
+
+    def _team_market_hint(side_key: str) -> str | None:
+        if not market_snapshot:
+            return None
+        favorite = market_snapshot["favorite_key"]
+        if side_key == "home" and favorite == "home":
+            return f"SP 热门 · {market_snapshot['favorite']}"
+        if side_key == "away" and favorite == "away":
+            return f"SP 热门 · {market_snapshot['favorite']}"
+        if favorite == "draw":
+            return "SP 倾向平局"
+        return f"SP 参考 · {market_snapshot['had_line']}"
 
     detail_sections = {
         "teams": [
@@ -514,6 +651,8 @@ def build_intelligence_report(
                 "profile": home_profile,
                 "group_stats": hs,
                 "home_away": home_split,
+                "market_hint": _team_market_hint("home"),
+                "league_label": home_profile.get("league_label") or league,
             },
             {
                 "side": "away",
@@ -521,6 +660,8 @@ def build_intelligence_report(
                 "profile": away_profile,
                 "group_stats": aws,
                 "home_away": away_split,
+                "market_hint": _team_market_hint("away"),
+                "league_label": away_profile.get("league_label") or league,
             },
         ],
         "absences": {
@@ -532,10 +673,17 @@ def build_intelligence_report(
         "referee": referee,
         "style_note": style_note,
         "quotes": manager_quotes,
+        "official_updates": official_updates,
         "rotation_risk": rotation_risk,
+        "market_snapshot": market_snapshot,
     }
 
     return {
+        "available": True,
+        "limited": coverage["limited_mode"],
+        "competition": competition,
+        "league": league or None,
+        "market_snapshot": market_snapshot,
         "home": home,
         "away": away,
         "match_id": match_id or None,
@@ -551,6 +699,7 @@ def build_intelligence_report(
         "home_tactics": home_ctx.get("tactics"),
         "away_tactics": away_ctx.get("tactics"),
         "manager_quotes": manager_quotes,
+        "official_updates": official_updates,
         "rotation_risk": rotation_risk,
         "style_matchup_note": style_note,
         "summary_bullets": bullets,
@@ -594,27 +743,33 @@ def build_intelligence_for_sporttery(
 ) -> dict[str, Any]:
     """体彩场次情报：优先三源 FIFA，否则本地 JSON + overlay + 风格模板。"""
     if unified_match:
-        report = build_intelligence_report(apply_overlay_to_match(unified_match))
+        enriched = apply_overlay_to_match(unified_match)
+        enriched["unified_linked"] = True
+        report = build_intelligence_report(enriched)
+        report["unified_linked"] = True
         sources = ["FIFA三源"]
         if report.get("coverage", {}).get("overlay_used"):
-            sources.append("overlay")
+            sources.append("人工情报")
+        if report.get("coverage", {}).get("official_news_available"):
+            sources.append("FIFA官方消息")
         report["data_sources"] = sources
-        report["unified_linked"] = True
         return report
 
     home = sporttery_match.get("home", "")
     away = sporttery_match.get("away", "")
+    league = sporttery_match.get("league") or ""
     local = load_local_match_bundle(home, away)
     base: dict[str, Any] = {
         "home": home,
         "away": away,
         "match_id": sporttery_match.get("match_id"),
         "match_num": sporttery_match.get("match_num"),
-        "league": sporttery_match.get("league"),
-        "competition": sporttery_match.get("league") or "世界杯",
+        "league": league,
+        "competition": league or "竞彩足球",
         "kickoff_beijing": sporttery_match.get("kickoff_beijing"),
-        "data_provenance": {"injuries": "not-available-from-verified-anonymous-public-api"},
+        "pools": sporttery_match.get("pools"),
         "unified_linked": False,
+        "data_provenance": {"injuries": "not-available-from-verified-anonymous-public-api"},
     }
     if local:
         base["stage"] = local.get("stage") or "淘汰赛"
@@ -626,13 +781,13 @@ def build_intelligence_for_sporttery(
         base["stage"] = "竞彩在售（FIFA三源未匹配）"
 
     report = build_intelligence_report(apply_overlay_to_match(base))
-    sources = ["体彩"]
+    sources = ["体彩 SP"]
     if local:
         sources.append(f"本地({local.get('_source_file', 'matches')})")
     if report.get("coverage", {}).get("overlay_used"):
-        sources.append("overlay")
+        sources.append("人工情报")
+    if report.get("coverage", {}).get("official_news_available"):
+        sources.append("FIFA官方消息")
     report["data_sources"] = sources
-    report["summary_bullets"].append(
-        "FIFA 三源索引仅覆盖「赛程日当天且 Polymarket 可匹配」的场次；本场当前为体彩+本地/overlay 情报。"
-    )
+    report["unified_linked"] = False
     return report

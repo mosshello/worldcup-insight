@@ -120,6 +120,37 @@ class UpcomingMatchTests(unittest.TestCase):
         self.assertFalse(announced[1]["analysis_available"])
         self.assertEqual(announced[1]["sale_status"], "pending")
 
+    @patch("worldcup_mvp.sporttery_api.enrich_match_pools_from_fixed_bonus")
+    @patch("worldcup_mvp.sporttery_api.fetch_upcoming_matches")
+    @patch("worldcup_mvp.sporttery_api.fetch_scheduled_matches")
+    def test_fetch_announced_matches_keeps_official_selling_without_had(
+        self,
+        mock_scheduled: unittest.mock.Mock,
+        mock_upcoming: unittest.mock.Mock,
+        mock_enrich: unittest.mock.Mock,
+    ) -> None:
+        scheduled = {
+            "match_id": "2040348",
+            "home": "阿根廷",
+            "away": "佛得角",
+            "sale_status": "selling",
+            "match_status": "Selling",
+            "pools": {"had": None, "hhad": None},
+        }
+        mock_scheduled.return_value = [scheduled]
+        mock_upcoming.return_value = []
+        mock_enrich.return_value = {
+            **scheduled,
+            "pools": {
+                "had": None,
+                "hhad": {"home": 2.10, "draw": 3.55, "away": 2.69, "goal_line": -2.0},
+            },
+        }
+        announced = fetch_announced_matches()
+        self.assertEqual(announced[0]["sale_status"], "selling_partial")
+        self.assertFalse(announced[0]["analysis_available"])
+        mock_enrich.assert_called_once()
+
 
 class CrsParserTests(unittest.TestCase):
     def test_top_crs_scores(self) -> None:
