@@ -41,7 +41,7 @@ DEFAULT_HEADERS = {
 }
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = (0.8, 2.0, 4.0)
-RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}
+RETRYABLE_HTTP_CODES = {403, 429, 500, 502, 503, 504}
 MATCH_LIVE_HOURS = 3.0
 MATCH_TRACKING_HOURS = 72.0
 
@@ -294,48 +294,6 @@ def fetch_scheduled_matches() -> list[dict[str, Any]]:
     return scheduled
 
 
-def is_officially_selling(match: dict[str, Any]) -> bool:
-    """体彩赛程页标记为 Selling / sellStatus=1 即视为已开售。"""
-    sale_status = str(match.get("sale_status") or "")
-    match_status = str(match.get("match_status") or "")
-    return sale_status in {"selling", "selling_partial", "1"} or match_status.lower() == "selling"
-
-
-def enrich_match_pools_from_fixed_bonus(match: dict[str, Any]) -> dict[str, Any]:
-    """计算器接口缺 HAD/HHAD 时，尝试从 getFixedBonus 补齐最新固定奖金。"""
-    pools = dict(match.get("pools") or {})
-    if pools.get("had") and pools.get("hhad"):
-        return match
-
-    match_id = match.get("match_id")
-    if not match_id:
-        return match
-
-    try:
-        history = fetch_fixed_bonus(match_id)
-    except SportteryApiError:
-        return match
-
-    new_pools = dict(pools)
-    if not new_pools.get("had") and history.get("hadList"):
-        had = _normalize_pool(history["hadList"][-1])
-        if had:
-            new_pools["had"] = had
-    if not new_pools.get("hhad") and history.get("hhadList"):
-        hhad = _normalize_pool(history["hhadList"][-1])
-        if hhad:
-            new_pools["hhad"] = hhad
-
-    if new_pools == pools:
-        return match
-
-    enriched = dict(match)
-    enriched["pools"] = new_pools
-    enriched["pool_source"] = "fixed_bonus"
-    enriched["analysis_available"] = new_pools.get("had") is not None
-    return enriched
-
-
 def fetch_announced_matches(*, pool_code: str = "had,hhad") -> list[dict[str, Any]]:
     """合并赛程页与计算器：已开售场次带赔率，待开售保留赛程占位。"""
     scheduled = fetch_scheduled_matches()
@@ -345,16 +303,6 @@ def fetch_announced_matches(*, pool_code: str = "had,hhad") -> list[dict[str, An
         selling = selling_by_id.get(match["match_id"])
         if selling:
             merged.append({**match, **selling, "sale_status": "selling", "analysis_available": True})
-        elif is_officially_selling(match):
-            enriched = enrich_match_pools_from_fixed_bonus(match)
-            sale_status = "selling" if enriched.get("analysis_available") else "selling_partial"
-            merged.append(
-                {
-                    **enriched,
-                    "sale_status": sale_status,
-                    "analysis_available": bool(enriched.get("analysis_available")),
-                }
-            )
         else:
             merged.append(_hydrate_selling_match_from_detail(match))
     return merged

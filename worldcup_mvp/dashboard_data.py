@@ -25,18 +25,15 @@ from .match_intelligence import build_intelligence_for_sporttery, normalize_venu
 from .pool_analytics import build_pool_analysis
 from .finished_review import list_finished_review_cards, sync_finished_matches
 from .prediction_journal import journal_entry_to_prediction, list_open_entries, record_predictions
-from .score_predictor import list_upcoming_matches, predict_score_for_match, top_crs_scores
+from .score_predictor import list_upcoming_matches, predict_score_for_match
 from .settlement import get_settlement_summary, settle_open_predictions
 from .sporttery_api import (
     SportteryApiError,
     enrich_match_timing,
-    enrich_match_pools_from_fixed_bonus,
     fetch_announced_matches,
-    fetch_fixed_bonus,
     fetch_odds_history,
     fetch_upcoming_matches,
     find_match,
-    is_officially_selling,
 )
 from .sporttery_cache import load_snapshot, save_snapshot
 from .the_odds_api import find_snapshot
@@ -450,9 +447,8 @@ def _enrich_prediction_card(
         if "体彩" not in enriched["data_tags"]:
             enriched["data_tags"].append("体彩")
     if enriched.get("analysis_available") is False:
-        status_tag = "已开售" if enriched.get("sale_status") in {"selling_partial", "selling"} else "待开售"
-        if status_tag not in enriched["data_tags"]:
-            enriched["data_tags"].append(status_tag)
+        if "待开售" not in enriched["data_tags"]:
+            enriched["data_tags"].append("待开售")
 
     local = load_local_match_bundle(item.get("home", ""), item.get("away", ""))
     if local:
@@ -492,80 +488,35 @@ def get_sporttery_matches() -> dict[str, Any]:
     return payload
 
 
-def _format_hhad_line(hhad: dict[str, Any] | None) -> str:
-    if not hhad:
-        return "让球待 SP"
-    line = hhad.get("goal_line")
-    line_text = f"让{line:+.0f} → " if line is not None else ""
-    return (
-        f"{line_text}{hhad['home']:.2f} / {hhad['draw']:.2f} / {hhad['away']:.2f}"
-    )
-
-
 def _pending_prediction_from_match(match: dict[str, Any]) -> dict[str, Any]:
-    """无 HAD 主盘场次占位：展示赛程、比分盘与赛前情报，不生成方向预测。"""
-    match = enrich_match_pools_from_fixed_bonus(match)
-    match_id = str(match.get("match_id") or "")
-    is_selling = is_officially_selling(match)
-    hhad = (match.get("pools") or {}).get("hhad")
-    try:
-        unified_match = get_unified_match(match_id) if match_id else None
-    except Exception:
-        unified_match = None
-    match_intelligence = build_intelligence_for_sporttery(match, unified_match)
-
-    crs_top: list[tuple[int, int, float]] = []
-    if is_selling and match_id:
-        try:
-            crs_top = top_crs_scores(fetch_fixed_bonus(match_id), limit=3)
-        except SportteryApiError:
-            crs_top = []
-    predicted_score = f"{crs_top[0][0]}-{crs_top[0][1]}" if crs_top else "—"
-    alt_scores = [f"{h}-{a}（固定奖金 {o:.2f}）" for h, a, o in crs_top]
-    status_label = "已开售" if is_selling else "待开售"
-    confidence = "情报可用" if match_intelligence.get("available") else status_label
-    direction_note = (
-        "体彩官网已标记为已开售；胜平负 HAD 暂未从计算器接口返回，当前展示让球盘/猜比分固定奖金、FIFA 官方消息与赛前情报，完整方向预测待 HAD 同步后自动补齐。"
-        if is_selling
-        else "体彩官网已公布赛程，但固定奖金暂未开售；开售后自动补齐预测、走势和多玩法分析。"
-    )
+    """待开售场次占位：展示赛程，不生成赔率预测。"""
     return {
         "match_id": match.get("match_id"),
         "home": match.get("home"),
         "away": match.get("away"),
         "league": match.get("league"),
         "match_num": match.get("match_num"),
-        "match_date": match.get("match_date"),
         "business_date": match.get("business_date"),
         "kickoff_beijing": match.get("kickoff_beijing"),
         "hours_until_kickoff": match.get("hours_until_kickoff"),
         "countdown_label": match.get("countdown_label"),
-        "direction": status_label,
+        "direction": "待开售",
         "direction_key": None,
         "second": "—",
-        "confidence": confidence,
-        "predicted_score": predicted_score,
-        "alt_scores": alt_scores,
+        "confidence": "待开售",
+        "predicted_score": "—",
+        "alt_scores": [],
         "had_odds": None,
-        "crs_odds": crs_top[0][2] if crs_top else None,
-        "sporttery_had": "胜平负待 SP" if is_selling else "待开售",
-        "sporttery_hhad": _format_hhad_line(hhad) if is_selling else "待开售",
+        "crs_odds": None,
+        "sporttery_had": "待开售",
+        "sporttery_hhad": "待开售",
         "hhad_direction": None,
         "fox_moneyline": "暂无",
-        "fox_source": "待 SP",
-        "direction_note": direction_note,
-        "sale_status": "selling_partial" if is_selling else "pending",
+        "fox_source": "待开售",
+        "direction_note": "体彩官网已公布赛程，但固定奖金暂未开售；开售后自动补齐预测、走势和多玩法分析。",
+        "sale_status": "pending",
         "analysis_available": False,
-        "ai_context_available": bool(match_intelligence.get("available")),
         "match_status": match.get("match_status"),
-        "match_intelligence": match_intelligence,
-        "provider_ids": (unified_match or {}).get("provider_ids"),
-        "data_sources": {
-            "sporttery": True,
-            "unified": bool(unified_match),
-            "foreign": "待 SP",
-            "intelligence": match_intelligence.get("data_sources") or [],
-        },
     }
 
 
@@ -621,8 +572,8 @@ def _auto_settle_finished() -> dict[str, Any] | None:
 
 
 def get_upcoming_score_predictions() -> dict[str, Any]:
-    auto_settlement = _auto_settle_finished()
     try:
+        _auto_settle_finished()
         matches = [enrich_match_timing(match) for match in fetch_announced_matches()]
         merged_predictions: list[dict[str, Any]] = []
         for match in matches:
@@ -668,7 +619,6 @@ def get_upcoming_score_predictions() -> dict[str, Any]:
             "count": len(predictions),
             "predictions": predictions,
             "cached": False,
-            "auto_settlement": auto_settlement,
         }
     except SportteryApiError:
         cached = load_snapshot()
@@ -684,7 +634,6 @@ def get_upcoming_score_predictions() -> dict[str, Any]:
                 "predictions": predictions,
                 "cached": True,
                 "cached_at": cached.get("cached_at"),
-                "auto_settlement": auto_settlement,
             }
         return {"success": False, "error": "体彩 API 暂不可用，且无本地缓存", "predictions": []}
 

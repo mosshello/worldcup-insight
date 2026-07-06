@@ -181,88 +181,6 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
-.intel-limited-banner {
-  margin-bottom: 12px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  background: rgba(245, 158, 11, 0.1);
-  color: #fcd34d;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.intel-market-card,
-.compare-fallback-card {
-  margin-bottom: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(56, 189, 248, 0.22);
-  background: rgba(56, 189, 248, 0.07);
-}
-
-.compare-fallback-card {
-  list-style: none;
-  margin-left: 0;
-}
-
-.compare-fallback-card ul {
-  margin: 12px 0 0;
-  padding-left: 18px;
-}
-
-.compare-title,
-.intel-market-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-  font-weight: 700;
-}
-
-.intel-market-head span,
-.compare-title {
-  color: var(--text);
-}
-
-.intel-market-head strong {
-  color: #7dd3fc;
-}
-
-.prob-bars {
-  display: grid;
-  gap: 7px;
-}
-
-.prob-row {
-  display: grid;
-  grid-template-columns: 42px 1fr 52px;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.prob-row strong {
-  color: var(--text);
-  text-align: right;
-}
-
-.prob-track {
-  height: 7px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(148, 163, 184, 0.2);
-}
-
-.prob-track i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.45), rgba(34, 197, 94, 0.85));
-}
-
 .intel-team-card,
 .intel-absence-card {
   background: rgba(255, 255, 255, 0.03);
@@ -286,49 +204,6 @@ body {
 .intel-absence-card ul {
   margin: 8px 0 0;
   padding-left: 18px;
-}
-
-.intel-official-card {
-  margin-top: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(34, 197, 94, 0.22);
-  background: rgba(34, 197, 94, 0.07);
-}
-
-.intel-official-card .label {
-  color: #86efac;
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.intel-official-card ul {
-  margin: 0;
-  padding-left: 18px;
-}
-
-.intel-official-card li {
-  margin: 0 0 8px;
-}
-
-.intel-official-card span {
-  display: block;
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.intel-official-card p {
-  margin: 4px 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.intel-official-card a {
-  color: #7dd3fc;
-  font-size: 13px;
 }
 
 .intel-meta-row {

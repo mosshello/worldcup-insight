@@ -7,7 +7,6 @@ from unittest.mock import patch
 from worldcup_mvp.dashboard_data import (
     _enrich_prediction_timing,
     _merge_finished_reviews,
-    _pending_prediction_from_match,
     _split_date_tabs,
     build_snapshot_series,
     get_history_dashboard,
@@ -128,31 +127,6 @@ class DashboardDataTests(unittest.TestCase):
         self.assertIn("pool_analysis", payload["predictions"][0])
         build.assert_called_once()
         record.assert_called_once()
-
-    def test_selling_without_had_keeps_intelligence_context(self) -> None:
-        match = {
-            "match_id": "2040348",
-            "home": "阿根廷",
-            "away": "佛得角",
-            "league": "世界杯",
-            "match_num": "周五087",
-            "match_date": "2026-07-04",
-            "kickoff_beijing": "2026-07-04T06:00+08:00",
-            "match_status": "Selling",
-            "sale_status": "pending",
-            "pools": {"had": None, "hhad": None},
-        }
-        bonus = {"crsList": [{"s02s00": "4.75", "s01s00": "6.50"}]}
-        with patch("worldcup_mvp.dashboard_data.get_unified_match", return_value=None), patch(
-            "worldcup_mvp.dashboard_data.fetch_fixed_bonus", return_value=bonus
-        ):
-            card = _pending_prediction_from_match(match)
-
-        self.assertEqual(card["sale_status"], "selling_partial")
-        self.assertEqual(card["direction"], "已开售")
-        self.assertEqual(card["predicted_score"], "2-0")
-        self.assertTrue(card["ai_context_available"])
-        self.assertTrue(card["match_intelligence"]["available"])
 
     def test_enrich_prediction_timing_preserves_finished(self) -> None:
         finished = {

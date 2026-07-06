@@ -7,44 +7,36 @@ from typing import Any
 
 from .dashboard_data import get_upcoming_score_predictions
 from .ai_review_cache import auto_review_finished_deviations
+from .finished_review import sync_finished_matches
 from .sporttery_api import SportteryApiError
 
 
 def refresh_sporttery_cache() -> dict[str, Any]:
     """拉取最新未开赛赛事并写入本地缓存，同时尝试结算已完场。"""
     try:
+        settlement = sync_finished_matches(lookback_days=4)
         payload = get_upcoming_score_predictions()
-    except SportteryApiError as exc:
-        return {"success": False, "error": str(exc)}
-
-    if not payload.get("success"):
-        return {"success": False, "error": payload.get("error", "完整分析失败")}
-
-    predictions = payload.get("predictions") or []
-    auto_settlement = payload.get("auto_settlement") or {}
-    settled = auto_settlement.get("settled", 0) if isinstance(auto_settlement, dict) else 0
-    message = f"已缓存 {len(predictions)} 场未开赛预测"
-    if payload.get("cached"):
-        message += "（本地缓存）"
-    if settled:
-        message += f"，自动结算 {settled} 场"
-    if auto_settlement.get("api_blocked"):
-        message += "；体彩 API 暂不可用，已跳过剩余结算"
-
-    ai_result: dict[str, Any] = {"skipped": True, "configured": False}
-    if payload.get("cached") is not True:
+        if not payload.get("success"):
+            return {"success": False, "error": payload.get("error", "完整分析失败")}
+        predictions = payload.get("predictions") or []
+        settled = settlement.get("settled", 0) if settlement else 0
+        message = f"已缓存 {len(predictions)} 场未开赛预测"
+        if settled:
+            message += f"，自动结算 {settled} 场"
         ai_result = auto_review_finished_deviations(lookback_days=7)
         if ai_result.get("generated"):
             message += f"，AI 复盘 {ai_result['generated']} 场"
-
-    return {
-        "success": True,
-        "count": len(predictions),
-        "settlement": auto_settlement,
-        "ai_reviews": ai_result,
-        "cached": bool(payload.get("cached")),
-        "message": message,
-    }
+        return {
+            "success": True,
+            "count": len(predictions),
+            "settlement": settlement,
+            "ai_reviews": ai_result,
+            "message": message,
+        }
+    except SportteryApiError as exc:
+        return {"success": False, "error": str(exc)}
+    except RuntimeError as exc:
+        return {"success": False, "error": str(exc)}
 
 
 def _refresh_loop(interval_seconds: float, stop_event: threading.Event) -> None:

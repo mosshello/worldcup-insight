@@ -182,41 +182,6 @@
           }
         ]
       }
-    },
-    "阿根廷|佛得角": {
-      "venue": {
-        "stadium": "Miami Stadium",
-        "city": "Miami",
-        "source": "FIFA Match Centre"
-      },
-      "referee": "Katia Itzel García",
-      "official_updates": [
-        {
-          "title": "Argentina v Cabo Verde Match Centre",
-          "source": "FIFA",
-          "url": "https://www.fifa.com/en/match-centre/match/17/285023/289287/400021521",
-          "summary": "FIFA 官方比赛中心，含阵容、比分、裁判与实时更新。"
-        },
-        {
-          "title": "Messi, Salah and Diaz feature as Round of 32 wraps up",
-          "source": "FIFA",
-          "url": "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/matchday-23-preview-round-of-32",
-          "summary": "FIFA 赛日前瞻：阿根廷在迈阿密对阵世界杯新军佛得角。"
-        },
-        {
-          "title": "Cabo Verde add another chapter to FIFA World Cup fairy tale",
-          "source": "FIFA",
-          "url": "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/cabo-verde-fairy-tale-continues",
-          "summary": "FIFA 报道佛得角小组出线背景，确认淘汰赛将对阵阿根廷。"
-        }
-      ],
-      "manager_quotes": [
-        "FIFA 前瞻提到佛得角主帅 Bubista 表示：For us, nothing is impossible.",
-        "FIFA 报道中，佛得角球员 Diney 表示面对梅西和阿根廷是儿时梦想。"
-      ],
-      "rotation_risk": "体彩暂未给出胜平负 SP，本场先以 FIFA 官方赛前信息、比分盘与球队风格做情报参考；方向模型等待 HAD 开售后再启用。",
-      "home_code": "ARG",
-      "away_code": "CPV"
     }
   },
   "teams": {}

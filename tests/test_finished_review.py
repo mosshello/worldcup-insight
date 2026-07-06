@@ -46,29 +46,6 @@ class FinishedReviewTests(unittest.TestCase):
         mock_upsert_entry.assert_called_once()
         mock_upsert_outcome.assert_called_once()
 
-    @patch("worldcup_mvp.finished_review.settle_prediction_if_ready")
-    @patch("worldcup_mvp.finished_review._collect_prediction_sources")
-    def test_sync_stops_on_api_blocked(
-        self,
-        mock_sources: unittest.mock.Mock,
-        mock_settle: unittest.mock.Mock,
-    ) -> None:
-        from worldcup_mvp.finished_review import sync_finished_matches
-        from worldcup_mvp.sporttery_api import SportteryApiError
-
-        mock_sources.return_value = {
-            "1": {"match_id": "1", "kickoff_beijing": "2026-07-01T01:00:00+08:00"},
-            "2": {"match_id": "2", "kickoff_beijing": "2026-07-01T03:00:00+08:00"},
-        }
-        exc = SportteryApiError("HTTP 403")
-        exc.http_code = 403
-        mock_settle.side_effect = exc
-
-        result = sync_finished_matches(lookback_days=4)
-        self.assertTrue(result.get("api_blocked"))
-        self.assertEqual(mock_settle.call_count, 1)
-        self.assertEqual(result["pending"], 2)
-
 
 if __name__ == "__main__":
     unittest.main()
