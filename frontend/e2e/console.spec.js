@@ -188,6 +188,16 @@ test("no demo mode; single eligibility follows selected market", async ({
 }) => {
   await setup(page);
   await expect(page.getByText("示例数据", { exact: true })).toHaveCount(0);
+  // A single-eligible total-goals pool must not label the displayed HAD prices as singles.
+  await expect(page.locator(".desktop-matches .market-single")).toHaveCount(0);
+  await expect(
+    page.locator(".desktop-matches").getByText("含单关", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page
+      .locator(".desktop-matches")
+      .getByRole("columnheader", { name: "销售", exact: true }),
+  ).toBeVisible();
   await page.getByText("仅单关", { exact: true }).click();
   await expect(page.locator(".desktop-matches tbody tr")).toHaveCount(1);
   await page.getByPlaceholder("全部玩法").click();

@@ -187,8 +187,8 @@ const columns = [
   { colKey: "league", title: "赛事", width: 82 },
   { colKey: "fixture", title: "比赛", minWidth: 240 },
   { colKey: "kickoff", title: "北京时间", width: 140 },
-  { colKey: "sp", title: "胜 / 平 / 负 SP", width: 210 },
-  { colKey: "eligibility", title: "状态", width: 150 },
+  { colKey: "sp", title: "胜 / 平 / 负 SP", width: 250 },
+  { colKey: "eligibility", title: "销售", width: 88 },
   { colKey: "analysisState", title: "分析", width: 88 },
   { colKey: "action", title: "操作", width: 86, fixed: "right" },
 ];
@@ -380,33 +380,30 @@ onBeforeUnmount(() => {
               ><span class="versus">vs</span><strong>{{ row.away }}</strong>
             </button></template
           ><template #kickoff="{ row }"
-            ><span class="mono"
-              >{{ row.kickoff.slice(5, 10) }} {{ row.time }}</span
-            ></template
+            ><div class="fixture-schedule">
+              <span class="mono"
+                >{{ row.kickoff.slice(5, 10) }} {{ row.time }}</span
+              ><span v-if="row.lifecycle !== 'upcoming'" class="small muted">{{
+                row.score || lifecycleNames[row.lifecycle]
+              }}</span>
+            </div></template
           ><template #sp="{ row }"
-            ><div class="odds-triplet">
-              <span v-for="(v, i) in row.odds" :key="i">{{ price(v) }}</span>
+            ><div class="market-price">
+              <div class="odds-triplet">
+                <span v-for="(v, i) in row.odds" :key="i">{{ price(v) }}</span>
+              </div>
+              <span
+                v-if="row.pools.had?.single"
+                class="market-single"
+                title="胜平负支持单关"
+                aria-label="胜平负支持单关"
+                >单关</span
+              >
             </div></template
           ><template #eligibility="{ row }"
-            ><div class="match-status">
-              <div class="match-status-sale">
-                <span :class="row.sale === 'selling' ? 'success' : 'muted'">{{
-                  saleNames[row.sale]
-                }}</span
-                ><span
-                  v-if="
-                    filter.market
-                      ? row.pools[filter.market]?.single
-                      : row.single
-                  "
-                  class="single-tag"
-                  >{{ filter.market ? "单关" : "含单关" }}</span
-                >
-              </div>
-              <div class="small muted">
-                {{ row.score || lifecycleNames[row.lifecycle] }}
-              </div>
-            </div></template
+            ><span :class="row.sale === 'selling' ? 'success' : 'muted'">{{
+              saleNames[row.sale]
+            }}</span></template
           ><template #analysisState="{ row }"
             ><span
               :class="state.versions[row.id]?.length ? 'primary' : 'muted'"
@@ -423,7 +420,12 @@ onBeforeUnmount(() => {
           <article v-for="row in pageRows" :key="row.id" class="mobile-match">
             <div class="mobile-match-meta">
               <span>{{ row.league }} · {{ row.num }}</span
-              ><span>{{ row.kickoff.slice(5, 10) }} {{ row.time }}</span>
+              ><span class="fixture-schedule"
+                >{{ row.kickoff.slice(5, 10) }} {{ row.time
+                }}<span v-if="row.lifecycle !== 'upcoming'">{{
+                  row.score || lifecycleNames[row.lifecycle]
+                }}</span></span
+              >
             </div>
             <div class="mobile-match-heading">
               <button
@@ -446,10 +448,19 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <div class="mobile-match-bottom">
-              <div class="odds-triplet">
-                <span v-for="(v, i) in row.odds" :key="i"
-                  ><small>{{ ["胜", "平", "负"][i] }}</small
-                  >{{ price(v) }}</span
+              <div class="market-price">
+                <div class="odds-triplet">
+                  <span v-for="(v, i) in row.odds" :key="i"
+                    ><small>{{ ["胜", "平", "负"][i] }}</small
+                    >{{ price(v) }}</span
+                  >
+                </div>
+                <span
+                  v-if="row.pools.had?.single"
+                  class="market-single"
+                  title="胜平负支持单关"
+                  aria-label="胜平负支持单关"
+                  >单关</span
                 >
               </div>
               <t-button
@@ -460,8 +471,7 @@ onBeforeUnmount(() => {
               /></t-button>
             </div>
             <div class="small muted mt8">
-              {{ saleNames[row.sale] }} ·
-              {{ row.score || lifecycleNames[row.lifecycle] }}
+              {{ saleNames[row.sale] }}
             </div>
           </article>
           <div v-if="!pageRows.length" class="empty-state compact">
