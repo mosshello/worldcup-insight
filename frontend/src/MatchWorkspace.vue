@@ -11,6 +11,7 @@ import {
 } from "tdesign-icons-vue-next";
 import { api, timeLabel, lifecycleNames } from "./api";
 import { price, marketNames } from "./domain";
+import LiveScore from "./LiveScore.vue";
 const props = defineProps({
   match: Object,
   tab: String,
@@ -89,6 +90,14 @@ const tabs = [
   ["analysis", "预测分析"],
 ];
 const context = computed(() => detail.value?.context || {});
+const liveScore = computed(
+  () =>
+    [props.match.live_score, detail.value?.live_score]
+      .filter(Boolean)
+      .sort(
+        (a, b) => Date.parse(b.checked_at || 0) - Date.parse(a.checked_at || 0),
+      )[0],
+);
 const versions = computed(() => {
   const all = [
     ...(props.state.versions[props.match.id] || []),
@@ -218,6 +227,9 @@ const predictionBlocked = computed(
     props.match.stale ||
     detail.value?.quality?.can_predict === false ||
     detail.value?.cancelled ||
+    ["live", "completed", "cancelled", "suspended", "postponed"].includes(
+      liveScore.value?.state,
+    ) ||
     ["live", "completed"].includes(context.value.state),
 );
 async function load(force = false) {
@@ -225,6 +237,7 @@ async function load(force = false) {
   loading.value = true;
   error.value = "";
   try {
+    if (force) await api.scores(true);
     const d = await api.detail(props.match.id, force);
     detail.value = d.detail;
   } catch (e) {
@@ -298,13 +311,11 @@ onBeforeUnmount(() => clearInterval(timer));
         <t-tag variant="light" theme="primary">{{ match.league }}</t-tag
         ><span
           >{{ match.kickoff.slice(0, 10) }} {{ match.time }} · 北京时间</span
-        ><span>{{ match.num }}</span
-        ><span>{{
-          context.score || lifecycleNames[context.state || match.lifecycle]
-        }}</span>
+        ><span>{{ match.num }}</span>
       </div>
       <h1>{{ match.home }} <span class="versus">vs</span> {{ match.away }}</h1>
     </div>
+    <LiveScore :value="liveScore" large />
     <div class="actions">
       <t-button
         variant="outline"

@@ -21,7 +21,9 @@ import { marketNames, price, toCsv } from "./domain";
 import MatchWorkspace from "./MatchWorkspace.vue";
 import ReviewWorkspace from "./ReviewWorkspace.vue";
 import ModelWorkspace from "./ModelWorkspace.vue";
+import LiveScore from "./LiveScore.vue";
 const hash = ref(location.hash.slice(1) || "/matches");
+const route = computed(() => hash.value.split("/")[1] || "matches");
 const matches = ref([]),
   loading = ref(false),
   error = ref(""),
@@ -51,7 +53,9 @@ const currentPage = ref(1),
 const filtered = computed(() =>
   matches.value.filter(
     (m) =>
-      (!filter.date || m.date === filter.date) &&
+      (!filter.date ||
+        (route.value === "scores" ? m.kickoff.slice(0, 10) : m.date) ===
+          filter.date) &&
       (!filter.league || m.league === filter.league) &&
       (!filter.market || m.markets.includes(filter.market)) &&
       (!filter.query ||
@@ -86,7 +90,24 @@ const leagues = computed(() =>
     value: v,
   })),
 );
-const route = computed(() => hash.value.split("/")[1] || "matches");
+watch(
+  route,
+  (value, previous) => {
+    if (value === "scores" || previous === "scores") {
+      Object.assign(filter, {
+        date: "",
+        league: "",
+        market: "",
+        query: "",
+        single: false,
+        followed: false,
+        sale: value === "scores" ? "" : "selling",
+        phase: "",
+      });
+    }
+  },
+  { immediate: true },
+);
 const active = computed(() =>
   matches.value.find(
     (m) => m.id === decodeURIComponent(hash.value.split("/")[2] || ""),
@@ -181,17 +202,25 @@ function exportList() {
     "比赛列表.csv",
   );
 }
-const columns = [
+const allColumns = [
   { colKey: "follow", title: "关注", width: 62 },
   { colKey: "num", title: "场次", width: 100 },
   { colKey: "league", title: "赛事", width: 82 },
   { colKey: "fixture", title: "比赛", minWidth: 240 },
+  { colKey: "liveScore", title: "比分 / 进程", width: 130 },
   { colKey: "kickoff", title: "北京时间", width: 140 },
   { colKey: "sp", title: "胜 / 平 / 负 SP", width: 250 },
   { colKey: "eligibility", title: "销售", width: 88 },
   { colKey: "analysisState", title: "分析", width: 88 },
   { colKey: "action", title: "操作", width: 86, fixed: "right" },
 ];
+const columns = computed(() =>
+  route.value === "scores"
+    ? allColumns.filter(
+        (c) => !["sp", "eligibility", "analysisState"].includes(c.colKey),
+      )
+    : allColumns,
+);
 let timer;
 onMounted(async () => {
   window.addEventListener("hashchange", hashChange);
@@ -201,7 +230,7 @@ onMounted(async () => {
   } catch {}
   timer = setInterval(() => {
     if (!document.hidden) reload();
-  }, 60000);
+  }, 30000);
 });
 onBeforeUnmount(() => {
   window.removeEventListener("hashchange", hashChange);
@@ -218,6 +247,7 @@ onBeforeUnmount(() => {
         href="#/matches"
         :class="{ active: ['matches', 'match'].includes(route) }"
         >比赛中心</a
+      ><a href="#/scores" :class="{ active: route === 'scores' }">实时比分</a
       ><a href="#/reviews" :class="{ active: route === 'reviews' }">复盘记录</a
       ><a href="#/models" :class="{ active: route === 'models' }">数据与模型</a>
     </nav>
@@ -229,10 +259,10 @@ onBeforeUnmount(() => {
       :message="stateError"
       class="mb16"
     />
-    <template v-if="route === 'matches'">
+    <template v-if="['matches', 'scores'].includes(route)">
       <div class="page-heading">
         <div>
-          <h1>比赛中心</h1>
+          <h1>{{ route === "scores" ? "实时比分" : "比赛中心" }}</h1>
         </div>
         <div class="actions">
           <span class="small muted">{{
@@ -246,13 +276,13 @@ onBeforeUnmount(() => {
       <t-alert v-if="warning" theme="warning" :message="warning" class="mb16" />
       <section class="panel filters">
         <div class="filter-field">
-          <label>销售日期</label
+          <label>{{ route === "scores" ? "比赛日期" : "销售日期" }}</label
           ><t-date-picker
             v-model="filter.date"
             clearable
             placeholder="全部已采集日期"
             format="YYYY-MM-DD"
-            aria-label="销售日期"
+            :aria-label="route === 'scores' ? '比赛日期' : '销售日期'"
           />
         </div>
         <div class="filter-field">
@@ -265,7 +295,7 @@ onBeforeUnmount(() => {
             aria-label="赛事"
           />
         </div>
-        <div class="filter-field">
+        <div v-if="route !== 'scores'" class="filter-field">
           <label>玩法</label
           ><t-select
             v-model="filter.market"
@@ -292,9 +322,11 @@ onBeforeUnmount(() => {
         </div>
         <div class="filter-bottom">
           <div class="actions">
-            <t-checkbox v-model="filter.single">仅单关</t-checkbox
+            <t-checkbox v-if="route !== 'scores'" v-model="filter.single"
+              >仅单关</t-checkbox
             ><t-checkbox v-model="filter.followed">仅关注</t-checkbox
             ><t-checkbox
+              v-if="route !== 'scores'"
               :checked="filter.sale === 'selling'"
               @change="(v) => (filter.sale = v ? 'selling' : '')"
               >仅在售</t-checkbox
@@ -322,7 +354,7 @@ onBeforeUnmount(() => {
                 query: '',
                 single: false,
                 followed: false,
-                sale: 'selling',
+                sale: route === 'scores' ? '' : 'selling',
                 phase: '',
               })
             "
@@ -383,10 +415,10 @@ onBeforeUnmount(() => {
             ><div class="fixture-schedule">
               <span class="mono"
                 >{{ row.kickoff.slice(5, 10) }} {{ row.time }}</span
-              ><span v-if="row.lifecycle !== 'upcoming'" class="small muted">{{
-                row.score || lifecycleNames[row.lifecycle]
-              }}</span>
+              >
             </div></template
+          ><template #liveScore="{ row }"
+            ><LiveScore :value="row.live_score" /></template
           ><template #sp="{ row }"
             ><div class="market-price">
               <div class="odds-triplet">
@@ -421,13 +453,11 @@ onBeforeUnmount(() => {
             <div class="mobile-match-meta">
               <span>{{ row.league }} · {{ row.num }}</span
               ><span class="fixture-schedule"
-                >{{ row.kickoff.slice(5, 10) }} {{ row.time
-                }}<span v-if="row.lifecycle !== 'upcoming'">{{
-                  row.score || lifecycleNames[row.lifecycle]
-                }}</span></span
+                >{{ row.kickoff.slice(5, 10) }} {{ row.time }}</span
               >
             </div>
             <div class="mobile-match-heading">
+              <LiveScore :value="row.live_score" />
               <button
                 class="fixture-link"
                 @click="navigate(`/match/${row.id}/basic`)"
@@ -448,7 +478,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <div class="mobile-match-bottom">
-              <div class="market-price">
+              <div v-if="route !== 'scores'" class="market-price">
                 <div class="odds-triplet">
                   <span v-for="(v, i) in row.odds" :key="i"
                     ><small>{{ ["胜", "平", "负"][i] }}</small
@@ -470,7 +500,7 @@ onBeforeUnmount(() => {
                 >查看<ChevronRightIcon
               /></t-button>
             </div>
-            <div class="small muted mt8">
+            <div v-if="route !== 'scores'" class="small muted mt8">
               {{ saleNames[row.sale] }}
             </div>
           </article>

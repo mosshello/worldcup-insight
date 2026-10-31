@@ -99,6 +99,58 @@ svg {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
 }
+.live-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 100px;
+  padding: 8px 0;
+  white-space: nowrap;
+}
+.live-score-value {
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--td-text-color-primary);
+  font-variant-numeric: tabular-nums;
+}
+.live-score-phase,
+.live-score-time,
+.live-score-source {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.live-score-time {
+  color: var(--td-text-color-secondary);
+}
+.live-score.playing .live-score-phase {
+  color: var(--td-success-color);
+}
+.live-score.delayed .live-score-phase {
+  color: var(--td-warning-color);
+}
+.live-score.large {
+  padding: 0 24px;
+  align-items: center;
+}
+.live-score.large .live-score-value {
+  font-size: 32px;
+}
+.score-page-link {
+  font-size: 14px;
+}
+@media (max-width: 760px) {
+  .live-score.large {
+    padding: 12px 0;
+    align-items: flex-start;
+  }
+  .brand {
+    flex-shrink: 0;
+  }
+  .app-header nav {
+    overflow-x: auto;
+  }
+}
 .source-evidence:last-child {
   border-bottom: 0;
 }

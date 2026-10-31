@@ -69,6 +69,10 @@ class Store:
                     id TEXT PRIMARY KEY, match_id TEXT NOT NULL REFERENCES matches(id),
                     created_at TEXT NOT NULL, payload TEXT NOT NULL);
                 INSERT OR IGNORE INTO schema_versions VALUES(2);
+                CREATE TABLE IF NOT EXISTS live_scores(match_id TEXT PRIMARY KEY REFERENCES matches(id), payload TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS live_score_snapshots(id INTEGER PRIMARY KEY, match_id TEXT NOT NULL REFERENCES matches(id), captured_at TEXT NOT NULL, digest TEXT NOT NULL, payload TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS live_snapshot_match ON live_score_snapshots(match_id,id);
+                INSERT OR IGNORE INTO schema_versions VALUES(3);
             """)
 
     @contextmanager
@@ -81,6 +85,38 @@ class Store:
                 yield db
         finally:
             db.close()
+
+    def live_scores(self):
+        with self.connect() as db:
+            return {
+                r["match_id"]: json.loads(r["payload"])
+                for r in db.execute("SELECT * FROM live_scores")
+            }
+
+    def save_live_score(self, match_id, result=None, error=None):
+        with self.connect() as db:
+            previous = db.execute(
+                "SELECT payload FROM live_scores WHERE match_id=?", (match_id,)
+            ).fetchone()
+            value = json.loads(previous[0]) if previous else {}
+            checked = now_iso()
+            if result is not None:
+                value = {**result, "observed_at": checked}
+                digest = fingerprint(result)
+                last = db.execute(
+                    "SELECT digest FROM live_score_snapshots WHERE match_id=? ORDER BY id DESC LIMIT 1",
+                    (match_id,),
+                ).fetchone()
+                if not last or last[0] != digest:
+                    db.execute(
+                        "INSERT INTO live_score_snapshots(match_id,captured_at,digest,payload) VALUES(?,?,?,?)",
+                        (match_id, checked, digest, encode(value)),
+                    )
+            value.update(checked_at=checked, error=error)
+            db.execute(
+                "INSERT OR REPLACE INTO live_scores VALUES(?,?)",
+                (match_id, encode(value)),
+            )
 
     def upsert_matches(self, matches, captured_at):
         with self.connect() as db:

@@ -10,6 +10,10 @@ def get(route, query):
         return {"success": True, **app.list_matches((query.get("date") or [None])[0])}
     if route == "/api/v1/state":
         return {"success": True, "state": app.store.state()}
+    if route == "/api/v1/scores":
+        if (query.get("refresh") or ["0"])[0] == "1":
+            app.sync_scores()
+        return {"success": True, "scores": app.scores()}
     if route == "/api/v1/capabilities":
         return {"success": True, **app.capabilities()}
     if route == "/api/v1/competitions":
@@ -35,6 +39,7 @@ def post(route, body):
         return {"success": True, "reviews": app.reviews(refresh=True)}
     if route == "/api/v1/sync":
         app.sync(force=True)
+        app.sync_scores()
         if app.last_error:
             raise ValueError(app.last_error)
         return {"success": True, **app.list_matches()}

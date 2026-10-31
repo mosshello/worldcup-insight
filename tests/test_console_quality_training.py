@@ -233,6 +233,7 @@ class DatasetTests(unittest.TestCase):
                 service.start_collector(interval=60)
                 service.collector_stop.set()
                 service.collector_thread.join(timeout=2)
+                service.score_thread.join(timeout=2)
                 self.assertTrue(sync.called)
                 self.assertFalse(service.collector_thread.is_alive())
 

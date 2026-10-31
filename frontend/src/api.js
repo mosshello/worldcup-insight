@@ -1,6 +1,8 @@
 import { request } from "./domain.js";
 export const api = {
   matches: () => request("/api/v1/matches"),
+  scores: (refresh = false) =>
+    request("/api/v1/scores" + (refresh ? "?refresh=1" : "")),
   sync: () => request("/api/v1/sync", { method: "POST", body: "{}" }),
   state: () => request("/api/v1/state"),
   capabilities: () => request("/api/v1/capabilities"),
@@ -61,6 +63,9 @@ export const lifecycleNames = {
   started: "已开赛 · 待核实",
   live: "进行中",
   completed: "已结束",
+  postponed: "延期",
+  cancelled: "取消",
+  suspended: "比赛暂停",
 };
 export const saleNames = {
   selling: "在售",

@@ -116,6 +116,8 @@ async function setup(page) {
     let out;
     if (p === "/api/v1/matches" || p === "/api/v1/sync")
       out = { matches: [match], server_time: new Date().toISOString() };
+    else if (p === "/api/v1/scores")
+      out = { scores: { [match.id]: match.live_score } };
     else if (p === "/api/v1/state" && req.method() === "GET") out = { state };
     else if (p === "/api/v1/state") {
       const b = req.postDataJSON();
@@ -157,6 +159,7 @@ async function setup(page) {
                 league: match.league,
                 pick: "主胜",
                 score: "待赛果",
+                live_score: match.live_score,
                 consistent: null,
                 status: "待赛果",
                 prediction: detail.versions[0],
@@ -180,7 +183,7 @@ async function setup(page) {
   await expect(
     page.getByRole("heading", { name: "比赛列表", exact: true }),
   ).toBeVisible();
-  return { state, detail };
+  return { state, detail, match };
 }
 
 test("no demo mode; single eligibility follows selected market", async ({
@@ -322,4 +325,53 @@ test("model coverage and responsive pages", async ({ page }) => {
       ),
     ).toBe(true);
   }
+});
+
+test("live page includes closed matches, isolates delayed scores and blocks pregame updates", async ({
+  page,
+}) => {
+  const { match } = await setup(page);
+  match.sale_status = "closed";
+  match.lifecycle = "live";
+  match.live_score = {
+    score: "1-0",
+    state: "live",
+    label: "下半场",
+    clock: "62′",
+    observed_at: new Date().toISOString(),
+    checked_at: new Date().toISOString(),
+    source: "ESPN",
+    source_url: "https://www.espn.com/",
+    stale: false,
+  };
+  await page.getByRole("link", { name: "实时比分", exact: true }).click();
+  await page.getByRole("button", { name: "刷新", exact: true }).click();
+  await expect(page.locator(".desktop-matches .live-score-value")).toHaveText(
+    "1 – 0",
+  );
+  await expect(page.locator(".desktop-matches .live-score-phase")).toHaveText(
+    "下半场 · 62′",
+  );
+  await expect(
+    page.getByRole("checkbox", { name: "仅在售", exact: true }),
+  ).toHaveCount(0);
+  match.live_score.observed_at = new Date(Date.now() - 300000).toISOString();
+  await page.getByRole("button", { name: "刷新", exact: true }).click();
+  await expect(page.locator(".desktop-matches .live-score-phase")).toHaveText(
+    "更新延迟",
+  );
+  await expect(page.locator(".desktop-matches .live-score-value")).toHaveText(
+    "1 – 0",
+  );
+  await page
+    .locator(".desktop-matches")
+    .getByRole("button", { name: "查看", exact: true })
+    .click();
+  await expect(page.locator(".match-header .live-score-value")).toHaveText(
+    "1 – 0",
+  );
+  await page.getByText("预测分析", { exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "生成预测", exact: true }),
+  ).toBeDisabled();
 });

@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import LiveScore from "./LiveScore.vue";
 import { MessagePlugin } from "tdesign-vue-next";
 import { RefreshIcon, SearchIcon } from "tdesign-icons-vue-next";
 import { api, timeLabel } from "./api";
@@ -89,12 +90,20 @@ const columns = [
   { colKey: "league", title: "赛事", width: 90 },
   { colKey: "fixture", title: "比赛", minWidth: 230 },
   { colKey: "pick", title: "赛前方向", width: 110 },
+  { colKey: "liveScore", title: "即时比分", width: 130 },
   { colKey: "score", title: "实际比分", width: 110 },
   { colKey: "result", title: "方向对照", width: 110 },
   { colKey: "status", title: "复盘状态", width: 100 },
   { colKey: "action", title: "操作", width: 100 },
 ];
-onMounted(() => load(true));
+let timer;
+onMounted(() => {
+  load(true);
+  timer = setInterval(() => {
+    if (!document.hidden && !loading.value) load();
+  }, 30000);
+});
+onBeforeUnmount(() => clearInterval(timer));
 </script>
 <template>
   <div class="page-heading">
@@ -102,6 +111,7 @@ onMounted(() => load(true));
       <h1>复盘记录</h1>
     </div>
     <div class="actions">
+      <a class="score-page-link" href="#/scores">实时比分</a>
       <t-button variant="outline" :loading="loading" @click="load(true)"
         ><template #icon><RefreshIcon /></template>更新赛果</t-button
       ><t-button variant="outline" :disabled="!list.length" @click="exportCsv"
@@ -161,6 +171,8 @@ onMounted(() => load(true));
       ><template #fixture="{ row }"
         ><strong>{{ row.home }}</strong
         ><span class="versus">vs</span><strong>{{ row.away }}</strong></template
+      ><template #liveScore="{ row }"
+        ><LiveScore :value="row.live_score" /></template
       ><template #score="{ row }"
         ><strong class="mono">{{ row.score }}</strong></template
       ><template #result="{ row }"

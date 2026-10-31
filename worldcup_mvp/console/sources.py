@@ -58,7 +58,7 @@ LEAGUES = {
 }
 # Explicit aliases scoped by competition; never match clubs solely by a kickoff or one team.
 ALIASES = {
-    "jpn.1": {"KAH": "KRE"},
+    "jpn.1": {"KAH": "KRE", "NGV": "VVN", "TOK": "TYKV", "MCZ": "ZEL", "GAB": "GAM"},
     "eng.1": {
         "MNU": "MAN",
         "MNC": "MNC",

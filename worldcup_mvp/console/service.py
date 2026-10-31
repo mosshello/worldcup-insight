@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 from .store import Store, now_iso
-from . import sources
+from . import sources, live
 from .predictor import predict, narrate
 from .quality import select_markets, assess
 from .catalog import catalog, classify, provider_configuration
@@ -26,6 +26,8 @@ class ConsoleService:
         self._locks_guard = threading.Lock()
         self.collector_stop = threading.Event()
         self.collector_thread = None
+        self.score_thread = None
+        self.last_score_sync = 0
 
     def start_collector(self, interval=60):
         if self.collector_thread and self.collector_thread.is_alive():
@@ -62,7 +64,82 @@ class ConsoleService:
             target=run, name="football-collector", daemon=True
         )
         self.collector_thread.start()
+
+        def collect_scores():
+            while not self.collector_stop.is_set():
+                began = time.monotonic()
+                try:
+                    self.sync_scores()
+                except Exception:
+                    self.store.status(
+                        "live-scores", {"status": "error", "error": "比分采集任务失败"}
+                    )
+                self.collector_stop.wait(max(1, 30 - (time.monotonic() - began)))
+
+        self.score_thread = threading.Thread(
+            target=collect_scores, name="football-scores", daemon=True
+        )
+        self.score_thread.start()
         return self.collector_stop
+
+    def sync_scores(self):
+        with self.lock("live-scores"):
+            if time.monotonic() - self.last_score_sync < 10:
+                return
+            now = datetime.now(timezone.utc)
+            groups = {}
+            for m in self.store.list_matches():
+                age = (now - sources.parse_date(m["kickoff"])).total_seconds()
+                key = live.group_key(m)
+                if key and -86400 <= age <= 86400:
+                    groups.setdefault(key, []).append(m)
+
+            def collect(item):
+                key, matches = item
+                try:
+                    rows = live.fetch_group(key)
+                except sources.SourceError as e:
+                    for m in matches:
+                        self.store.save_live_score(m["id"], error=str(e))
+                    return 0, len(matches)
+                good = 0
+                for m in matches:
+                    try:
+                        self.store.save_live_score(
+                            m["id"], live.normalize(m, rows, key)
+                        )
+                        good += 1
+                    except (sources.SourceError, KeyError, TypeError, ValueError) as e:
+                        self.store.save_live_score(
+                            m["id"],
+                            error=(
+                                str(e)
+                                if isinstance(e, sources.SourceError)
+                                else "比分结构校验失败"
+                            ),
+                        )
+                return good, len(matches) - good
+
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                counts = list(pool.map(collect, groups.items()))
+            good, bad = sum(c[0] for c in counts), sum(c[1] for c in counts)
+            self.last_score_sync = time.monotonic()
+            self.store.status(
+                "live-scores",
+                {
+                    "name": "实时比分",
+                    "status": "available" if good and not bad else "partial",
+                    "count": good,
+                    "unmatched_count": bad,
+                    "interval_seconds": 30,
+                    "last_success": now_iso() if good else None,
+                },
+            )
+
+    def scores(self):
+        return {
+            mid: live.display(value) for mid, value in self.store.live_scores().items()
+        }
 
     def lock(self, key):
         with self._locks_guard:
@@ -95,6 +172,7 @@ class ConsoleService:
         self.sync()
         rows = self.store.list_matches(date)
         state = self.store.state()
+        scores = self.scores()
         for m in rows:
             m["competition"] = classify(m)
             start = sources.parse_date(m["kickoff"])
@@ -121,6 +199,24 @@ class ConsoleService:
                 if context.get("state") in ("live", "completed"):
                     m["lifecycle"] = context["state"]
                 m["score"] = context.get("score")
+            m["live_score"] = scores.get(
+                m["id"],
+                {
+                    "score": None,
+                    "state": "unknown",
+                    "label": "待更新" if live.group_key(m) else "未接入",
+                    "stale": True,
+                },
+            )
+            m["score"] = m["live_score"].get("score")
+            if not m["live_score"].get("stale") and m["live_score"].get("state") in (
+                "live",
+                "completed",
+                "postponed",
+                "cancelled",
+                "suspended",
+            ):
+                m["lifecycle"] = m["live_score"]["state"]
         if not rows and self.last_error:
             raise sources.SourceError(self.last_error)
         return {
@@ -149,6 +245,7 @@ class ConsoleService:
                 data = cached["data"]
                 data["quality"] = assess(m, data)
                 data["evidence"] = self.store.evidence(match_id)
+                data["live_score"] = self.scores().get(match_id)
                 return data
             errors = []
             with ThreadPoolExecutor(max_workers=2) as pool:
@@ -186,6 +283,7 @@ class ConsoleService:
                 "market_issues": market_issues,
                 "competition": classify(m),
                 "evidence": self.store.evidence(match_id),
+                "live_score": self.scores().get(match_id),
             }
             data["quality"] = assess(m, data)
             self.store.save_detail(match_id, data)
@@ -215,6 +313,14 @@ class ConsoleService:
             if not m or match_id not in self.current_ids:
                 raise ValueError("该比赛不在官方当前场次中，无法确认状态。")
             detail = self.detail(match_id, force=True)
+            if (detail.get("live_score") or {}).get("state") in (
+                "live",
+                "completed",
+                "cancelled",
+                "suspended",
+                "postponed",
+            ):
+                raise ValueError("比分源显示比赛已开始、暂停、延期或取消，不能生成赛前预测。")
             if detail.get("cancelled"):
                 raise ValueError("该比赛已取消，不能生成预测。")
             if not detail["odds_fresh"]:
@@ -306,6 +412,7 @@ class ConsoleService:
                     "away": m["away"],
                     "pick": latest["direction"],
                     "score": "已取消" if detail.get("cancelled") else score or "待赛果",
+                    "live_score": self.scores().get(m["id"]),
                     "consistent": consistent,
                     "status": (
                         "已取消"
