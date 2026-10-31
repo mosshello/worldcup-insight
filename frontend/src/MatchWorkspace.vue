@@ -297,7 +297,6 @@ onBeforeUnmount(() => clearInterval(timer));
   />
   <div v-if="loading && !detail" class="panel empty-state">
     <h3>正在核对比赛与采集数据…</h3>
-    <p>分别读取官方赔率历史与基本面，部分来源可能需要数秒。</p>
   </div>
   <template v-else-if="tab === 'basic'"
     ><div class="two-column detail-grid">
@@ -456,7 +455,7 @@ onBeforeUnmount(() => clearInterval(timer));
     <section class="panel mt16">
       <div class="panel-heading"><h2>伤停与情报</h2></div>
       <div class="empty-state compact">
-        <p>当前尚无经过核验的伤停数据，无法据此确认球员可出场。</p>
+        <p>伤停待核实。</p>
       </div>
       <div class="section-note">
         {{
@@ -621,9 +620,7 @@ onBeforeUnmount(() => clearInterval(timer));
   >
   <template v-else-if="tab === 'analysis'"
     ><div class="analysis-toolbar">
-      <span class="muted">{{
-        analysis?.engine || "根据当前可用数据选择预测基线"
-      }}</span>
+      <span class="muted">{{ analysis?.engine || "尚无预测" }}</span>
       <div class="actions">
         <t-select
           v-model="versionId"
@@ -658,7 +655,7 @@ onBeforeUnmount(() => clearInterval(timer));
       class="mb16"
     />
     <div v-if="predictionBlocked" class="inline-notice">
-      当前状态不允许生成新的赛前预测；已有版本保留供查看和复盘。
+      无法生成赛前预测，可查看历史版本。
     </div>
     <template v-if="analysis"
       ><section class="panel analysis-summary">
@@ -666,7 +663,6 @@ onBeforeUnmount(() => clearInterval(timer));
           预测结论 / v{{ analysis.version }} · {{ timeLabel(analysis.created) }}
         </div>
         <h2>{{ analysis.title }}</h2>
-        <p>{{ analysis.summary }}</p>
         <div class="prediction-grid">
           <div>
             <span class="label-caption">{{ analysis.probLabel }}</span>
@@ -724,8 +720,7 @@ onBeforeUnmount(() => clearInterval(timer));
             <li v-for="r in analysis.risks" :key="r">{{ r }}</li>
           </ul>
           <div class="section-note">
-            计算版本：{{ analysis.model_version
-            }}<br />验证状态：基线估计，未声称预测准确率
+            计算版本：{{ analysis.model_version }}<br />未校准
           </div>
         </section>
       </div>
@@ -741,15 +736,11 @@ onBeforeUnmount(() => clearInterval(timer));
     >
     <section v-else class="panel empty-state">
       <h3>尚无赛前预测</h3>
-      <p>生成预测将重新读取最新 SP、核验近期表现，并保存输入快照及计算版本。</p>
     </section>
-    <div v-if="!aiConfigured" class="section-note">
-      AI 解读服务未配置，基线预测可独立使用。
-    </div>
+    <div v-if="!aiConfigured" class="section-note">AI 解读未配置。</div>
     <section class="panel mt16">
       <div class="panel-heading">
         <h2>我的笔记</h2>
-        <span class="small muted">保存至数据库 · 未提交草稿暂存当前标签页</span>
       </div>
       <div class="note-editor">
         <t-textarea
@@ -775,10 +766,6 @@ onBeforeUnmount(() => clearInterval(timer));
       </div>
     </section></template
   >
-  <div class="page-footnote">
-    比赛 ID：{{ match.id }} · 来源与采集时间独立保存 ·
-    后续更新不覆盖已有预测版本
-  </div>
   <t-drawer
     v-model:visible="historical"
     header="SP 历史明细"

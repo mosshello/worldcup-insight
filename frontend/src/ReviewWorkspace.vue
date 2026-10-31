@@ -99,7 +99,6 @@ onMounted(() => load(true));
 <template>
   <div class="page-heading">
     <div>
-      <div class="eyebrow">REVIEW</div>
       <h1>复盘记录</h1>
     </div>
     <div class="actions">
@@ -121,14 +120,6 @@ onMounted(() => load(true));
     <div>
       <span>已写复盘</span
       ><strong>{{ rows.filter((r) => state.reviewNotes[r.id]).length }}</strong>
-    </div>
-    <div>
-      <span>对照规则</span>
-      <p>
-        使用最后一版赛前预测<br /><span class="muted small"
-          >保留全部版本与生成时的数据</span
-        >
-      </p>
     </div>
   </div>
   <section class="panel">

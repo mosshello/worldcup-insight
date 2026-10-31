@@ -27,7 +27,6 @@ const matches = ref([]),
   error = ref(""),
   warning = ref(""),
   updated = ref(""),
-  sourceOpen = ref(false),
   stateError = ref("");
 const state = ref({
   favorites: [],
@@ -222,20 +221,7 @@ onBeforeUnmount(() => {
       ><a href="#/reviews" :class="{ active: route === 'reviews' }">复盘记录</a
       ><a href="#/models" :class="{ active: route === 'models' }">数据与模型</a>
     </nav>
-    <div class="header-right">
-      <span class="source-chip">官方竞彩足球</span
-      ><span class="workspace-label">个人工作台</span>
-    </div>
   </header>
-  <div class="context-bar">
-    <span
-      ><span class="status-dot" :class="{ warning: error || warning }"></span
-      >{{ error || warning ? "数据状态待核实" : "真实数据"
-      }}<span class="context-extra">自动刷新 60 秒 · 北京时间</span></span
-    ><button class="text-action" @click="sourceOpen = true">
-      <InfoCircleIcon />数据说明
-    </button>
-  </div>
   <main class="main-shell">
     <t-alert
       v-if="stateError"
@@ -246,7 +232,6 @@ onBeforeUnmount(() => {
     <template v-if="route === 'matches'">
       <div class="page-heading">
         <div>
-          <div class="eyebrow">MATCH CENTER</div>
           <h1>比赛中心</h1>
         </div>
         <div class="actions">
@@ -477,10 +462,8 @@ onBeforeUnmount(() => {
             {{ loading ? "正在读取比赛…" : "没有符合条件的已采集比赛。" }}
           </div>
         </div>
-        <div class="table-footer">
-          <span class="muted small"
-            >销售日与开赛日分别保留 · 选择玩法后按该玩法筛选单关</span
-          ><t-pagination
+        <div class="table-footer pagination-only">
+          <t-pagination
             v-model="currentPage"
             v-model:page-size="pageSize"
             :total="filtered.length"
@@ -490,9 +473,6 @@ onBeforeUnmount(() => {
           />
         </div>
       </section>
-      <div class="page-footnote">
-        赛程与 SP：体彩官方 · 历史记录从首次采集开始持续保存
-      </div>
     </template>
     <template v-else-if="route === 'match'"
       ><MatchWorkspace
@@ -524,34 +504,4 @@ onBeforeUnmount(() => {
       <t-button @click="navigate('/matches')">返回比赛中心</t-button>
     </div>
   </main>
-  <t-drawer
-    v-model:visible="sourceOpen"
-    header="数据说明"
-    size="480px"
-    :footer="false"
-    :close-on-esc-keydown="true"
-    @close="sourceOpen = false"
-    ><div class="drawer-body">
-      <h3>比赛与玩法</h3>
-      <p>
-        从体彩官方读取场次和五种玩法。各玩法分别记录开售状态、单关资格、固定奖金和来源更新时间。
-      </p>
-      <h3>基本面与阵容</h3>
-      <p>
-        通过赛事、双方球队与开赛时间匹配
-        ESPN。只有匹配成功的数据进入分析。首发未确认、伤停缺失分别展示，不用默认阵容补齐。
-      </p>
-      <h3>预测与 AI 解读</h3>
-      <p>
-        预测由版本化基线算法计算。近期数据充分时加入进失球估计，不足时使用市场基线并注明。AI
-        解读使用同一份数据，不能修改已计算的概率。
-      </p>
-      <h3>历史与保存</h3>
-      <p>
-        关注、笔记、赔率快照、预测输入和结果保存至本机数据库。支持不同日期与赛事，未采集的历史不会自动生成。
-      </p>
-      <h3>服务范围</h3>
-      <p>当前为本机工作空间。账号隔离、授权数据采购和对外部署需要单独配置。</p>
-    </div></t-drawer
-  >
 </template>

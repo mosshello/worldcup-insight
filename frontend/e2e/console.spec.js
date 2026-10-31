@@ -289,9 +289,7 @@ test("model coverage and responsive pages", async ({ page }) => {
   ).toBeVisible();
   await page.getByText("训练与评估", { exact: true }).click();
   await expect(
-    page.getByText(
-      "当前基线参数未通过历史训练拟合。系统正在积累真实赛前预测与赛果，不提供虚构训练任务。",
-    ),
+    page.getByText("训练服务未接入，基线模型未校准。"),
   ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   for (const path of [
