@@ -1,8 +1,10 @@
 """New workbench routes must not alter the old dashboard entry or start training."""
+
 import json
 import threading
 import unittest
 import urllib.request
+import urllib.error
 from http.server import ThreadingHTTPServer
 from unittest.mock import patch
 
@@ -29,12 +31,44 @@ class ConsoleRoutesTest(unittest.TestCase):
             self.assertIn('id="app"', response.read().decode("utf-8"))
 
     def test_capabilities_report_no_club_training_and_no_credentials(self):
-        with patch("worldcup_mvp.statistical_model.load_statistical_model", return_value={"model_version": "national-test", "secret": "never-expose"}):
-            with urllib.request.urlopen(self.base + "/api/console/capabilities") as response:
+        with patch(
+            "worldcup_mvp.statistical_model.load_statistical_model",
+            return_value={"model_version": "national-test", "secret": "never-expose"},
+        ):
+            with urllib.request.urlopen(
+                self.base + "/api/console/capabilities"
+            ) as response:
                 data = json.load(response)
         self.assertIs(data["club_training_enabled"], False)
         self.assertEqual(data["national_model"], "national-test")
         self.assertNotIn("secret", data)
+
+    def test_v1_rejects_nonobject_body_and_cross_origin_mutation(self):
+        for body, origin, status in [
+            (b"[]", self.base, 400),
+            (b"{}", "https://untrusted.invalid", 403),
+        ]:
+            req = urllib.request.Request(
+                self.base + "/api/v1/state",
+                data=body,
+                headers={"Content-Type": "application/json", "Origin": origin},
+            )
+            with self.assertRaises(urllib.error.HTTPError) as caught:
+                urllib.request.urlopen(req)
+            self.assertEqual(caught.exception.code, status)
+            caught.exception.close()
+
+    def test_v1_source_failure_returns_error_instead_of_demo_rows(self):
+        from worldcup_mvp.console.sources import SourceError
+
+        with patch("worldcup_mvp.console.api.get", side_effect=SourceError("offline")):
+            with self.assertRaises(urllib.error.HTTPError) as caught:
+                urllib.request.urlopen(self.base + "/api/v1/matches")
+            self.assertEqual(caught.exception.code, 502)
+            self.assertEqual(
+                json.load(caught.exception), {"success": False, "error": "offline"}
+            )
+            caught.exception.close()
 
 
 if __name__ == "__main__":

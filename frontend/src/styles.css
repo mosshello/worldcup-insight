@@ -224,7 +224,7 @@ svg {
   background: #147b58;
   margin-right: 8px;
 }
-.status-dot.demo {
+.status-dot.warning {
   background: #7e8da4;
 }
 .text-action {
@@ -1275,5 +1275,44 @@ svg {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+.source-chip {
+  font-size: 12px;
+  color: #0052d9;
+  background: #ecf2fe;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+.narrative-text {
+  padding: 0 20px 24px;
+  white-space: pre-wrap;
+  line-height: 1.9;
+  color: #4f5968;
+}
+.market-meta {
+  padding-top: 0;
+}
+.mt8 {
+  margin-top: 8px;
+}
+.filters .t-date-picker {
+  width: 100%;
+}
+@media (max-width: 760px) {
+  .filter-bottom {
+    flex-wrap: wrap;
+  }
+  .filter-bottom .actions {
+    width: 100%;
+  }
+  .filter-bottom .t-select__wrap {
+    width: 145px !important;
+  }
+  .header-right .source-chip {
+    font-size: 11px;
+  }
+  .analysis-toolbar .actions {
+    row-gap: 12px;
   }
 }

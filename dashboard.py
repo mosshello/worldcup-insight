@@ -46,6 +46,7 @@ _CLIENT_GONE_ERRORS = (ConnectionAbortedError, ConnectionResetError, BrokenPipeE
 
 class DashboardHandler(BaseHTTPRequestHandler):
     server_version = "WorldcupInsightDashboard/1.2"
+    console_only = False
 
     def log_message(self, format: str, *args: Any) -> None:
         print(f"[dashboard] {self.address_string()} - {format % args}")
@@ -122,6 +123,29 @@ class DashboardHandler(BaseHTTPRequestHandler):
         query = self._parse_query()
 
         try:
+            if route.startswith("/api/v1/"):
+                from worldcup_mvp.console import api
+                from worldcup_mvp.console.sources import SourceError
+                try:
+                    self._send_json(api.get(route, query))
+                except ValueError as exc:
+                    self._send_json({"success": False, "error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+                except SourceError as exc:
+                    self._send_json({"success": False, "error": str(exc)}, status=HTTPStatus.BAD_GATEWAY)
+                return
+
+            if route == "/club-preview.html":
+                self._send_file(WEB_ROOT / "club-preview.html")
+                return
+
+            if route.startswith("/console/assets/"):
+                target = (WEB_ROOT / route.lstrip("/")).resolve()
+                if (WEB_ROOT / "console").resolve() not in target.parents:
+                    self.send_error(HTTPStatus.FORBIDDEN)
+                    return
+                self._send_file(target)
+                return
+
             if route in ("/console", "/console/"):
                 self.send_response(HTTPStatus.FOUND)
                 self.send_header("Location", "/static/console/index.html")
@@ -140,6 +164,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 return
 
             if route in ("/", "/index.html") or route.startswith("/match/"):
+                if self.console_only:
+                    self.send_response(HTTPStatus.FOUND)
+                    self.send_header("Location", "/club-preview.html")
+                    self.end_headers()
+                    return
                 self._send_file(WEB_ROOT / "index.html")
                 return
 
@@ -255,6 +284,27 @@ class DashboardHandler(BaseHTTPRequestHandler):
         route = parsed.path
 
         try:
+            if route.startswith("/api/v1/"):
+                from worldcup_mvp.console import api
+                from worldcup_mvp.console.sources import SourceError
+                if int(self.headers.get("Content-Length", 0)) > 65536:
+                    self._send_json({"success": False, "error": "请求内容过大"}, status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+                    return
+                origin = self.headers.get("Origin")
+                if origin and urllib.parse.urlparse(origin).netloc != self.headers.get("Host"):
+                    self._send_json({"success": False, "error": "不允许跨站修改工作台数据"}, status=HTTPStatus.FORBIDDEN)
+                    return
+                if "application/json" not in self.headers.get("Content-Type", ""):
+                    self._send_json({"success": False, "error": "请使用 JSON 请求"}, status=HTTPStatus.BAD_REQUEST)
+                    return
+                try:
+                    self._send_json(api.post(route, self._read_json_body()))
+                except ValueError as exc:
+                    self._send_json({"success": False, "error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+                except SourceError as exc:
+                    self._send_json({"success": False, "error": str(exc)}, status=HTTPStatus.BAD_GATEWAY)
+                return
+
             if route == "/api/analyze/chat":
                 body = self._read_json_body()
                 match_id = str(body.get("match_id") or "").strip()
@@ -302,6 +352,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="启动世界杯盘口可视化仪表盘")
     parser.add_argument("--host", default="127.0.0.1", help="监听地址")
     parser.add_argument("--port", type=int, default=8765, help="监听端口")
+    parser.add_argument("--console-only", action="store_true", help="仅运行通用足球工作台，不启动旧世界杯自动任务")
     parser.add_argument(
         "--cache-interval",
         type=float,
@@ -319,10 +370,13 @@ def main() -> int:
     if not WEB_ROOT.exists():
         raise SystemExit(f"缺少前端目录：{WEB_ROOT}")
 
-    start_initial_refresh()
-    _, stop_event = start_background_refresh(args.cache_interval)
+    stop_event = None
+    if not args.console_only:
+        start_initial_refresh()
+        _, stop_event = start_background_refresh(args.cache_interval)
 
     server = ThreadingHTTPServer((args.host, args.port), DashboardHandler)
+    DashboardHandler.console_only = args.console_only
     url = f"http://{args.host}:{args.port}"
     print("世界杯盘口可视化仪表盘")
     print(f"访问地址：{url}")

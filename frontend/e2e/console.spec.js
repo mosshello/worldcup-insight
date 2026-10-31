@@ -1,145 +1,303 @@
 import { test, expect } from "@playwright/test";
-test.beforeEach(async ({ page }) => {
+
+// Test-only fixtures. Production has no demo mode or fixture import.
+async function setup(page) {
+  const start = new Date(Date.now() + 86400000 * 2).toISOString();
+  const market = {
+    code: "had",
+    label: "胜平负",
+    options: [
+      { key: "h", label: "主胜", odds: 2 },
+      { key: "d", label: "平局", odds: 3.2 },
+      { key: "a", label: "客胜", odds: 3.8 },
+    ],
+    single: false,
+    sale_status: "selling",
+    updated_at: new Date().toISOString(),
+  };
+  const match = {
+    id: "sporttery:test-1",
+    provider: "sporttery",
+    provider_id: "test-1",
+    number: "测试001",
+    home: "测试主队",
+    away: "测试客队",
+    league: "测试联赛",
+    sale_date: start.slice(0, 10),
+    kickoff: start,
+    markets: {
+      had: market,
+      ttg: {
+        ...market,
+        code: "ttg",
+        single: true,
+        options: [{ key: "s2", label: "2球", odds: 3.5 }],
+      },
+    },
+    sale_status: "selling",
+    lifecycle: "upcoming",
+    captured_at: new Date().toISOString(),
+    analysis_count: 0,
+  };
+  const state = {
+    favorites: [],
+    notes: {},
+    drafts: {},
+    reviewNotes: {},
+    versions: {},
+  };
+  const detail = {
+    markets: match.markets,
+    history: {
+      had: [
+        { ...market, updated_at: new Date(Date.now() - 3600000).toISOString() },
+        market,
+      ],
+    },
+    captured_at: new Date().toISOString(),
+    context: {
+      available: true,
+      source: "ESPN",
+      captured_at: new Date().toISOString(),
+      venue: "测试场地",
+      recent: [
+        [
+          {
+            id: "r1",
+            date: new Date(Date.now() - 86400000 * 3).toISOString(),
+            opponent: "历史对手A",
+            venue: "主",
+            gf: 2,
+            ga: 0,
+            score: "2-0",
+          },
+        ],
+        [
+          {
+            id: "r2",
+            date: new Date(Date.now() - 86400000 * 4).toISOString(),
+            opponent: "历史对手B",
+            venue: "客",
+            gf: 1,
+            ga: 1,
+            score: "1-1",
+          },
+        ],
+      ],
+      lineups: [
+        { status: "unconfirmed", players: [] },
+        { status: "unconfirmed", players: [] },
+      ],
+    },
+    errors: [],
+    versions: [],
+  };
+  const capabilities = {
+    sources: [],
+    models: [
+      {
+        id: "market-baseline-v1",
+        name: "市场基线",
+        status: "可用基线",
+        method: "完整玩法去水概率",
+        validation: "待验证",
+      },
+    ],
+    ai_configured: false,
+    match_count: 1,
+    analysis_count: 0,
+    settled_count: 0,
+    storage: "sqlite",
+  };
+  await page.route("**/api/v1/**", async (route) => {
+    const req = route.request(),
+      url = new URL(req.url()),
+      p = decodeURIComponent(url.pathname);
+    let out;
+    if (p === "/api/v1/matches" || p === "/api/v1/sync")
+      out = { matches: [match], server_time: new Date().toISOString() };
+    else if (p === "/api/v1/state" && req.method() === "GET") out = { state };
+    else if (p === "/api/v1/state") {
+      const b = req.postDataJSON();
+      if (b.kind === "favorites") {
+        state.favorites = b.value ? [b.key] : [];
+      } else state[b.kind][b.key] = b.value;
+      out = {};
+    } else if (p === "/api/v1/capabilities") out = capabilities;
+    else if (p === "/api/v1/matches/sporttery:test-1") out = { detail };
+    else if (p.endsWith("/predict")) {
+      const prediction = {
+        id: crypto.randomUUID(),
+        version: detail.versions.length + 1,
+        created: new Date().toISOString(),
+        model_version: "market-baseline-v1",
+        engine: "市场基线",
+        title: "测试主队方向略占优",
+        summary: "测试接口返回结果",
+        probabilities: [47, 29, 24],
+        probLabel: "基线预测概率",
+        goals: "2 / 3 球",
+        scores: "1-0 / 1-1",
+        direction: "主胜",
+        evidence: [{ title: "市场基准", text: "已核实市场数据", tab: "odds" }],
+        risks: ["首发待确认"],
+      };
+      detail.versions.unshift(prediction);
+      state.versions[match.id] = [...detail.versions];
+      out = { prediction, detail };
+    } else if (p.startsWith("/api/v1/reviews"))
+      out = {
+        reviews: detail.versions.length
+          ? [
+              {
+                id: match.id,
+                date: match.sale_date,
+                home: match.home,
+                away: match.away,
+                league: match.league,
+                pick: "主胜",
+                score: "待赛果",
+                consistent: null,
+                status: "待赛果",
+                prediction: detail.versions[0],
+                versions: detail.versions,
+              },
+            ]
+          : [],
+      };
+    else
+      return route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ success: false, error: "unknown" }),
+      });
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ success: true, ...out }),
+    });
+  });
   await page.goto("/club-preview.html");
   await expect(
     page.getByRole("heading", { name: "比赛列表", exact: true }),
   ).toBeVisible();
-});
-test("match filters, favorites, detail tabs and persisted notes", async ({
+  return { state, detail };
+}
+
+test("no demo mode; single eligibility follows selected market", async ({
   page,
 }) => {
-  const errors = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  await page.getByPlaceholder("球队 / 场次编号").fill("阿森纳");
+  await setup(page);
+  await expect(page.getByText("示例数据", { exact: true })).toHaveCount(0);
+  await page.getByText("仅单关", { exact: true }).click();
   await expect(page.locator(".desktop-matches tbody tr")).toHaveCount(1);
+  await page.getByPlaceholder("全部玩法").click();
+  await page.getByText("胜平负", { exact: true }).last().click();
+  await expect(
+    page.getByText(
+      "没有符合条件的已采集比赛。可清除筛选，或等待官方公布场次。",
+    ),
+  ).toBeVisible();
+});
+test("favorites, source details, predictions and persisted notes", async ({
+  page,
+}) => {
+  const { state } = await setup(page);
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.stack));
   await page
     .locator(".desktop-matches")
-    .getByRole("button", { name: "关注阿森纳", exact: true })
+    .getByRole("button", { name: "关注测试主队", exact: true })
     .click();
-  await expect(
-    page
-      .locator(".desktop-matches")
-      .getByRole("button", { name: "取消关注阿森纳" }),
-  ).toHaveAttribute("aria-pressed", "true");
+  expect(state.favorites).toEqual(["sporttery:test-1"]);
   await page
     .locator(".desktop-matches")
     .getByRole("button", { name: "查看", exact: true })
     .click();
   await expect(page.getByRole("heading", { name: "球队对比" })).toBeVisible();
+  await expect(page.getByText("历史对手A", { exact: true })).toBeVisible();
   await page.getByText("阵容情报", { exact: true }).click();
-  await expect(page.locator(".pitch")).toHaveCount(2);
+  await expect(page.getByText("首发待确认", { exact: true })).toHaveCount(2);
   await page.getByText("赔率", { exact: true }).click();
-  await expect(page.getByRole("heading", { name: "SP 变化" })).toBeVisible();
   await page.getByRole("button", { name: "历史明细" }).click();
   await expect(page.getByText("SP 历史明细", { exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
-  await page.getByText("AI 分析", { exact: true }).click();
-  await expect(page.getByRole("heading", { name: "判断依据" })).toBeVisible();
-  await page.getByRole("button", { name: "生成示例版本" }).click();
-  await expect(page.getByText("已保存新的示例版本")).toBeVisible();
-  await page.getByRole("button", { name: "生成示例版本" }).click();
-  expect(
-    await page.evaluate(() =>
-      JSON.parse(localStorage.getItem("football:v1:demo")).versions[
-        "demo-1"
-      ].map((v) => v.version),
-    ),
-  ).toEqual([3, 2, 1]);
+  await page.getByText("预测分析", { exact: true }).click();
+  await page.getByRole("button", { name: "生成预测", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "测试主队方向略占优" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "更新预测", exact: true }).click();
+  expect(state.versions["sporttery:test-1"]).toHaveLength(2);
   await page
     .getByPlaceholder("记录自己的判断、需要核实的消息或赛后观察…")
-    .fill("测试：关注首发变化");
+    .fill("持久化笔记");
   await page.getByRole("button", { name: "保存笔记" }).click();
   await page.reload();
   await expect(
     page.getByPlaceholder("记录自己的判断、需要核实的消息或赛后观察…"),
-  ).toHaveValue("测试：关注首发变化");
+  ).toHaveValue("持久化笔记");
   expect(errors).toEqual([]);
 });
-test("review note persists and export contains records", async ({ page }) => {
-  await page.getByRole("link", { name: "复盘记录", exact: true }).click();
-  await page.getByRole("button", { name: "查看复盘" }).first().click();
+test("review saves independent notes; CSV downloads", async ({ page }) => {
+  await setup(page);
   await page
-    .getByPlaceholder("记录偏差原因、可复用的观察和下次改进…")
-    .fill("对防守质量估计不足");
+    .locator(".desktop-matches")
+    .getByRole("button", { name: "查看", exact: true })
+    .click();
+  await page.getByText("预测分析", { exact: true }).click();
+  await page.getByRole("button", { name: "生成预测", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "测试主队方向略占优" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "复盘记录", exact: true }).click();
+  await page.getByRole("button", { name: "查看复盘" }).click();
+  await page
+    .getByPlaceholder("记录判断偏差、关键事件与后续改进…")
+    .fill("等赛果后核对");
   await page.getByRole("button", { name: "保存笔记" }).click();
   await page.reload();
-  await page.getByRole("button", { name: "查看复盘" }).first().click();
+  await page.getByRole("button", { name: "查看复盘" }).click();
   await expect(
-    page.getByPlaceholder("记录偏差原因、可复用的观察和下次改进…"),
-  ).toHaveValue("对防守质量估计不足");
+    page.getByPlaceholder("记录判断偏差、关键事件与后续改进…"),
+  ).toHaveValue("等赛果后核对");
   await page.getByRole("button", { name: "关闭", exact: true }).click();
-  await expect(page.getByText("比赛复盘", { exact: true })).not.toBeVisible();
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "导出记录" }).click();
-  expect((await download).suggestedFilename()).toContain("复盘记录");
+  expect((await download).suggestedFilename()).toBe("复盘记录.csv");
 });
-test("training configurations validate and persist without claiming execution", async ({
-  page,
-}) => {
-  await page.getByRole("link", { name: "数据与模型", exact: true }).click();
-  await page.getByText("训练配置", { exact: true }).first().click();
-  await page.getByRole("button", { name: "新建配置" }).click();
-  await page.getByLabel("配置名称", { exact: true }).fill("");
-  await page.getByRole("button", { name: "保存配置" }).click();
-  await expect(page.getByText("请填写配置名称")).toBeVisible();
-  await page.getByLabel("配置名称", { exact: true }).fill("测试模型");
-  await page.getByRole("button", { name: "保存配置" }).click();
-  await expect(page.getByText("待执行", { exact: true })).toBeVisible();
-  await page.reload();
-  await page.getByText("训练配置", { exact: true }).first().click();
-  await expect(page.getByText("测试模型", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "删除", exact: true }).click();
-  await page.getByRole("button", { name: "删除", exact: true }).last().click();
-  await expect(page.getByText("测试模型", { exact: true })).toHaveCount(0);
-});
-test("live API errors never fall back to sample data", async ({ page }) => {
-  await page.route("**/api/sporttery/matches", (route) =>
+test("source failure cannot fabricate matches", async ({ page }) => {
+  await page.route("**/api/v1/**", (route) =>
     route.fulfill({
-      status: 503,
+      status: 502,
       contentType: "application/json",
-      body: JSON.stringify({ success: false, error: "测试接口不可用" }),
+      body: JSON.stringify({ success: false, error: "来源暂不可用" }),
     }),
   );
-  await page.locator(".mode-select").click();
-  await page.getByText("真实接口", { exact: true }).last().click();
-  await expect(page.getByText("测试接口不可用", { exact: true })).toBeVisible();
-  await expect(page.getByText("阿森纳", { exact: true })).toHaveCount(0);
+  await page.goto("/club-preview.html");
+  await expect(
+    page.getByRole("heading", { name: "暂时无法获取比赛" }),
+  ).toBeVisible();
+  await expect(page.locator(".fixture-link")).toHaveCount(0);
+  await expect(page.getByText("示例数据", { exact: true })).toHaveCount(0);
 });
-test("desktop and mobile screens render without page overflow", async ({
-  page,
-}) => {
-  await page.screenshot({
-    path: "test-results/screens/01-matches.png",
-    fullPage: true,
-  });
-  await page.getByRole("button", { name: "查看", exact: true }).first().click();
-  for (const [label, file] of [
-    ["基本面", "02-basic"],
-    ["阵容情报", "03-lineups"],
-    ["赔率", "04-odds"],
-    ["AI 分析", "05-analysis"],
-  ]) {
-    await page.getByText(label, { exact: true }).first().click();
-    await page.screenshot({
-      path: `test-results/screens/${file}.png`,
-      fullPage: true,
-    });
-  }
-  await page.getByRole("link", { name: "复盘记录", exact: true }).click();
-  await page.screenshot({
-    path: "test-results/screens/06-reviews.png",
-    fullPage: true,
-  });
+test("model coverage and responsive pages", async ({ page }) => {
+  await setup(page);
   await page.getByRole("link", { name: "数据与模型", exact: true }).click();
-  await page.screenshot({
-    path: "test-results/screens/07-models.png",
-    fullPage: true,
-  });
+  await page.getByText("预测模型", { exact: true }).click();
+  await expect(
+    page.getByText("market-baseline-v1", { exact: true }),
+  ).toBeVisible();
+  await page.getByText("训练与评估", { exact: true }).click();
+  await expect(
+    page.getByText(
+      "当前基线参数未通过历史训练拟合。系统正在积累真实赛前预测与赛果，不提供虚构训练任务。",
+    ),
+  ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   for (const path of [
     "/matches",
-    "/match/demo-1/basic",
-    "/match/demo-1/analysis",
+    "/match/sporttery:test-1/basic",
+    "/match/sporttery:test-1/analysis",
     "/reviews",
     "/models",
   ]) {
@@ -151,9 +309,4 @@ test("desktop and mobile screens render without page overflow", async ({
       ),
     ).toBe(true);
   }
-  await page.goto("/club-preview.html#/matches");
-  await page.screenshot({
-    path: "test-results/screens/08-mobile.png",
-    fullPage: true,
-  });
 });

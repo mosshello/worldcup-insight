@@ -1,57 +1,68 @@
 # 足球分析工作台
 
-Vue 3 + TDesign Vue Next。独立前端；保留原有 Python 后端和旧版首页。
+Vue 3 + TDesign Vue Next。业务界面只有真实数据模式；浏览器不内置比赛、赔率、阵容或预测样例。
 
-## 运行
+## 启动
+
+在仓库根目录执行：
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-console.txt
+.\.venv\Scripts\python.exe dashboard.py --port 8891 --console-only --cache-interval 0
+```
+
+打开 `http://127.0.0.1:8891/club-preview.html` 或 `/console`。不要再使用 `python -m http.server` 运行产品，它没有数据接口。`--console-only` 关闭旧世界杯后台任务，根地址也进入新工作台。已有构建产物纳入版本控制，无需安装 Node 即可运行。
+
+## 前端开发
 
 ```powershell
 cd frontend
 npm ci
+npm run dev
 npm run build
-cd ..
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-console.txt
-.\.venv\Scripts\python.exe dashboard.py --port 8892 --cache-interval 0
 ```
 
-打开 `http://127.0.0.1:8892/console`。开发时运行 `npm run dev`，Vite 将 `/api` 转发到 8892。
+开发时 Vite 将 `/api` 代理到 8891。构建输出 `web/console`，同步更新 `web/club-preview.html`；发布脚本清理不再被引用的旧 JS/CSS。
 
-现有静态预览仍可打开 `http://127.0.0.1:8891/club-preview.html`；静态服务器没有 `/api`，因此用于示例模式。页面右上角可切换模式，真实接口失败时显示错误，不偷偷回退示例。
+## 接口
 
-构建生成 `web/console/`，并更新原 `web/club-preview.html` 为同一应用入口。构建产物纳入版本控制，使用 Python 服务无需安装 Node。
+| 功能                         | 接口                                                                 |
+| ---------------------------- | -------------------------------------------------------------------- |
+| 已采集场次、日期、时效状态   | `GET /api/v1/matches`                                                |
+| 主动同步官方场次             | `POST /api/v1/sync`                                                  |
+| 单场实时详情、来源、赔率历史 | `GET /api/v1/matches/{provider:id}`                                  |
+| 预测并归档                   | `POST /api/v1/matches/{provider:id}/predict`；可选 `narrative: true` |
+| 关注、笔记与历史版本         | `GET /api/v1/state`                                                  |
+| 修改关注或笔记               | `POST /api/v1/state`；`kind / key / value`                           |
+| 复盘列表、更新赛果           | `GET /api/v1/reviews`、`POST /api/v1/reviews/sync`                   |
+| 数据源状态与计算版本         | `GET /api/v1/capabilities`                                           |
 
-## 第一版范围
+赔率状态来自各玩法，不能用比赛级单关标记代替。ESPN 对应关系需要赛事、双方球队、开赛时间共同匹配。缺失数据不会用本地旧世界杯情报或样例补齐。
 
-- 比赛中心：销售日、赛事、玩法、搜索、仅在售、仅单关、仅关注、分页、CSV 导出。
-- 单场详情：基本面、预计阵容/伤停、体彩 SP 与外盘对照、赔率历史、AI 分析、分析版本、笔记。
-- 复盘：赛前/赛后对照、筛选、复盘笔记、CSV 导出。
-- 数据与模型：数据覆盖说明、训练配置创建/校验/删除、模型版本与对比示例。
+## 存储与配置
 
-所有演示数据均显式标注，非真实比赛预测。阵容图使用位置而非虚构真实球员伤停。
+- 数据库：`data/console/football.sqlite3`，包含真实比赛、快照、预测版本、关注和笔记，已加入 Git 忽略。运行时采用 WAL；备份建议停止服务后复制数据库及关联 WAL 文件，或使用 SQLite 在线备份 API。
+- `FOOTBALL_DB_PATH`：覆盖数据库位置，供测试和部署使用。
+- `FOOTBALL_DIRECT_NETWORK=1`（默认）：数据适配器直接连接来源；设为 `0` 使用环境代理。不修改系统代理配置。
+- `DEEPSEEK_API_KEY` / `DEEPSEEK_MODEL`：沿用项目 `.env`，只在点击“AI 解读”时调用。未配置时基线预测独立工作。
+- 当前运行在本机工作空间，不含对外账户鉴权。数据库结构保留 workspace 隔离字段，外网部署前必须实现服务端身份认证。
 
-## 真实接口与边界
+## 预测能力边界
 
-| 功能                     | 接口 / 状态                                                         |
-| ------------------------ | ------------------------------------------------------------------- |
-| 体彩比赛和已接入 SP      | `GET /api/sporttery/matches`                                        |
-| 分析及版本保存           | `GET /api/sporttery/predict/{match_id}`；市场定价分析，非俱乐部模型 |
-| 既有复盘读取             | `GET /api/analyze/reviews`                                          |
-| 现有能力读取             | `GET /api/console/capabilities`                                     |
-| 俱乐部赛果统计、阵容、xG | 等待数据接入，真实模式展示缺失状态                                  |
-| 俱乐部训练执行、启用模型 | 等待服务接入；第一版仅保存配置，无伪造进度                          |
+已实现版本化市场基线；双方赛前近期样本充分时加入收缩 Poisson 进失球估计。固定参数尚未样本外校准，不宣称训练完成或命中率。AI 解释与计算分离。已开赛、取消、官方状态不可验证或关键赔率不完整时，不创建新的赛前版本。
 
-关注、笔记、分析快照和训练配置只存储在当前浏览器 localStorage，示例和真实分别隔离。尚无账号、权限、服务端同步；不能作为付费平台直接对外部署。
-
-## 统一规范
-
-TDesign 色值与组件：品牌蓝 `#0052D9`，灰白背景；所有圆角统一覆盖为 0。正文 14px、辅助 12px、区块标题 16px、页面标题 24px。桌面控件 32px；8px 基础间距；表格固定表头字号及操作列。窄屏改为单列，表格自身滚动；键盘焦点与减少动效设置保留。
+伤停、xG、授权外盘、后台训练执行服务仍需接入；对应页面展示明确的覆盖状态。产品结构见 [产品与架构说明](../docs/product-evolution.md)。
 
 ## 验证
 
 ```powershell
+# 仓库根目录
+.\.venv\Scripts\python.exe -m unittest tests.test_console_domain tests.test_console_routes
+cd frontend
 npm test
 npm run build
-npx playwright test
+npm run test:e2e
 ```
 
-浏览器测试使用系统 Chrome，在 8893 自动启动静态服务。覆盖筛选、关注、四个页签、版本生成、笔记持久化、复盘导出、训练配置校验、API 错误隔离和窄屏溢出检查。截图位于 `frontend/test-results/screens/`。
+浏览器测试采用系统 Chrome、8893 临时静态服务和测试专用 API fixture。生产包不导入 fixture。真实来源另进行联网验收，不把 mock 测试当作数据接入成功。

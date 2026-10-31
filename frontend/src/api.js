@@ -1,0 +1,63 @@
+import { request } from "./domain.js";
+export const api = {
+  matches: () => request("/api/v1/matches"),
+  sync: () => request("/api/v1/sync", { method: "POST", body: "{}" }),
+  state: () => request("/api/v1/state"),
+  capabilities: () => request("/api/v1/capabilities"),
+  detail: (id, refresh = false) =>
+    request(
+      `/api/v1/matches/${encodeURIComponent(id)}${refresh ? "?refresh=1" : ""}`,
+    ),
+  predict: (id, narrative = false) =>
+    request(`/api/v1/matches/${encodeURIComponent(id)}/predict`, {
+      method: "POST",
+      body: JSON.stringify({ narrative }),
+    }),
+  save: (kind, key, value) =>
+    request("/api/v1/state", {
+      method: "POST",
+      body: JSON.stringify({ kind, key, value }),
+    }),
+  reviews: () => request("/api/v1/reviews"),
+  refreshReviews: () =>
+    request("/api/v1/reviews/sync", { method: "POST", body: "{}" }),
+};
+export function adaptMatch(m) {
+  const had = m.markets?.had;
+  return {
+    ...m,
+    num: m.number,
+    date: m.sale_date,
+    time: m.kickoff.slice(11, 16),
+    sale: m.sale_status,
+    odds: ["h", "d", "a"].map(
+      (k) => had?.options.find((o) => o.key === k)?.odds,
+    ),
+    pools: m.markets,
+    markets: Object.keys(m.markets || {}).filter(
+      (k) => m.markets[k].options.length,
+    ),
+    single: Object.values(m.markets || {}).some((p) => p.single),
+    analysisState: m.analysis_count ? "已分析" : "未分析",
+  };
+}
+export function timeLabel(v) {
+  return v
+    ? new Date(v).toLocaleString("zh-CN", {
+        timeZone: "Asia/Shanghai",
+        hour12: false,
+      })
+    : "未知";
+}
+export const lifecycleNames = {
+  upcoming: "未开赛",
+  started: "已开赛 · 待核实",
+  live: "进行中",
+  completed: "已结束",
+};
+export const saleNames = {
+  selling: "在售",
+  pending: "待开售",
+  closed: "已停售",
+  unknown: "待核实",
+};
