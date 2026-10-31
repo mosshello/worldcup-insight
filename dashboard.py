@@ -374,6 +374,9 @@ def main() -> int:
     if not args.console_only:
         start_initial_refresh()
         _, stop_event = start_background_refresh(args.cache_interval)
+    else:
+        from worldcup_mvp.console.service import service
+        stop_event = service().start_collector()
 
     server = ThreadingHTTPServer((args.host, args.port), DashboardHandler)
     DashboardHandler.console_only = args.console_only

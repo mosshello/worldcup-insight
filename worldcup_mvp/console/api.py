@@ -12,6 +12,8 @@ def get(route, query):
         return {"success": True, "state": app.store.state()}
     if route == "/api/v1/capabilities":
         return {"success": True, **app.capabilities()}
+    if route == "/api/v1/competitions":
+        return {"success": True, "competitions": app.competitions()}
     if route == "/api/v1/reviews":
         return {"success": True, "reviews": app.reviews()}
     if route.startswith("/api/v1/matches/"):
@@ -36,6 +38,14 @@ def post(route, body):
         if app.last_error:
             raise ValueError(app.last_error)
         return {"success": True, **app.list_matches()}
+    if route == "/api/v1/training/evaluate":
+        from .training import run_evaluation
+
+        with app.lock("training"):
+            return {"success": True, "evaluation": run_evaluation()}
+    if route.startswith("/api/v1/matches/") and route.endswith("/evidence"):
+        match_id = unquote(route[len("/api/v1/matches/") : -len("/evidence")])
+        return {"success": True, "evidence": app.store.add_evidence(match_id, body)}
     if route == "/api/v1/state":
         kind, key, value = body.get("kind"), body.get("key"), body.get("value")
         if not isinstance(key, str) or not key or len(key) > 150:

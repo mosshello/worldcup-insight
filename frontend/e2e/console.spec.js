@@ -298,8 +298,13 @@ test("model coverage and responsive pages", async ({ page }) => {
     page.getByText("market-baseline-v1", { exact: true }),
   ).toBeVisible();
   await page.getByText("训练与评估", { exact: true }).click();
+  await expect(page.getByText("等待授权历史数据")).toBeVisible();
   await expect(
-    page.getByText("训练服务未接入，基线模型未校准。"),
+    page.getByRole("button", { name: "运行评估", exact: true }),
+  ).toBeDisabled();
+  await page.getByText("赛事维护", { exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "赛事覆盖", exact: true }),
   ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   for (const path of [

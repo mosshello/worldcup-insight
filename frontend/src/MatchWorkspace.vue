@@ -33,6 +33,44 @@ const detail = ref(null),
   copyText = ref(""),
   saving = ref(false),
   autoRefresh = ref(true);
+const evidenceOpen = ref(false),
+  evidenceSaving = ref(false),
+  evidenceError = ref("");
+const evidenceDraft = ref({
+  kind: "fact",
+  text: "",
+  source_url: "",
+  published_at: "",
+});
+async function saveEvidence() {
+  evidenceSaving.value = true;
+  evidenceError.value = "";
+  try {
+    const d = evidenceDraft.value;
+    if (!d.text.trim() || !d.source_url.trim() || !d.published_at)
+      throw new Error("请填写内容、来源链接和发布时间");
+    const published = new Date(d.published_at);
+    if (!Number.isFinite(published.getTime()))
+      throw new Error("发布时间格式无效");
+    await api.evidence(props.match.id, {
+      ...d,
+      published_at: published.toISOString(),
+    });
+    evidenceOpen.value = false;
+    evidenceDraft.value = {
+      kind: "fact",
+      text: "",
+      source_url: "",
+      published_at: "",
+    };
+    await load();
+    MessagePlugin.success("已保存情报");
+  } catch (e) {
+    evidenceError.value = e.message;
+  } finally {
+    evidenceSaving.value = false;
+  }
+}
 const draftKey = `football:draft:${props.match.id}`;
 const noteDraft = ref(
   sessionStorage.getItem(draftKey) ?? props.state.notes[props.match.id] ?? "",
@@ -89,7 +127,7 @@ const basicStats = computed(() => {
     ["近期战绩", ...stats.map((s) => (s.n ? `${s.w}胜${s.d}平${s.l}负` : "—"))],
     ["场均进球", ...stats.map((s) => s.g)],
     ["场均失球", ...stats.map((s) => s.a)],
-    ["联赛排名", props.match.home_rank || "—", props.match.away_rank || "—"],
+    ["体彩排名", props.match.home_rank || "—", props.match.away_rank || "—"],
   ];
 });
 const formCols = [
@@ -178,6 +216,7 @@ const predictionBlocked = computed(
   () =>
     Date.parse(props.match.kickoff) <= Date.now() ||
     props.match.stale ||
+    detail.value?.quality?.can_predict === false ||
     detail.value?.cancelled ||
     ["live", "completed"].includes(context.value.state),
 );
@@ -408,10 +447,7 @@ onBeforeUnmount(() => clearInterval(timer));
     </div></template
   >
   <template v-else-if="tab === 'lineups'"
-    ><div class="inline-notice">
-      正式首发与伤停分别核实；球队名单不能当作本场确认首发。
-    </div>
-    <div class="two-column detail-grid">
+    ><div class="two-column detail-grid">
       <section
         class="panel"
         v-for="(team, i) in [match.home, match.away]"
@@ -453,8 +489,33 @@ onBeforeUnmount(() => clearInterval(timer));
       </section>
     </div>
     <section class="panel mt16">
-      <div class="panel-heading"><h2>伤停与情报</h2></div>
-      <div class="empty-state compact">
+      <div class="panel-heading">
+        <h2>伤停与情报</h2>
+        <t-button variant="outline" @click="evidenceOpen = true"
+          >添加情报</t-button
+        >
+      </div>
+      <div
+        v-for="e in detail?.evidence || []"
+        :key="e.id"
+        class="source-evidence"
+      >
+        <div class="actions">
+          <t-tag variant="light">{{
+            e.kind === "fact" ? "事实记录" : "外部观点"
+          }}</t-tag
+          ><span class="small muted">{{
+            e.published_precision === "date"
+              ? e.published_at.slice(0, 10)
+              : timeLabel(e.published_at)
+          }}</span
+          ><a :href="e.source_url" target="_blank" rel="noopener noreferrer"
+            >来源 ↗</a
+          >
+        </div>
+        <p>{{ e.text }}</p>
+      </div>
+      <div v-if="!detail?.evidence?.length" class="empty-state compact">
         <p>伤停待核实。</p>
       </div>
       <div class="section-note">
@@ -525,13 +586,19 @@ onBeforeUnmount(() => clearInterval(timer));
           ></t-table
         >
         <div class="section-note">
-          来源：体彩官方 · 采集于 {{ timeLabel(detail?.captured_at) }} ·
-          最早可得记录不等于开盘值
+          体彩官方 · 核验于
+          {{ timeLabel(detail?.quality?.verified_at || detail?.captured_at) }}
+          <t-tag
+            v-if="detail?.quality?.can_predict === false"
+            theme="warning"
+            variant="light"
+            >{{ detail.quality.reasons.join("；") }}</t-tag
+          >
         </div></template
       >
       <div v-else class="empty-state compact">
         <h3>暂无已匹配的外盘数据</h3>
-        <p>未用体彩 SP 复制填充外盘，公司与市场须分别验证。</p>
+        <p>数据源未配置</p>
       </div>
     </section>
     <section v-if="oddsSource === 'sporttery'" class="panel mt16">
@@ -789,4 +856,51 @@ onBeforeUnmount(() => clearInterval(timer));
     ><p>请选中文本复制。</p>
     <t-textarea :value="copyText" :rows="8" readonly
   /></t-dialog>
+  <t-dialog
+    v-model:visible="evidenceOpen"
+    header="添加情报"
+    :footer="false"
+    :close-on-overlay-click="false"
+  >
+    <t-alert
+      v-if="evidenceError"
+      theme="error"
+      :message="evidenceError"
+      class="mb16"
+    />
+    <t-form label-align="top" @submit.prevent="saveEvidence">
+      <t-form-item label="类型"
+        ><t-radio-group
+          v-model="evidenceDraft.kind"
+          :options="[
+            { label: '事实记录', value: 'fact' },
+            { label: '外部观点', value: 'opinion' },
+          ]"
+      /></t-form-item>
+      <t-form-item label="内容"
+        ><t-textarea
+          v-model="evidenceDraft.text"
+          :maxlength="1500"
+          :autosize="{ minRows: 3, maxRows: 8 }"
+      /></t-form-item>
+      <t-form-item label="来源链接"
+        ><t-input
+          v-model="evidenceDraft.source_url"
+          type="url"
+          placeholder="https://"
+      /></t-form-item>
+      <t-form-item label="发布时间（北京时间）"
+        ><t-input
+          v-model="evidenceDraft.published_at"
+          placeholder="2026-10-31T14:00:00+08:00"
+      /></t-form-item>
+      <div class="actions">
+        <t-button :loading="evidenceSaving" @click="saveEvidence"
+          >保存情报</t-button
+        ><t-button variant="outline" @click="evidenceOpen = false"
+          >取消</t-button
+        >
+      </div>
+    </t-form>
+  </t-dialog>
 </template>

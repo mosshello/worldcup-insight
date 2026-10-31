@@ -5,7 +5,20 @@ import { api, timeLabel } from "./api";
 const tab = ref("sources"),
   loading = ref(false),
   error = ref(""),
-  data = ref(null);
+  data = ref(null),
+  evaluating = ref(false);
+async function evaluate() {
+  evaluating.value = true;
+  error.value = "";
+  try {
+    await api.evaluate();
+    await load();
+  } catch (e) {
+    error.value = e.message;
+  } finally {
+    evaluating.value = false;
+  }
+}
 async function load() {
   loading.value = true;
   error.value = "";
@@ -24,17 +37,15 @@ const sources = computed(() => [
     scope: "比赛 / 五种玩法 SP / 赔率历史",
     ...data.value?.sources.find((s) => s.id === "sporttery"),
   },
-  {
-    id: "espn",
-    name: "ESPN",
-    scope: "近期赛果 / 场地 / 正式首发",
-    ...data.value?.sources.find((s) => s.id === "espn"),
-  },
+  ...(data.value?.sources || []).filter((s) => s.id.startsWith("context:")),
+  ...(data.value?.provider_configuration || []),
 ]);
 const statusNames = {
   available: "最近请求成功",
   partial: "部分覆盖",
   error: "最近请求失败",
+  not_configured: "未配置",
+  pending_validation: "待验收",
 };
 onMounted(load);
 </script>
@@ -62,7 +73,9 @@ onMounted(load);
   <t-tabs v-model="tab" class="detail-tabs"
     ><t-tab-panel value="sources" label="数据来源" /><t-tab-panel
       value="models"
-      label="预测模型" /><t-tab-panel value="training" label="训练与评估"
+      label="预测模型" /><t-tab-panel
+      value="training"
+      label="训练与评估" /><t-tab-panel value="competitions" label="赛事维护"
   /></t-tabs>
   <template v-if="tab === 'sources'"
     ><section class="panel">
@@ -109,6 +122,12 @@ onMounted(load);
         <div class="panel-heading"><h2>当前覆盖</h2></div>
         <dl class="context-list">
           <div>
+            <dt>后台采集</dt>
+            <dd>
+              {{ data?.collector?.running ? "运行中 · 每60秒" : "未运行" }}
+            </dd>
+          </div>
+          <div>
             <dt>阵容</dt>
             <dd>未公布时显示待确认</dd>
           </div>
@@ -142,10 +161,82 @@ onMounted(load);
         empty="模型加载失败"
       /></section
   ></template>
+  <template v-else-if="tab === 'competitions'">
+    <section class="panel">
+      <div class="panel-heading"><h2>赛事覆盖</h2></div>
+      <t-table
+        row-key="id"
+        :data="data?.competitions || []"
+        :columns="[
+          { colKey: 'name', title: '赛事', width: 100 },
+          { colKey: 'id', title: '标识', width: 120 },
+          { colKey: 'seasons', title: '赛季', minWidth: 200 },
+          { colKey: 'match_count', title: '采集场次', width: 110 },
+          { colKey: 'context_count', title: '已获基本面', width: 130 },
+          { colKey: 'rule_source', title: '赛制', width: 110 },
+        ]"
+      >
+        <template #seasons="{ row }">{{
+          row.seasons.map((s) => s.label).join(" / ")
+        }}</template>
+        <template #rule_source="{ row }"
+          ><a :href="row.rule_source" target="_blank" rel="noopener noreferrer"
+            >官方规则 ↗</a
+          ></template
+        >
+      </t-table>
+    </section>
+  </template>
   <template v-else
     ><section class="panel">
-      <div class="panel-heading"><h2>训练状态</h2></div>
-      <div class="inline-notice">训练服务未接入，基线模型未校准。</div>
-    </section></template
-  >
+      <div class="panel-heading">
+        <h2>离线评估</h2>
+        <t-button
+          :loading="evaluating"
+          :disabled="!data?.training?.ready"
+          @click="evaluate"
+          >运行评估</t-button
+        >
+      </div>
+      <dl class="context-list">
+        <div>
+          <dt>历史样本</dt>
+          <dd>{{ data?.training?.rows || 0 }} 场</dd>
+        </div>
+        <div>
+          <dt>数据状态</dt>
+          <dd>{{ data?.training?.reason || "等待授权历史数据" }}</dd>
+        </div>
+        <div>
+          <dt>评估口径</dt>
+          <dd>赛前60分钟 · 时间切分 · 分联赛对比</dd>
+        </div>
+        <div>
+          <dt>生产模型</dt>
+          <dd>市场基线</dd>
+        </div>
+      </dl>
+      <t-table
+        v-if="data?.training?.evaluation"
+        row-key="id"
+        :data="[
+          {
+            id: 'model',
+            name: '模型（相同样本）',
+            ...data.training.evaluation.paired_model,
+          },
+          {
+            id: 'market',
+            name: '市场基线',
+            ...data.training.evaluation.market_baseline,
+          },
+        ]"
+        :columns="[
+          { colKey: 'name', title: '对照' },
+          { colKey: 'count', title: '样本数' },
+          { colKey: 'log_loss', title: 'Log loss' },
+          { colKey: 'brier', title: 'Brier' },
+        ]"
+      /></section
+  ></template>
 </template>

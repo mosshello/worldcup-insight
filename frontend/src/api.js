@@ -4,6 +4,13 @@ export const api = {
   sync: () => request("/api/v1/sync", { method: "POST", body: "{}" }),
   state: () => request("/api/v1/state"),
   capabilities: () => request("/api/v1/capabilities"),
+  evaluate: () =>
+    request("/api/v1/training/evaluate", { method: "POST", body: "{}" }),
+  evidence: (id, body) =>
+    request(`/api/v1/matches/${encodeURIComponent(id)}/evidence`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   detail: (id, refresh = false) =>
     request(
       `/api/v1/matches/${encodeURIComponent(id)}${refresh ? "?refresh=1" : ""}`,

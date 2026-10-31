@@ -58,6 +58,7 @@ LEAGUES = {
 }
 # Explicit aliases scoped by competition; never match clubs solely by a kickoff or one team.
 ALIASES = {
+    "jpn.1": {"KAH": "KRE"},
     "eng.1": {
         "MNU": "MAN",
         "MNC": "MNC",
@@ -67,7 +68,7 @@ ALIASES = {
         "LEE": "LEE",
         "HUL": "HUL",
         "IPS": "IPS",
-    }
+    },
 }
 
 
@@ -125,7 +126,9 @@ def number(v):
 
 
 def option_label(code, key):
-    if code in ("had", "hhad"):
+    if code == "hhad":
+        return {"h": "让胜", "d": "让平", "a": "让负"}.get(key)
+    if code == "had":
         return {"h": "主胜", "d": "平局", "a": "客胜"}.get(key)
     if code == "ttg" and re.fullmatch(r"s[0-7]", key):
         return key[1] + ("+球" if key == "s7" else "球")
@@ -140,6 +143,11 @@ def option_label(code, key):
 
 def normalize_market(code, raw, metadata=None):
     raw, metadata = raw or {}, metadata or {}
+    # The history endpoint spells the three 'other score' buckets differently.
+    raw = {
+        ({"s-1sh": "s1sh", "s-1sd": "s1sd", "s-1sa": "s1sa"}.get(k, k)): v
+        for k, v in raw.items()
+    }
     options = [
         {"key": k, "label": option_label(code, k), "odds": number(v)}
         for k, v in raw.items()
@@ -152,7 +160,9 @@ def normalize_market(code, raw, metadata=None):
             else len(EXPECTED_OPTIONS[code])
         )
     )
-    line = raw.get("goalLineValue") or raw.get("goalLine")
+    line = raw.get("goalLineValue")
+    if line in (None, ""):
+        line = raw.get("goalLine")
     return {
         "code": code,
         "label": MARKETS[code],
@@ -161,9 +171,12 @@ def normalize_market(code, raw, metadata=None):
         "updated_at": timestamp(raw),
         "single": metadata.get("bettingSingle", metadata.get("single"))
         in (1, "1", True),
-        "sale_status": (
-            "selling" if metadata.get("poolStatus") == "Selling" else "unknown"
-        ),
+        "sale_status": {
+            "Selling": "selling",
+            "Closed": "closed",
+            "Stop": "closed",
+            "Suspended": "suspended",
+        }.get(metadata.get("poolStatus"), "unknown"),
     }
 
 
@@ -196,23 +209,34 @@ def normalize_match(raw):
         "sale_date": raw.get("businessDate") or raw["matchDate"],
         "kickoff": kickoff,
         "sale_status": (
-            "selling"
-            if raw.get("matchStatus") == "Selling" or str(raw.get("sellStatus")) == "1"
-            else "pending"
+            {
+                "Selling": "selling",
+                "Closed": "closed",
+                "Suspended": "suspended",
+                "Stop": "closed",
+            }.get(raw.get("matchStatus"), "unknown")
+            if raw.get("matchStatus")
+            else "selling" if str(raw.get("sellStatus")) == "1" else "pending"
         ),
         "markets": markets,
         "source_url": "https://www.sporttery.cn/jc/zqszsc/",
     }
+    from .catalog import classify
+
+    m["competition"] = classify(m)
     return m
 
 
 def fetch_matches():
     data = official("getMatchCalculatorV1.qry", channel="c", poolCode=",".join(MARKETS))
-    return [
-        normalize_match(m)
-        for group in data.get("matchInfoList", [])
-        for m in group.get("subMatchList", [])
-    ]
+    try:
+        return [
+            normalize_match(m)
+            for group in data.get("matchInfoList", [])
+            for m in group.get("subMatchList", [])
+        ]
+    except (ValueError, KeyError, TypeError):
+        raise SourceError("体彩场次格式无效，本次未覆盖已存数据") from None
 
 
 def fetch_odds(match):
@@ -310,6 +334,15 @@ def recent_rows(summary, team_id, kickoff):
 
 
 def fetch_context(match):
+    if match.get("league_code") == "KD1":
+        return {
+            "available": False,
+            "reason": "韩职结构化基本面尚未接入；等待数据源授权",
+            "recent": [[], []],
+            "lineups": [],
+            "source": "K League",
+            "injuries_verified": False,
+        }
     league = LEAGUES.get(match["league_code"])
     if not league:
         return {
@@ -331,11 +364,19 @@ def fetch_context(match):
             "source": "ESPN",
         }
     summary = get_json(ESPN + league + "/summary?event=" + event["id"])
+    if str(summary.get("header", {}).get("id")) != str(event["id"]):
+        raise SourceError("基本面详情比赛 ID 不一致")
     competitors = {p["homeAway"]: p for p in event["competitions"][0]["competitors"]}
     lineups = []
     for side in ("home", "away"):
         roster = next(
-            (r for r in summary.get("rosters", []) if r.get("homeAway") == side), {}
+            (
+                r
+                for r in summary.get("rosters", [])
+                if r.get("homeAway") == side
+                and str(r.get("team", {}).get("id")) == str(competitors[side]["id"])
+            ),
+            {},
         )
         players = []
         for r in roster.get("roster", []):

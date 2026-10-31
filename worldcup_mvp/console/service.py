@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 from .store import Store, now_iso
 from . import sources
 from .predictor import predict, narrate
+from .quality import select_markets, assess
+from .catalog import catalog, classify, provider_configuration
 
 
 class ConsoleService:
@@ -22,6 +24,45 @@ class ConsoleService:
         self.current_ids = set()
         self._locks = {}
         self._locks_guard = threading.Lock()
+        self.collector_stop = threading.Event()
+        self.collector_thread = None
+
+    def start_collector(self, interval=60):
+        if self.collector_thread and self.collector_thread.is_alive():
+            return self.collector_stop
+        self.collector_stop.clear()
+
+        def run():
+            while not self.collector_stop.is_set():
+                began = time.monotonic()
+                try:
+                    self.sync(force=True)
+                    self.store.status(
+                        "collector",
+                        {
+                            "status": "available" if not self.last_error else "error",
+                            "interval_seconds": interval,
+                            "last_success": now_iso() if not self.last_error else None,
+                            "error": self.last_error,
+                            "duration_ms": round((time.monotonic() - began) * 1000),
+                        },
+                    )
+                except Exception:
+                    self.store.status(
+                        "collector",
+                        {
+                            "status": "error",
+                            "error": "采集任务失败",
+                            "interval_seconds": interval,
+                        },
+                    )
+                self.collector_stop.wait(max(1, interval - (time.monotonic() - began)))
+
+        self.collector_thread = threading.Thread(
+            target=run, name="football-collector", daemon=True
+        )
+        self.collector_thread.start()
+        return self.collector_stop
 
     def lock(self, key):
         with self._locks_guard:
@@ -55,6 +96,7 @@ class ConsoleService:
         rows = self.store.list_matches(date)
         state = self.store.state()
         for m in rows:
+            m["competition"] = classify(m)
             start = sources.parse_date(m["kickoff"])
             m["lifecycle"] = (
                 "upcoming" if start > datetime.now(timezone.utc) else "started"
@@ -104,7 +146,10 @@ class ConsoleService:
                 ).total_seconds()
                 < 60
             ):
-                return cached["data"]
+                data = cached["data"]
+                data["quality"] = assess(m, data)
+                data["evidence"] = self.store.evidence(match_id)
+                return data
             errors = []
             with ThreadPoolExecutor(max_workers=2) as pool:
                 odds_task = pool.submit(sources.fetch_odds, m)
@@ -124,15 +169,9 @@ class ConsoleService:
                         "recent": [[], []],
                         "lineups": [],
                     }
-            markets = {k: dict(v) for k, v in m["markets"].items()}
-            for code, history in odds.get("history", {}).items():
-                if history and history[-1]["options"]:
-                    existing = markets.get(code, {})
-                    markets[code] = {
-                        **history[-1],
-                        "single": existing.get("single", False),
-                        "sale_status": existing.get("sale_status", "unknown"),
-                    }
+            markets, market_issues = select_markets(
+                m["markets"], odds.get("history", {})
+            )
             data = {
                 "match_id": match_id,
                 "markets": markets,
@@ -144,11 +183,19 @@ class ConsoleService:
                 "errors": errors,
                 "odds_fresh": not any(e.startswith("赔率") for e in errors),
                 "versions": self.store.versions(match_id),
+                "market_issues": market_issues,
+                "competition": classify(m),
+                "evidence": self.store.evidence(match_id),
             }
+            data["quality"] = assess(m, data)
             self.store.save_detail(match_id, data)
             self.store.status(
-                "espn",
+                "context:" + m.get("league_code", "unknown"),
                 {
+                    "name": context.get("source", "基本面")
+                    + " · "
+                    + m.get("league", ""),
+                    "scope": "近期赛果 / 首发",
                     "status": "available" if context.get("available") else "partial",
                     "last_match": match_id,
                     "reason": context.get("reason"),
@@ -159,7 +206,7 @@ class ConsoleService:
 
     def prediction(self, match_id, with_narrative=False):
         with self.lock("predict:" + match_id):
-            self.sync()
+            self.sync(force=True)
             if self.last_error:
                 raise ValueError(
                     "官方场次状态更新失败，暂不生成新的赛前预测。已有分析仍可查看。"
@@ -172,6 +219,9 @@ class ConsoleService:
                 raise ValueError("该比赛已取消，不能生成预测。")
             if not detail["odds_fresh"]:
                 raise ValueError("无法确认最新 SP，暂不生成新预测。请稍后重试。")
+            quality = assess(m, detail)
+            if not quality["can_predict"]:
+                raise ValueError("；".join(quality["reasons"]))
             result = predict(m, detail)
             if with_narrative:
                 result["narrative"] = narrate(m, detail, result)
@@ -184,6 +234,12 @@ class ConsoleService:
                     k: v for k, v in detail["context"].items() if k != "captured_at"
                 },
                 "history": detail["history"],
+                "evidence": detail.get("evidence", []),
+                "data_receipt": {
+                    "fixtures_verified_at": m.get("captured_at"),
+                    "odds_verified_at": detail.get("captured_at"),
+                    "quality": quality,
+                },
             }
             saved = self.store.save_analysis(match_id, result, inputs)
             return {
@@ -292,12 +348,39 @@ class ConsoleService:
                     "id": "market-form-poisson-v1",
                     "name": "市场与近期进失球",
                     "method": "80% 市场 + 20% 收缩 Poisson",
-                    "status": "条件可用",
-                    "validation": "双方至少3场赛前赛果；尚未校准",
+                    "status": "已停用",
+                    "validation": "未经回测的固定权重已退出新预测",
                 },
             ],
             "club_training_enabled": False,
+            "competitions": self.competitions(),
+            "provider_configuration": provider_configuration(),
+            "collector": {
+                "running": bool(
+                    self.collector_thread and self.collector_thread.is_alive()
+                ),
+                "interval_seconds": 60,
+            },
+            "training": self.training_status(),
         }
+
+    def competitions(self):
+        result = catalog()
+        matches = self.store.list_matches()
+        for c in result:
+            rows = [m for m in matches if classify(m)["id"] == c["id"]]
+            details = [(self.store.detail(m["id"]) or {}).get("data", {}) for m in rows]
+            c["match_count"] = len(rows)
+            c["context_count"] = sum(
+                bool(d.get("context", {}).get("available")) for d in details
+            )
+            c["analysis_count"] = sum(len(self.store.versions(m["id"])) for m in rows)
+        return result
+
+    def training_status(self):
+        from .training import training_status
+
+        return training_status()
 
 
 _service = None

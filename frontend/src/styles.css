@@ -95,6 +95,16 @@ svg {
 .muted {
   color: var(--muted);
 }
+.source-evidence {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.source-evidence:last-child {
+  border-bottom: 0;
+}
+.source-evidence p {
+  margin-top: 10px;
+}
 .primary {
   color: var(--blue);
 }

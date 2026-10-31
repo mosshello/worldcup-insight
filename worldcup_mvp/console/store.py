@@ -61,6 +61,14 @@ class Store:
                     PRIMARY KEY(workspace_id,kind,item_key));
                 CREATE TABLE IF NOT EXISTS source_status(
                     id TEXT PRIMARY KEY, checked_at TEXT NOT NULL, payload TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS detail_snapshots(
+                    id INTEGER PRIMARY KEY, match_id TEXT NOT NULL REFERENCES matches(id),
+                    digest TEXT NOT NULL, captured_at TEXT NOT NULL, payload TEXT NOT NULL,
+                    UNIQUE(match_id,digest));
+                CREATE TABLE IF NOT EXISTS evidence(
+                    id TEXT PRIMARY KEY, match_id TEXT NOT NULL REFERENCES matches(id),
+                    created_at TEXT NOT NULL, payload TEXT NOT NULL);
+                INSERT OR IGNORE INTO schema_versions VALUES(2);
             """)
 
     @contextmanager
@@ -137,6 +145,11 @@ class Store:
                 "INSERT OR REPLACE INTO detail_cache VALUES(?,?,?)",
                 (match_id, now_iso(), encode(data)),
             )
+            snapshot = {k: v for k, v in data.items() if k != "versions"}
+            db.execute(
+                "INSERT OR IGNORE INTO detail_snapshots(match_id,digest,captured_at,payload) VALUES(?,?,?,?)",
+                (match_id, fingerprint(snapshot), now_iso(), encode(snapshot)),
+            )
 
     def versions(self, match_id=None):
         with self.connect() as db:
@@ -207,6 +220,65 @@ class Store:
                     (workspace, kind, key, encode(value), now_iso()),
                 )
 
+    def add_evidence(self, match_id, value):
+        from urllib.parse import urlsplit
+        from .sources import parse_date
+
+        if not self.match(match_id):
+            raise ValueError("比赛不存在")
+        kind = value.get("kind")
+        text, url = value.get("text", ""), value.get("source_url", "")
+        if (
+            kind not in ("fact", "opinion")
+            or not isinstance(text, str)
+            or not 1 <= len(text.strip()) <= 1500
+        ):
+            raise ValueError("请选择事实或观点，并填写不超过1500字的内容")
+        if (
+            not isinstance(url, str)
+            or len(url) > 1500
+            or urlsplit(url).scheme not in ("http", "https")
+            or not urlsplit(url).netloc
+        ):
+            raise ValueError("请填写有效来源链接")
+        try:
+            published = parse_date(value.get("published_at", ""))
+            if published.tzinfo is None or published > datetime.now(timezone.utc):
+                raise ValueError()
+        except (ValueError, TypeError, AttributeError):
+            raise ValueError("发布时间无效或晚于当前时间") from None
+        precision = value.get("published_precision", "datetime")
+        if precision not in ("date", "datetime"):
+            raise ValueError("发布时间精度无效")
+        result = {
+            "id": str(uuid.uuid4()),
+            "match_id": match_id,
+            "kind": kind,
+            "text": text.strip(),
+            "source_url": url,
+            "published_at": published.isoformat(),
+            "published_precision": precision,
+            "recorded_at": now_iso(),
+            "review_status": "manual",
+            "used_for_training": False,
+        }
+        with self.connect() as db:
+            db.execute(
+                "INSERT INTO evidence VALUES(?,?,?,?)",
+                (result["id"], match_id, result["recorded_at"], encode(result)),
+            )
+        return result
+
+    def evidence(self, match_id):
+        with self.connect() as db:
+            return [
+                json.loads(r[0])
+                for r in db.execute(
+                    "SELECT payload FROM evidence WHERE match_id=? ORDER BY created_at",
+                    (match_id,),
+                )
+            ]
+
     def state(self, workspace="local"):
         state = {
             "favorites": [],
@@ -235,6 +307,12 @@ class Store:
 
     def status(self, source, value):
         with self.connect() as db:
+            prior = db.execute(
+                "SELECT payload FROM source_status WHERE id=?", (source,)
+            ).fetchone()
+            previous = json.loads(prior[0]) if prior else {}
+            if not value.get("last_success") and previous.get("last_success"):
+                value = {**value, "last_success": previous["last_success"]}
             db.execute(
                 "INSERT OR REPLACE INTO source_status VALUES(?,?,?)",
                 (source, now_iso(), encode(value)),
