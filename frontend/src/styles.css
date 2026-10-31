@@ -136,6 +136,21 @@ svg {
 .live-score.large .live-score-value {
   font-size: 32px;
 }
+.live-score.compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  min-width: 0;
+}
+.live-score.compact .live-score-value {
+  font-size: 16px;
+  line-height: 24px;
+}
+.live-score.compact .live-score-phase {
+  font-size: 13px;
+  line-height: 24px;
+}
 .score-page-link {
   font-size: 14px;
 }

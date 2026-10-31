@@ -207,7 +207,7 @@ const allColumns = [
   { colKey: "num", title: "场次", width: 100 },
   { colKey: "league", title: "赛事", width: 82 },
   { colKey: "fixture", title: "比赛", minWidth: 240 },
-  { colKey: "liveScore", title: "比分 / 进程", width: 130 },
+  { colKey: "liveScore", title: "比分 / 进程", width: 200 },
   { colKey: "kickoff", title: "北京时间", width: 140 },
   { colKey: "sp", title: "胜 / 平 / 负 SP", width: 250 },
   { colKey: "eligibility", title: "销售", width: 88 },
@@ -418,7 +418,7 @@ onBeforeUnmount(() => {
               >
             </div></template
           ><template #liveScore="{ row }"
-            ><LiveScore :value="row.live_score" /></template
+            ><LiveScore :value="row.live_score" compact /></template
           ><template #sp="{ row }"
             ><div class="market-price">
               <div class="odds-triplet">

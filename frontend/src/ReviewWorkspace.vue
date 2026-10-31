@@ -90,7 +90,7 @@ const columns = [
   { colKey: "league", title: "赛事", width: 90 },
   { colKey: "fixture", title: "比赛", minWidth: 230 },
   { colKey: "pick", title: "赛前方向", width: 110 },
-  { colKey: "liveScore", title: "即时比分", width: 130 },
+  { colKey: "liveScore", title: "即时比分", width: 200 },
   { colKey: "score", title: "实际比分", width: 110 },
   { colKey: "result", title: "方向对照", width: 110 },
   { colKey: "status", title: "复盘状态", width: 100 },
@@ -172,7 +172,7 @@ onBeforeUnmount(() => clearInterval(timer));
         ><strong>{{ row.home }}</strong
         ><span class="versus">vs</span><strong>{{ row.away }}</strong></template
       ><template #liveScore="{ row }"
-        ><LiveScore :value="row.live_score" /></template
+        ><LiveScore :value="row.live_score" compact /></template
       ><template #score="{ row }"
         ><strong class="mono">{{ row.score }}</strong></template
       ><template #result="{ row }"

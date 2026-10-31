@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { timeLabel } from "./api";
-const props = defineProps({ value: Object, large: Boolean });
+const props = defineProps({ value: Object, large: Boolean, compact: Boolean });
 const now = ref(Date.now());
 let timer;
 onMounted(() => {
@@ -31,8 +31,13 @@ const label = computed(() =>
 <template>
   <div
     class="live-score"
-    :class="{ large, delayed, playing: value?.state === 'live' && !delayed }"
-    :title="`${value?.source || ''} ${value?.observed_at ? timeLabel(value.observed_at) : ''} ${value?.error || ''}`"
+    :class="{
+      large,
+      compact,
+      delayed,
+      playing: value?.state === 'live' && !delayed,
+    }"
+    :title="`${value?.source || ''} ${value?.observed_at ? '核验 ' + timeLabel(value.observed_at) : ''} ${value?.error || ''}`"
   >
     <strong class="live-score-value mono">{{
       value?.score?.replace("-", " – ") || "—"
@@ -43,7 +48,7 @@ const label = computed(() =>
         · {{ value.clock }}</template
       ></span
     >
-    <span v-if="time" class="live-score-time">核验 {{ time }}</span>
+    <span v-if="time && !compact" class="live-score-time">核验 {{ time }}</span>
     <a
       v-if="large && value?.source_url"
       :href="value.source_url"
