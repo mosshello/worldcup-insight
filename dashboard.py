@@ -122,6 +122,23 @@ class DashboardHandler(BaseHTTPRequestHandler):
         query = self._parse_query()
 
         try:
+            if route in ("/console", "/console/"):
+                self.send_response(HTTPStatus.FOUND)
+                self.send_header("Location", "/static/console/index.html")
+                self.end_headers()
+                return
+
+            if route == "/api/console/capabilities":
+                from worldcup_mvp.statistical_model import load_statistical_model
+                model = load_statistical_model() or {}
+                self._send_json({
+                    "success": True,
+                    "club_training_enabled": False,
+                    "national_model": model.get("model_version"),
+                    "storage": "browser_local",
+                })
+                return
+
             if route in ("/", "/index.html") or route.startswith("/match/"):
                 self._send_file(WEB_ROOT / "index.html")
                 return

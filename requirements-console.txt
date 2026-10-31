@@ -1,0 +1,2 @@
+# Windows requires an IANA timezone database for the existing Python backend.
+tzdata==2026.6

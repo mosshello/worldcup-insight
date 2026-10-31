@@ -10,5 +10,8 @@ data/odds_live_feed.json
 data/cache/
 data/snapshots/
 .ai/tmp/
+frontend/node_modules/
+frontend/test-results/
+frontend/playwright-report/
 data/training/*
 !data/training/historical_outcomes.example.json
