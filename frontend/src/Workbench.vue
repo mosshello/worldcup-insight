@@ -188,7 +188,7 @@ const columns = [
   { colKey: "fixture", title: "比赛", minWidth: 240 },
   { colKey: "kickoff", title: "北京时间", width: 140 },
   { colKey: "sp", title: "胜 / 平 / 负 SP", width: 210 },
-  { colKey: "eligibility", title: "状态", width: 130 },
+  { colKey: "eligibility", title: "状态", width: 150 },
   { colKey: "analysisState", title: "分析", width: 88 },
   { colKey: "action", title: "操作", width: 86, fixed: "right" },
 ];
@@ -388,18 +388,24 @@ onBeforeUnmount(() => {
               <span v-for="(v, i) in row.odds" :key="i">{{ price(v) }}</span>
             </div></template
           ><template #eligibility="{ row }"
-            ><div :class="row.sale === 'selling' ? 'success' : 'muted'">
-              {{ saleNames[row.sale]
-              }}<span
-                v-if="
-                  filter.market ? row.pools[filter.market]?.single : row.single
-                "
-                class="single-tag"
-                >{{ filter.market ? "单关" : "含单关" }}</span
-              >
-            </div>
-            <div class="small muted">
-              {{ row.score || lifecycleNames[row.lifecycle] }}
+            ><div class="match-status">
+              <div class="match-status-sale">
+                <span :class="row.sale === 'selling' ? 'success' : 'muted'">{{
+                  saleNames[row.sale]
+                }}</span
+                ><span
+                  v-if="
+                    filter.market
+                      ? row.pools[filter.market]?.single
+                      : row.single
+                  "
+                  class="single-tag"
+                  >{{ filter.market ? "单关" : "含单关" }}</span
+                >
+              </div>
+              <div class="small muted">
+                {{ row.score || lifecycleNames[row.lifecycle] }}
+              </div>
             </div></template
           ><template #analysisState="{ row }"
             ><span
