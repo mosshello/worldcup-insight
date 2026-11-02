@@ -138,7 +138,7 @@ class PredictionTests(unittest.TestCase):
 
     def test_prediction_is_complete_without_fake_fundamentals(self):
         p = predict(self.m, self.detail)
-        self.assertEqual(p["model_version"], "market-baseline-v1")
+        self.assertEqual(p["model_version"], "market-baseline-v2")
         self.assertAlmostEqual(sum(p["probabilities"]), 100, places=1)
         self.assertNotEqual(p["scores"], "暂无比分数据")
         self.assertTrue(any("不足" in r for r in p["risks"]))

@@ -40,7 +40,8 @@ const state = ref({
 const capabilities = ref({ ai_configured: false });
 const filter = reactive({
   date: "",
-  league: "",
+  league: [],
+  prediction: "",
   market: "",
   query: "",
   single: false,
@@ -56,7 +57,11 @@ const filtered = computed(() =>
       (!filter.date ||
         (route.value === "scores" ? m.kickoff.slice(0, 10) : m.date) ===
           filter.date) &&
-      (!filter.league || m.league === filter.league) &&
+      (!filter.league.length || filter.league.includes(m.league)) &&
+      (!filter.prediction ||
+        (!stateError.value &&
+          (filter.prediction === "predicted") ===
+            Boolean(state.value.versions[m.id]?.length))) &&
       (!filter.market || m.markets.includes(filter.market)) &&
       (!filter.query ||
         `${m.home}${m.away}${m.num}`
@@ -96,7 +101,8 @@ watch(
     if (value === "scores" || previous === "scores") {
       Object.assign(filter, {
         date: "",
-        league: "",
+        league: [],
+        prediction: "",
         market: "",
         query: "",
         single: false,
@@ -289,6 +295,8 @@ onBeforeUnmount(() => {
           <label>赛事</label
           ><t-select
             v-model="filter.league"
+            multiple
+            :min-collapsed-num="1"
             clearable
             placeholder="全部赛事"
             :options="leagues"
@@ -343,13 +351,27 @@ onBeforeUnmount(() => {
               "
               aria-label="比赛状态"
             />
+            <label for="prediction-filter">是否预测</label>
+            <t-select
+              v-model="filter.prediction"
+              :input-props="{ id: 'prediction-filter' }"
+              style="width: 120px"
+              :disabled="!!stateError"
+              :options="[
+                { label: '全部', value: '' },
+                { label: '已预测', value: 'predicted' },
+                { label: '未预测', value: 'unpredicted' },
+              ]"
+              aria-label="是否预测"
+            />
           </div>
           <t-button
             variant="text"
             @click="
               Object.assign(filter, {
                 date: '',
-                league: '',
+                league: [],
+                prediction: '',
                 market: '',
                 query: '',
                 single: false,

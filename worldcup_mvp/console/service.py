@@ -28,6 +28,13 @@ class ConsoleService:
         self.collector_thread = None
         self.score_thread = None
         self.last_score_sync = 0
+        from .training_jobs import TrainingJobs
+        self.training_jobs = TrainingJobs(self.store)
+        from .ai_reviews import ReviewEngine
+        self.ai_reviews = ReviewEngine(self)
+
+    def start_training(self, competition_id, target='full_time'):
+        return self.training_jobs.start(competition_id, target)
 
     def start_collector(self, interval=60):
         if self.collector_thread and self.collector_thread.is_alive():
@@ -293,7 +300,7 @@ class ConsoleService:
                     "name": context.get("source", "基本面")
                     + " · "
                     + m.get("league", ""),
-                    "scope": "近期赛果 / 首发",
+                    "scope": "联赛赛果 / 主客场 / 交锋" if context.get("coverage") == "league_only" else "近期赛果 / 首发",
                     "status": "available" if context.get("available") else "partial",
                     "last_match": match_id,
                     "reason": context.get("reason"),
@@ -329,6 +336,20 @@ class ConsoleService:
             if not quality["can_predict"]:
                 raise ValueError("；".join(quality["reasons"]))
             result = predict(m, detail)
+            from .model_registry import forecast as shadow_forecast
+            result["football_model"] = shadow_forecast(m, detail)
+            football = result["football_model"]
+            if football.get("status") == "shadow":
+                goals = football.get('expected_goals')
+                result["evidence"].append({"title": "足球模型", "tab": "analysis",
+                    "text": (f"本赛事历史赛果训练；预期进球 {goals[0]:.2f} / {goals[1]:.2f}，由比分分布汇总全场玩法。"
+                             if goals else "本赛事评级与近期进失球训练；此分类模型仅输出胜平负。")})
+                result["risks"] = [r for r in result["risks"] if not r.startswith("近期表现用于事实对照")]
+                result["risks"].append("足球模型未纳入伤停、首发和跨赛事赛程；市场基线单独保留对照。")
+                check = football.get("reference_check") or {}
+                if check.get("label") == "未超过均匀基线":
+                    result["risks"].append("本联赛离线结果未超过均匀基线，足球模型仅作实验对照。")
+            result["explanation_method"] = "deterministic"
             if with_narrative:
                 result["narrative"] = narrate(m, detail, result)
             if sources.parse_date(m["kickoff"]) <= datetime.now(timezone.utc):
@@ -341,6 +362,7 @@ class ConsoleService:
                 },
                 "history": detail["history"],
                 "evidence": detail.get("evidence", []),
+                "football_model": {k: result["football_model"].get(k) for k in ("status", "model_id", "dataset_digest", "trained_before", "competition_id", "run_id", "training_scope")},
                 "data_receipt": {
                     "fixtures_verified_at": m.get("captured_at"),
                     "odds_verified_at": detail.get("captured_at"),
@@ -354,6 +376,7 @@ class ConsoleService:
             }
 
     def reviews(self, refresh=False):
+        from .football_markets import settle_markets
         if refresh:
             pending = [
                 m
@@ -391,9 +414,9 @@ class ConsoleService:
             latest = versions[0]
             consistent = None
             actual = str(results.get("had", {}).get("combination", "")).lower()
-            if actual in ("h", "d", "a"):
+            if actual in ("h", "d", "a") and latest.get("direction_key") in ("h", "d", "a"):
                 consistent = latest["direction_key"] == actual
-            if actual not in ("h", "d", "a") and score and "-" in score:
+            if actual not in ("h", "d", "a") and score and "-" in score and latest.get("direction_key") in ("h", "d", "a"):
                 try:
                     h, a = map(int, score.split("-"))
                     consistent = latest["direction_key"] == (
@@ -414,6 +437,9 @@ class ConsoleService:
                     "score": "已取消" if detail.get("cancelled") else score or "待赛果",
                     "live_score": self.scores().get(m["id"]),
                     "consistent": consistent,
+                    "direction_observed": latest.get("direction_key") is None,
+                    "market_results": settle_markets(latest, detail.get("results", []), detail.get("cancelled", False)),
+                    "model_results": settle_markets({"market_assessments": latest.get("football_model", {}).get("markets", [])}, detail.get("results", []), detail.get("cancelled", False)) if latest.get("football_model", {}).get("status") == "shadow" else [],
                     "status": (
                         "已取消"
                         if detail.get("cancelled")
@@ -429,51 +455,34 @@ class ConsoleService:
                     ),
                 }
             )
+        for row in rows:
+            row["ai_review"] = self.ai_reviews.view(row)
         return rows
 
     def capabilities(self):
-        from ..env_config import get_deepseek_api_key
-
-        versions = self.store.versions()
-        reviews = [r for r in self.reviews() if r["consistent"] is not None]
+        from .competition_workspace import workspaces, aggregate
+        scopes = workspaces(self)
+        training = aggregate([v["training"] for v in scopes.values()])
+        competitions = self.competitions(training)
+        for cid, workspace in scopes.items():
+            workspace["competitions"] = [c for c in competitions if c["id"] == cid]
         return {
-            "sources": self.store.statuses(),
-            "match_count": len(self.store.list_matches()),
-            "analysis_count": len(versions),
-            "settled_count": len(reviews),
-            "ai_configured": bool(get_deepseek_api_key()),
-            "storage": "sqlite",
-            "models": [
-                {
-                    "id": "market-baseline-v1",
-                    "name": "市场基线",
-                    "method": "完整玩法去水概率",
-                    "status": "可用基线",
-                    "validation": "待积累样本外验证",
-                },
-                {
-                    "id": "market-form-poisson-v1",
-                    "name": "市场与近期进失球",
-                    "method": "80% 市场 + 20% 收缩 Poisson",
-                    "status": "已停用",
-                    "validation": "未经回测的固定权重已退出新预测",
-                },
-            ],
-            "club_training_enabled": False,
-            "competitions": self.competitions(),
-            "provider_configuration": provider_configuration(),
-            "collector": {
-                "running": bool(
-                    self.collector_thread and self.collector_thread.is_alive()
-                ),
-                "interval_seconds": 60,
-            },
-            "training": self.training_status(),
+            "sources":self.store.statuses(), "match_count":len(self.store.list_matches()),
+            "analysis_count":len(self.store.versions()),
+            "settled_count":sum(r["status"] == "待复盘" for r in self.reviews()),
+            "ai_configured":False, "storage":"sqlite", "training":training,
+            "models":[m for w in scopes.values() for m in w["models"]],
+            "competitions":competitions, "competition_workspaces":scopes,
+            "club_training_enabled":True, "provider_configuration":provider_configuration(),
+            "collector":{"running":bool(self.collector_thread and self.collector_thread.is_alive()), "interval_seconds":60},
         }
 
-    def competitions(self):
+    def competitions(self, training=None):
         result = catalog()
         matches = self.store.list_matches()
+        training = self.training_status() if training is None else training
+        history = {r["id"]: r for r in training.get("staging", {}).get("coverage", [])}
+        imported = {r["id"]: r for r in training.get("season_coverage", [])}
         for c in result:
             rows = [m for m in matches if classify(m)["id"] == c["id"]]
             details = [(self.store.detail(m["id"]) or {}).get("data", {}) for m in rows]
@@ -482,12 +491,20 @@ class ConsoleService:
                 bool(d.get("context", {}).get("available")) for d in details
             )
             c["analysis_count"] = sum(len(self.store.versions(m["id"])) for m in rows)
+            for season in c["seasons"]:
+                season_rows = [m for m in rows if classify(m)["season"] == season["id"]]
+                key = c["id"] + ":" + season["id"]
+                season.update(match_count=len(season_rows),
+                    context_count=sum(bool((self.store.detail(m["id"]) or {}).get("data", {}).get("context", {}).get("available")) for m in season_rows),
+                    historical_count=history.get(key, {}).get("collected", 0),
+                    training_count=imported.get(key, {}).get("imported", 0))
         return result
 
-    def training_status(self):
-        from .training import training_status
-
-        return training_status()
+    def training_status(self, competition_id=None):
+        from .competition_workspace import training_status, aggregate
+        if competition_id is not None:
+            return training_status(self, competition_id)
+        return aggregate([training_status(self, c["id"]) for c in catalog()])
 
 
 _service = None

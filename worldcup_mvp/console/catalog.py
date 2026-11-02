@@ -3,61 +3,17 @@
 from copy import deepcopy
 import os
 
-COMPETITIONS = {
-    "JD1": {
-        "id": "jp.j1",
-        "name": "日职",
-        "country": "JP",
-        "region": "AFC",
-        "official_url": "https://data.j-league.or.jp/SFTP01/",
-        "rule_source": "https://aboutj.jleague.jp/corporate/terminology/",
-        "providers": {
-            "sporttery": "JD1",
-            "espn": "jpn.1",
-            "odds_api": "soccer_japan_j_league",
-        },
-        "seasons": [
-            {
-                "id": "2026-special",
-                "label": "2026 百年构想",
-                "start": "2026-02-01",
-                "end": "2026-07-01",
-                "format": "special",
-                "stages": ["regional", "playoff"],
-                "shootout_separate": True,
-            },
-            {
-                "id": "2026-27",
-                "label": "2026/27",
-                "start": "2026-08-01",
-                "end": "2027-07-01",
-                "format": "league",
-                "stages": ["regular"],
-                "shootout_separate": True,
-            },
-        ],
-    },
-    "KD1": {
-        "id": "kr.k1",
-        "name": "韩职",
-        "country": "KR",
-        "region": "AFC",
-        "official_url": "https://www.kleague.com/",
-        "rule_source": "https://www.kleague.com/about/competition.do",
-        "providers": {"sporttery": "KD1", "odds_api": "soccer_korea_kleague1"},
-        "seasons": [
-            {
-                "id": "2026",
-                "label": "2026",
-                "start": "2026-01-01",
-                "end": "2027-01-01",
-                "format": "split",
-                "stages": ["regular", "final_a", "final_b"],
-                "shootout_separate": True,
-            },
-        ],
-    },
-}
+import json
+from pathlib import Path
+
+REGISTRY_PATH = Path(__file__).resolve().parents[2] / "config" / "football_competitions.json"
+REGISTERED = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+if len({c["id"] for c in REGISTERED}) != len(REGISTERED):
+    raise ValueError("赛事登记标识重复")
+COMPETITIONS = {c["providers"]["sporttery"]: c for c in REGISTERED if c["providers"].get("sporttery")}
+if len(COMPETITIONS) != sum(bool(c["providers"].get("sporttery")) for c in REGISTERED):
+    raise ValueError("体彩赛事映射重复")
+
 
 
 def classify(match):
@@ -84,7 +40,7 @@ def classify(match):
 
 
 def catalog():
-    return deepcopy(list(COMPETITIONS.values()))
+    return deepcopy(REGISTERED)
 
 
 def provider_configuration():

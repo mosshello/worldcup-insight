@@ -19,7 +19,8 @@ def get(route, query):
     if route == "/api/v1/competitions":
         return {"success": True, "competitions": app.competitions()}
     if route == "/api/v1/reviews":
-        return {"success": True, "reviews": app.reviews()}
+        from .ai_reviews import configuration
+        return {"success": True, "reviews": app.reviews(), "ai_review_config":configuration()}
     if route.startswith("/api/v1/matches/"):
         match_id = unquote(route.removeprefix("/api/v1/matches/"))
         return {
@@ -36,7 +37,18 @@ def post(route, body):
         raise ValueError("请求内容应为 JSON 对象")
     app = service()
     if route == "/api/v1/reviews/sync":
-        return {"success": True, "reviews": app.reviews(refresh=True)}
+        from .ai_reviews import configuration
+        return {"success": True, "reviews": app.reviews(refresh=True), "ai_review_config":configuration()}
+    if route == "/api/v1/reviews/generate":
+        match_id = body.get("match_id")
+        if not isinstance(match_id,str) or not app.store.match(match_id):
+            raise ValueError("比赛不存在")
+        app.detail(match_id, force=True)
+        row = next((r for r in app.reviews() if r["id"] == match_id), None)
+        if row is None:raise ValueError("缺少赛前预测归档")
+        result = app.ai_reviews.enqueue(row, retry=True)
+        app.ai_reviews.start()
+        return {"success":True,"ai_review":result}
     if route == "/api/v1/sync":
         app.sync(force=True)
         app.sync_scores()
@@ -44,10 +56,17 @@ def post(route, body):
             raise ValueError(app.last_error)
         return {"success": True, **app.list_matches()}
     if route == "/api/v1/training/evaluate":
-        from .training import run_evaluation
-
-        with app.lock("training"):
-            return {"success": True, "evaluation": run_evaluation()}
+        return {"success": True, "job": app.start_training(body.get("competition_id"), body.get('target','full_time'))}
+    if route == "/api/v1/models/select":
+        from .model_registry import select_observation
+        if "run_id" not in body:
+            raise ValueError("请指定模型运行标识")
+        return {"success":True, "selection":select_observation(body.get("competition_id"), body["run_id"])}
+    if route == "/api/v1/datasets/import":
+        from .model_registry import import_competition
+        if not isinstance(body.get("dataset"), dict):
+            raise ValueError("请提供含来源声明的训练数据")
+        return {"success":True, **import_competition(body["dataset"], body.get("competition_id"))}
     if route.startswith("/api/v1/matches/") and route.endswith("/evidence"):
         match_id = unquote(route[len("/api/v1/matches/") : -len("/evidence")])
         return {"success": True, "evidence": app.store.add_evidence(match_id, body)}

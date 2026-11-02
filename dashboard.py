@@ -85,8 +85,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        content_type, _ = mimetypes.guess_type(str(path))
-        content_type = content_type or "application/octet-stream"
+        # Web assets must not inherit a machine-specific Windows registry MIME mapping.
+        content_type = {".css":"text/css; charset=utf-8", ".js":"text/javascript; charset=utf-8",
+                        ".html":"text/html; charset=utf-8"}.get(path.suffix.lower())
+        content_type = content_type or mimetypes.guess_type(str(path))[0] or "application/octet-stream"
         data = path.read_bytes()
 
         try:
@@ -287,7 +289,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
             if route.startswith("/api/v1/"):
                 from worldcup_mvp.console import api
                 from worldcup_mvp.console.sources import SourceError
-                if int(self.headers.get("Content-Length", 0)) > 65536:
+                limit = 16 * 1024 * 1024 if route == "/api/v1/datasets/import" else 65536
+                if int(self.headers.get("Content-Length", 0)) > limit:
                     self._send_json({"success": False, "error": "请求内容过大"}, status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
                     return
                 origin = self.headers.get("Origin")
@@ -377,6 +380,7 @@ def main() -> int:
     else:
         from worldcup_mvp.console.service import service
         stop_event = service().start_collector()
+        service().ai_reviews.start()
 
     server = ThreadingHTTPServer((args.host, args.port), DashboardHandler)
     DashboardHandler.console_only = args.console_only

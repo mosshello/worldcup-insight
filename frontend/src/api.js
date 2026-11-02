@@ -6,8 +6,21 @@ export const api = {
   sync: () => request("/api/v1/sync", { method: "POST", body: "{}" }),
   state: () => request("/api/v1/state"),
   capabilities: () => request("/api/v1/capabilities"),
-  evaluate: () =>
-    request("/api/v1/training/evaluate", { method: "POST", body: "{}" }),
+  evaluate: (competition_id, target = 'full_time') =>
+    request("/api/v1/training/evaluate", {
+      method: "POST",
+      body: JSON.stringify({ competition_id, target }),
+    }),
+  selectModel: (competition_id, run_id) =>
+    request("/api/v1/models/select", {
+      method: "POST",
+      body: JSON.stringify({ competition_id, run_id }),
+    }),
+  importDataset: (competition_id, dataset) =>
+    request("/api/v1/datasets/import", {
+      method: "POST",
+      body: JSON.stringify({ competition_id, dataset }),
+    }),
   evidence: (id, body) =>
     request(`/api/v1/matches/${encodeURIComponent(id)}/evidence`, {
       method: "POST",
@@ -28,6 +41,11 @@ export const api = {
       body: JSON.stringify({ kind, key, value }),
     }),
   reviews: () => request("/api/v1/reviews"),
+  generateReview: (match_id) =>
+    request("/api/v1/reviews/generate", {
+      method: "POST",
+      body: JSON.stringify({ match_id }),
+    }),
   refreshReviews: () =>
     request("/api/v1/reviews/sync", { method: "POST", body: "{}" }),
 };

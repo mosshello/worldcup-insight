@@ -12,6 +12,7 @@ import {
 import { api, timeLabel, lifecycleNames } from "./api";
 import { price, marketNames } from "./domain";
 import LiveScore from "./LiveScore.vue";
+import MarketForecast from "./MarketForecast.vue";
 const props = defineProps({
   match: Object,
   tab: String,
@@ -113,9 +114,11 @@ const analysis = computed(
 );
 const form = computed(() =>
   [0, 1].map((i) =>
-    (context.value.recent?.[i] || []).filter(
-      (r) => scope.value === "all" || r.venue === (i === 0 ? "主" : "客"),
-    ),
+    scope.value === "venue" && context.value.venue_recent
+      ? context.value.venue_recent[i] || []
+      : (context.value.recent?.[i] || []).filter(
+          (r) => scope.value === "all" || r.venue === (i === 0 ? "主" : "客"),
+        ),
   ),
 );
 const basicStats = computed(() => {
@@ -137,6 +140,22 @@ const basicStats = computed(() => {
     ["场均进球", ...stats.map((s) => s.g)],
     ["场均失球", ...stats.map((s) => s.a)],
     ["体彩排名", props.match.home_rank || "—", props.match.away_rank || "—"],
+    ...(context.value.season_stats
+      ? [
+          [
+            "本季战绩",
+            ...context.value.season_stats.map(
+              (s) => `${s.wins}胜${s.draws}平${s.losses}负`,
+            ),
+          ],
+          [
+            "本季进 / 失球",
+            ...context.value.season_stats.map(
+              (s) => `${s.goals_for} / ${s.goals_against}`,
+            ),
+          ],
+        ]
+      : []),
   ];
 });
 const formCols = [
@@ -379,9 +398,13 @@ onBeforeUnmount(() => clearInterval(timer));
         <div class="section-note">
           {{
             context.available
-              ? "来源：ESPN 已核实赛果；排名来自体彩"
+              ? `赛果：${context.recent_source || context.source} · 排名：体彩`
               : "近期赛果不可用：" + (context.reason || "尚未核实")
-          }}{{ scope === "venue" ? " · 在最近样本内筛选主 / 客场" : "" }}
+          }}{{
+            scope === "venue" && !context.venue_recent
+              ? " · 最近样本内主 / 客场"
+              : ""
+          }}
         </div>
       </section>
       <section class="panel">
@@ -396,7 +419,11 @@ onBeforeUnmount(() => clearInterval(timer));
             <dd>{{ context.venue || "—" }}</dd>
           </div>
           <div>
-            <dt>距上一场</dt>
+            <dt>
+              {{
+                context.coverage === "league_only" ? "距上场联赛" : "距上一场"
+              }}
+            </dt>
             <dd>主队 {{ restDays(0) }} / 客队 {{ restDays(1) }}</dd>
           </div>
           <div>
@@ -425,7 +452,7 @@ onBeforeUnmount(() => clearInterval(timer));
             :href="context.source_url"
             target="_blank"
             rel="noopener noreferrer"
-            >查看 ESPN 来源 ↗</a
+            >{{ context.recent_source || context.source }} 来源 ↗</a
           >
         </div>
       </section>
@@ -455,8 +482,27 @@ onBeforeUnmount(() => clearInterval(timer));
           ></t-table
         >
       </section>
-    </div></template
-  >
+    </div>
+    <section v-if="context.h2h" class="panel mt16">
+      <div class="panel-heading">
+        <h2>近 5 次联赛交锋</h2>
+        <span class="small muted">{{ match.home }} 比分在前</span>
+      </div>
+      <t-table
+        row-key="id"
+        :data="
+          context.h2h.map((r) => ({
+            ...r,
+            date: r.date.slice(0, 10),
+            result: r.gf > r.ga ? '胜' : r.gf === r.ga ? '平' : '负',
+          }))
+        "
+        :columns="formCols"
+        size="small"
+        empty="暂无联赛交锋记录"
+      />
+    </section>
+  </template>
   <template v-else-if="tab === 'lineups'"
     ><div class="two-column detail-grid">
       <section
@@ -531,8 +577,9 @@ onBeforeUnmount(() => clearInterval(timer));
       </div>
       <div class="section-note">
         {{
-          context.source_url
-            ? "首发来源：ESPN · " + timeLabel(context.captured_at)
+          context.lineup_source || context.source === "ESPN"
+            ? "首发来源：ESPN · " +
+              timeLabel(context.lineup_captured_at || context.captured_at)
             : "当前赛事尚未获得匹配的阵容来源"
         }}
       </div>
@@ -714,11 +761,6 @@ onBeforeUnmount(() => clearInterval(timer));
         /><t-button variant="outline" :disabled="!analysis" @click="copy"
           ><template #icon><CopyIcon /></template>复制</t-button
         ><t-button
-          variant="outline"
-          :disabled="!aiConfigured || predictionBlocked || busy"
-          @click="generate(true)"
-          >AI 解读</t-button
-        ><t-button
           :loading="busy"
           :disabled="predictionBlocked || loading"
           @click="generate(false)"
@@ -771,7 +813,71 @@ onBeforeUnmount(() => clearInterval(timer));
           </div>
         </div>
       </section>
-      <div class="two-column detail-grid">
+      <section v-if="analysis.market_assessments?.length" class="panel mt16">
+        <div class="panel-heading">
+          <h2>玩法分析</h2>
+          <span class="small muted">市场参考</span>
+        </div>
+        <MarketForecast :rows="analysis.market_assessments" />
+      </section>
+      <section v-if="analysis.football_model" class="panel mt16">
+        <div class="panel-heading">
+          <h2>足球模型</h2>
+          <t-tag
+            variant="light"
+            :theme="
+              analysis.football_model.reference_check?.label ===
+              '未超过均匀基线'
+                ? 'warning'
+                : 'default'
+            "
+            >{{
+              analysis.football_model.status === "shadow"
+                ? analysis.football_model.reference_check?.label ===
+                  "未超过均匀基线"
+                  ? "离线未达基线"
+                  : "前瞻观察"
+                : "不可用"
+            }}</t-tag
+          >
+        </div>
+        <template v-if="analysis.football_model.status === 'shadow'">
+          <dl class="context-list">
+            <div v-if="analysis.football_model.expected_goals">
+              <dt>预期进球</dt>
+              <dd>
+                {{ match.home }}
+                {{ analysis.football_model.expected_goals[0].toFixed(2) }} /
+                {{ match.away }}
+                {{ analysis.football_model.expected_goals[1].toFixed(2) }}
+              </dd>
+            </div>
+            <div>
+              <dt>训练样本</dt>
+              <dd>
+                {{ analysis.football_model.sample_count }} 场 ·
+                {{ timeLabel(analysis.football_model.trained_before) }}
+              </dd>
+            </div>
+          </dl>
+          <MarketForecast :rows="analysis.football_model.markets" />
+          <p
+            v-if="analysis.football_model.reference_check"
+            class="section-note"
+          >
+            离线评估：{{ analysis.football_model.reference_check.label }} ·
+            {{ analysis.football_model.reference_check.test_count }} 场
+          </p>
+          <p
+            v-if="analysis.football_model.unavailable_markets?.hafu"
+            class="section-note"
+          >
+            半全场：{{ analysis.football_model.unavailable_markets.hafu }}
+          </p>
+        </template>
+        <p v-else class="section-note">{{ analysis.football_model.reason }}</p>
+      </section>
+      <div class="two-column detail-grid mt16">
         <section class="panel">
           <div class="panel-heading">
             <h2>判断依据</h2>
@@ -797,14 +903,12 @@ onBeforeUnmount(() => clearInterval(timer));
           <ul class="risk-list">
             <li v-for="r in analysis.risks" :key="r">{{ r }}</li>
           </ul>
-          <div class="section-note">
-            计算版本：{{ analysis.model_version }}<br />未校准
-          </div>
+          <div class="section-note">{{ analysis.model_version }} · 未校准</div>
         </section>
       </div>
       <section v-if="analysis.narrative" class="panel mt16">
         <div class="panel-heading">
-          <h2>AI 解读</h2>
+          <h2>归档说明</h2>
           <span class="small muted">基于该版本数据</span>
         </div>
         <div class="narrative-text">
@@ -815,7 +919,6 @@ onBeforeUnmount(() => clearInterval(timer));
     <section v-else class="panel empty-state">
       <h3>尚无赛前预测</h3>
     </section>
-    <div v-if="!aiConfigured" class="section-note">AI 解读未配置。</div>
     <section class="panel mt16">
       <div class="panel-heading">
         <h2>我的笔记</h2>

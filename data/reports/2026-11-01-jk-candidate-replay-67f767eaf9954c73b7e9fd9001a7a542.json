@@ -1,0 +1,2293 @@
+{
+  "created_at": "2026-11-01T13:40:06.093498+00:00",
+  "date": "2026-11-01",
+  "status": "retrospective_simulation",
+  "limitations": [
+    "赛后重算，非赛前归档；不覆盖原分析",
+    "候选配置在各联赛历史验证段选定；当前四场结果不作为输入",
+    "历史赛果可用时间沿用数据集假设；周初截止，非当年实时采集证明",
+    "基本面仅历史赛果/球队/主客/时间，无伤停、首发、外盘",
+    "半全场为条件二项分配，未独立验证半场模型"
+  ],
+  "matches": [
+    {
+      "id": "sporttery:2042413",
+      "home": "长崎航海",
+      "away": "东京绿茵",
+      "kickoff": "2026-11-01T13:00:00+08:00",
+      "competition": {
+        "id": "jp.j1",
+        "country": "JP",
+        "region": "AFC",
+        "season": "2026-27",
+        "stage": "regular",
+        "period": "regular_time",
+        "rule_source": "https://aboutj.jleague.jp/corporate/terminology/"
+      },
+      "reference_run_id": "800ef9353c8046aa80e51de90900db4f",
+      "method": "poisson",
+      "dataset_digest": "4f121d906093f31a1f5c52740b1a06abe52208c7d525d570c3ef4a787e6158ee",
+      "training_rows": 1365,
+      "training_input_digest": "108402783c595cf8ec63793b814610e88639e0e2cec0353507e7d6a6ed00c5a8",
+      "validation_end_before": "2026-02-22",
+      "feature_cutoff": "2026-10-26T00:00:00+08:00",
+      "prediction_horizon": "2026-11-01T12:00:00+08:00",
+      "model_digest": "fcddc85c31021cd08e0dc70128e4538af317a0126577814613e756be2331a68b",
+      "expected_goals": [
+        1.2375614743180345,
+        0.831261781764767
+      ],
+      "original_archive_id": "281fd205-a8e8-474e-9c81-d4fcbe6a500e",
+      "original_archive_time": "2026-11-01T03:01:36.598684+00:00",
+      "markets": [
+        {
+          "code": "had",
+          "label": "胜平负",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "h",
+              "label": "主胜",
+              "odds": 2.32,
+              "probability": 45.7197,
+              "market_probability": 37.873,
+              "difference": 7.8467
+            },
+            {
+              "key": "d",
+              "label": "平局",
+              "odds": 2.97,
+              "probability": 29.3801,
+              "market_probability": 29.5843,
+              "difference": -0.2042
+            },
+            {
+              "key": "a",
+              "label": "客胜",
+              "odds": 2.7,
+              "probability": 24.9002,
+              "market_probability": 32.5427,
+              "difference": -7.6425
+            }
+          ],
+          "selected_keys": [
+            "h"
+          ],
+          "selection": "主胜",
+          "coverage": 45.7197,
+          "selection_count": 1,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "a",
+          "covered": false
+        },
+        {
+          "code": "ttg",
+          "label": "总进球",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "s2",
+              "label": "2球",
+              "odds": 3.1,
+              "probability": 27.0357,
+              "market_probability": 25.7052,
+              "difference": 1.3305
+            },
+            {
+              "key": "s1",
+              "label": "1球",
+              "odds": 3.95,
+              "probability": 26.1363,
+              "market_probability": 20.1737,
+              "difference": 5.9626
+            },
+            {
+              "key": "s3",
+              "label": "3球",
+              "odds": 3.7,
+              "probability": 18.6441,
+              "market_probability": 21.5368,
+              "difference": -2.8927
+            },
+            {
+              "key": "s0",
+              "label": "0球",
+              "odds": 9.0,
+              "probability": 12.6334,
+              "market_probability": 8.854,
+              "difference": 3.7794
+            },
+            {
+              "key": "s4",
+              "label": "4球",
+              "odds": 6.5,
+              "probability": 9.6428,
+              "market_probability": 12.2594,
+              "difference": -2.6166
+            },
+            {
+              "key": "s5",
+              "label": "5球",
+              "odds": 13.0,
+              "probability": 3.9899,
+              "market_probability": 6.1297,
+              "difference": -2.1398
+            },
+            {
+              "key": "s6",
+              "label": "6球",
+              "odds": 25.0,
+              "probability": 1.3757,
+              "market_probability": 3.1874,
+              "difference": -1.8117
+            },
+            {
+              "key": "s7",
+              "label": "7+球",
+              "odds": 37.0,
+              "probability": 0.542,
+              "market_probability": 2.1537,
+              "difference": -1.6117
+            }
+          ],
+          "selected_keys": [
+            "s2",
+            "s1"
+          ],
+          "selection": "2球 / 1球",
+          "coverage": 53.1721,
+          "selection_count": 2,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "s3",
+          "covered": false
+        },
+        {
+          "code": "crs",
+          "label": "比分",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "s01s00",
+              "label": "1-0",
+              "odds": 6.5,
+              "probability": 15.6347,
+              "market_probability": 10.9125,
+              "difference": 4.7222
+            },
+            {
+              "key": "s01s01",
+              "label": "1-1",
+              "odds": 5.7,
+              "probability": 12.9965,
+              "market_probability": 12.444,
+              "difference": 0.5525
+            },
+            {
+              "key": "s00s00",
+              "label": "0-0",
+              "odds": 9.0,
+              "probability": 12.6334,
+              "market_probability": 7.8812,
+              "difference": 4.7522
+            },
+            {
+              "key": "s00s01",
+              "label": "0-1",
+              "odds": 7.25,
+              "probability": 10.5017,
+              "market_probability": 9.7836,
+              "difference": 0.7181
+            },
+            {
+              "key": "s02s00",
+              "label": "2-0",
+              "odds": 11.0,
+              "probability": 9.6744,
+              "market_probability": 6.4483,
+              "difference": 3.2261
+            },
+            {
+              "key": "s02s01",
+              "label": "2-1",
+              "odds": 7.75,
+              "probability": 8.042,
+              "market_probability": 9.1524,
+              "difference": -1.1104
+            },
+            {
+              "key": "s01s02",
+              "label": "1-2",
+              "odds": 8.5,
+              "probability": 5.4017,
+              "market_probability": 8.3448,
+              "difference": -2.9431
+            },
+            {
+              "key": "s00s02",
+              "label": "0-2",
+              "odds": 13.0,
+              "probability": 4.3648,
+              "market_probability": 5.4562,
+              "difference": -1.0914
+            },
+            {
+              "key": "s03s00",
+              "label": "3-0",
+              "odds": 24.0,
+              "probability": 3.9909,
+              "market_probability": 2.9555,
+              "difference": 1.0354
+            },
+            {
+              "key": "s02s02",
+              "label": "2-2",
+              "odds": 13.5,
+              "probability": 3.3425,
+              "market_probability": 5.2541,
+              "difference": -1.9116
+            },
+            {
+              "key": "s03s01",
+              "label": "3-1",
+              "odds": 20.0,
+              "probability": 3.3175,
+              "market_probability": 3.5466,
+              "difference": -0.2291
+            },
+            {
+              "key": "s01s03",
+              "label": "1-3",
+              "odds": 24.0,
+              "probability": 1.4968,
+              "market_probability": 2.9555,
+              "difference": -1.4587
+            },
+            {
+              "key": "s03s02",
+              "label": "3-2",
+              "odds": 32.0,
+              "probability": 1.3788,
+              "market_probability": 2.2166,
+              "difference": -0.8378
+            },
+            {
+              "key": "s04s00",
+              "label": "4-0",
+              "odds": 80.0,
+              "probability": 1.2347,
+              "market_probability": 0.8866,
+              "difference": 0.3481
+            },
+            {
+              "key": "s00s03",
+              "label": "0-3",
+              "odds": 32.0,
+              "probability": 1.2094,
+              "market_probability": 2.2166,
+              "difference": -1.0072
+            },
+            {
+              "key": "s04s01",
+              "label": "4-1",
+              "odds": 60.0,
+              "probability": 1.0264,
+              "market_probability": 1.1822,
+              "difference": -0.1558
+            },
+            {
+              "key": "s02s03",
+              "label": "2-3",
+              "odds": 37.0,
+              "probability": 0.9262,
+              "market_probability": 1.9171,
+              "difference": -0.9909
+            },
+            {
+              "key": "s04s02",
+              "label": "4-2",
+              "odds": 100.0,
+              "probability": 0.4266,
+              "market_probability": 0.7093,
+              "difference": -0.2827
+            },
+            {
+              "key": "s03s03",
+              "label": "3-3",
+              "odds": 80.0,
+              "probability": 0.3821,
+              "market_probability": 0.8866,
+              "difference": -0.5045
+            },
+            {
+              "key": "s1sh",
+              "label": "胜其他",
+              "odds": 120.0,
+              "probability": 0.3284,
+              "market_probability": 0.5911,
+              "difference": -0.2627
+            },
+            {
+              "key": "s01s04",
+              "label": "1-4",
+              "odds": 80.0,
+              "probability": 0.311,
+              "market_probability": 0.8866,
+              "difference": -0.5756
+            },
+            {
+              "key": "s05s00",
+              "label": "5-0",
+              "odds": 250.0,
+              "probability": 0.3056,
+              "market_probability": 0.2837,
+              "difference": 0.0219
+            },
+            {
+              "key": "s05s01",
+              "label": "5-1",
+              "odds": 200.0,
+              "probability": 0.254,
+              "market_probability": 0.3547,
+              "difference": -0.1007
+            },
+            {
+              "key": "s00s04",
+              "label": "0-4",
+              "odds": 100.0,
+              "probability": 0.2513,
+              "market_probability": 0.7093,
+              "difference": -0.458
+            },
+            {
+              "key": "s02s04",
+              "label": "2-4",
+              "odds": 120.0,
+              "probability": 0.1925,
+              "market_probability": 0.5911,
+              "difference": -0.3986
+            },
+            {
+              "key": "s1sa",
+              "label": "负其他",
+              "odds": 150.0,
+              "probability": 0.1192,
+              "market_probability": 0.4729,
+              "difference": -0.3537
+            },
+            {
+              "key": "s05s02",
+              "label": "5-2",
+              "odds": 350.0,
+              "probability": 0.1056,
+              "market_probability": 0.2027,
+              "difference": -0.0971
+            },
+            {
+              "key": "s01s05",
+              "label": "1-5",
+              "odds": 300.0,
+              "probability": 0.0517,
+              "market_probability": 0.2364,
+              "difference": -0.1847
+            },
+            {
+              "key": "s00s05",
+              "label": "0-5",
+              "odds": 350.0,
+              "probability": 0.0418,
+              "market_probability": 0.2027,
+              "difference": -0.1609
+            },
+            {
+              "key": "s02s05",
+              "label": "2-5",
+              "odds": 400.0,
+              "probability": 0.032,
+              "market_probability": 0.1773,
+              "difference": -0.1453
+            },
+            {
+              "key": "s1sd",
+              "label": "平其他",
+              "odds": 500.0,
+              "probability": 0.0256,
+              "market_probability": 0.1419,
+              "difference": -0.1163
+            }
+          ],
+          "selected_keys": [
+            "s01s00",
+            "s01s01",
+            "s00s00"
+          ],
+          "selection": "1-0 / 1-1 / 0-0",
+          "coverage": 41.2646,
+          "selection_count": 3,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "s01s02",
+          "covered": false
+        },
+        {
+          "code": "hhad",
+          "label": "让球胜平负",
+          "line": -1.0,
+          "origin": "model",
+          "options": [
+            {
+              "key": "a",
+              "label": "让负",
+              "odds": 1.44,
+              "probability": 54.2803,
+              "market_probability": 60.9331,
+              "difference": -6.6528
+            },
+            {
+              "key": "d",
+              "label": "让平",
+              "odds": 3.75,
+              "probability": 25.18,
+              "market_probability": 23.3983,
+              "difference": 1.7817
+            },
+            {
+              "key": "h",
+              "label": "让胜",
+              "odds": 5.6,
+              "probability": 20.5397,
+              "market_probability": 15.6685,
+              "difference": 4.8712
+            }
+          ],
+          "selected_keys": [
+            "a"
+          ],
+          "selection": "让负",
+          "coverage": 54.2803,
+          "selection_count": 1,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "a",
+          "covered": true
+        },
+        {
+          "code": "hafu",
+          "label": "半全场",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "hh",
+              "label": "胜胜",
+              "odds": 3.95,
+              "probability": 26.6356,
+              "market_probability": 20.1977,
+              "difference": 6.4379
+            },
+            {
+              "key": "dd",
+              "label": "平平",
+              "odds": 4.5,
+              "probability": 20.7095,
+              "market_probability": 17.7291,
+              "difference": 2.9804
+            },
+            {
+              "key": "dh",
+              "label": "平胜",
+              "odds": 5.3,
+              "probability": 17.493,
+              "market_probability": 15.053,
+              "difference": 2.44
+            },
+            {
+              "key": "aa",
+              "label": "负负",
+              "odds": 4.7,
+              "probability": 12.0011,
+              "market_probability": 16.9746,
+              "difference": -4.9735
+            },
+            {
+              "key": "da",
+              "label": "平负",
+              "odds": 6.2,
+              "probability": 11.5643,
+              "market_probability": 12.8679,
+              "difference": -1.3036
+            },
+            {
+              "key": "hd",
+              "label": "胜平",
+              "odds": 14.5,
+              "probability": 4.79,
+              "market_probability": 5.5021,
+              "difference": -0.7121
+            },
+            {
+              "key": "ad",
+              "label": "负平",
+              "odds": 14.5,
+              "probability": 3.8806,
+              "market_probability": 5.5021,
+              "difference": -1.6215
+            },
+            {
+              "key": "ah",
+              "label": "负胜",
+              "odds": 24.0,
+              "probability": 1.591,
+              "market_probability": 3.3242,
+              "difference": -1.7332
+            },
+            {
+              "key": "ha",
+              "label": "胜负",
+              "odds": 28.0,
+              "probability": 1.3348,
+              "market_probability": 2.8493,
+              "difference": -1.5145
+            }
+          ],
+          "selected_keys": [
+            "hh"
+          ],
+          "selection": "胜胜",
+          "coverage": 26.6356,
+          "selection_count": 1,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "aa",
+          "covered": false
+        }
+      ],
+      "actual_score": "1-2",
+      "result_source": "体彩官方"
+    },
+    {
+      "id": "sporttery:2042415",
+      "home": "町田泽维",
+      "away": "大阪钢巴",
+      "kickoff": "2026-11-01T15:00:00+08:00",
+      "competition": {
+        "id": "jp.j1",
+        "country": "JP",
+        "region": "AFC",
+        "season": "2026-27",
+        "stage": "regular",
+        "period": "regular_time",
+        "rule_source": "https://aboutj.jleague.jp/corporate/terminology/"
+      },
+      "reference_run_id": "800ef9353c8046aa80e51de90900db4f",
+      "method": "poisson",
+      "dataset_digest": "4f121d906093f31a1f5c52740b1a06abe52208c7d525d570c3ef4a787e6158ee",
+      "training_rows": 1365,
+      "training_input_digest": "108402783c595cf8ec63793b814610e88639e0e2cec0353507e7d6a6ed00c5a8",
+      "validation_end_before": "2026-02-22",
+      "feature_cutoff": "2026-10-26T00:00:00+08:00",
+      "prediction_horizon": "2026-11-01T14:00:00+08:00",
+      "model_digest": "fcddc85c31021cd08e0dc70128e4538af317a0126577814613e756be2331a68b",
+      "expected_goals": [
+        1.9157252132744371,
+        0.9458936464655749
+      ],
+      "original_archive_id": "61b59a74-31c6-42a6-8ffd-3d192f064acf",
+      "original_archive_time": "2026-11-01T03:01:38.228843+00:00",
+      "markets": [
+        {
+          "code": "had",
+          "label": "胜平负",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "h",
+              "label": "主胜",
+              "odds": 1.6,
+              "probability": 60.063,
+              "market_probability": 54.8368,
+              "difference": 5.2262
+            },
+            {
+              "key": "d",
+              "label": "平局",
+              "odds": 3.6,
+              "probability": 21.8321,
+              "market_probability": 24.3719,
+              "difference": -2.5398
+            },
+            {
+              "key": "a",
+              "label": "客胜",
+              "odds": 4.22,
+              "probability": 18.1049,
+              "market_probability": 20.7912,
+              "difference": -2.6863
+            }
+          ],
+          "selected_keys": [
+            "h"
+          ],
+          "selection": "主胜",
+          "coverage": 60.063,
+          "selection_count": 1,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "d",
+          "covered": false
+        },
+        {
+          "code": "ttg",
+          "label": "总进球",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "s2",
+              "label": "2球",
+              "odds": 3.5,
+              "probability": 23.4104,
+              "market_probability": 22.775,
+              "difference": 0.6354
+            },
+            {
+              "key": "s3",
+              "label": "3球",
+              "odds": 3.4,
+              "probability": 22.3305,
+              "market_probability": 23.4449,
+              "difference": -1.1144
+            },
+            {
+              "key": "s1",
+              "label": "1球",
+              "odds": 4.7,
+              "probability": 16.3616,
+              "market_probability": 16.9601,
+              "difference": -0.5985
+            },
+            {
+              "key": "s4",
+              "label": "4球",
+              "odds": 5.4,
+              "probability": 15.9754,
+              "market_probability": 14.7616,
+              "difference": 1.2138
+            },
+            {
+              "key": "s5",
+              "label": "5球",
+              "odds": 9.5,
+              "probability": 9.1431,
+              "market_probability": 8.3908,
+              "difference": 0.7523
+            },
+            {
+              "key": "s0",
+              "label": "0球",
+              "odds": 13.0,
+              "probability": 5.7176,
+              "market_probability": 6.1317,
+              "difference": -0.4141
+            },
+            {
+              "key": "s6",
+              "label": "6球",
+              "odds": 17.0,
+              "probability": 4.3607,
+              "market_probability": 4.689,
+              "difference": -0.3283
+            },
+            {
+              "key": "s7",
+              "label": "7+球",
+              "odds": 28.0,
+              "probability": 2.7008,
+              "market_probability": 2.8469,
+              "difference": -0.1461
+            }
+          ],
+          "selected_keys": [
+            "s2",
+            "s3"
+          ],
+          "selection": "2球 / 3球",
+          "coverage": 45.7409,
+          "selection_count": 2,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "s0",
+          "covered": false
+        },
+        {
+          "code": "crs",
+          "label": "比分",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "s01s00",
+              "label": "1-0",
+              "odds": 7.0,
+              "probability": 10.9534,
+              "market_probability": 10.1327,
+              "difference": 0.8207
+            },
+            {
+              "key": "s02s00",
+              "label": "2-0",
+              "odds": 7.5,
+              "probability": 10.4918,
+              "market_probability": 9.4572,
+              "difference": 1.0346
+            },
+            {
+              "key": "s01s01",
+              "label": "1-1",
+              "odds": 6.0,
+              "probability": 10.3607,
+              "market_probability": 11.8215,
+              "difference": -1.4608
+            },
+            {
+              "key": "s02s01",
+              "label": "2-1",
+              "odds": 7.0,
+              "probability": 9.9242,
+              "market_probability": 10.1327,
+              "difference": -0.2085
+            },
+            {
+              "key": "s03s00",
+              "label": "3-0",
+              "odds": 14.0,
+              "probability": 6.6998,
+              "market_probability": 5.0663,
+              "difference": 1.6335
+            },
+            {
+              "key": "s03s01",
+              "label": "3-1",
+              "odds": 13.0,
+              "probability": 6.3373,
+              "market_probability": 5.4561,
+              "difference": 0.8812
+            },
+            {
+              "key": "s00s00",
+              "label": "0-0",
+              "odds": 13.0,
+              "probability": 5.7176,
+              "market_probability": 5.4561,
+              "difference": 0.2615
+            },
+            {
+              "key": "s00s01",
+              "label": "0-1",
+              "odds": 12.0,
+              "probability": 5.4083,
+              "market_probability": 5.9107,
+              "difference": -0.5024
+            },
+            {
+              "key": "s01s02",
+              "label": "1-2",
+              "odds": 11.0,
+              "probability": 4.9001,
+              "market_probability": 6.4481,
+              "difference": -1.548
+            },
+            {
+              "key": "s02s02",
+              "label": "2-2",
+              "odds": 12.0,
+              "probability": 4.6936,
+              "market_probability": 5.9107,
+              "difference": -1.2171
+            },
+            {
+              "key": "s04s00",
+              "label": "4-0",
+              "odds": 30.0,
+              "probability": 3.2088,
+              "market_probability": 2.3643,
+              "difference": 0.8445
+            },
+            {
+              "key": "s04s01",
+              "label": "4-1",
+              "odds": 30.0,
+              "probability": 3.0351,
+              "market_probability": 2.3643,
+              "difference": 0.6708
+            },
+            {
+              "key": "s03s02",
+              "label": "3-2",
+              "odds": 22.0,
+              "probability": 2.9972,
+              "market_probability": 3.224,
+              "difference": -0.2268
+            },
+            {
+              "key": "s00s02",
+              "label": "0-2",
+              "odds": 24.0,
+              "probability": 2.5578,
+              "market_probability": 2.9554,
+              "difference": -0.3976
+            },
+            {
+              "key": "s1sh",
+              "label": "胜其他",
+              "odds": 50.0,
+              "probability": 2.0376,
+              "market_probability": 1.4186,
+              "difference": 0.619
+            },
+            {
+              "key": "s01s03",
+              "label": "1-3",
+              "odds": 34.0,
+              "probability": 1.545,
+              "market_probability": 2.0861,
+              "difference": -0.5411
+            },
+            {
+              "key": "s02s03",
+              "label": "2-3",
+              "odds": 35.0,
+              "probability": 1.4799,
+              "market_probability": 2.0265,
+              "difference": -0.5466
+            },
+            {
+              "key": "s04s02",
+              "label": "4-2",
+              "odds": 60.0,
+              "probability": 1.4355,
+              "market_probability": 1.1821,
+              "difference": 0.2534
+            },
+            {
+              "key": "s05s00",
+              "label": "5-0",
+              "odds": 90.0,
+              "probability": 1.2294,
+              "market_probability": 0.7881,
+              "difference": 0.4413
+            },
+            {
+              "key": "s05s01",
+              "label": "5-1",
+              "odds": 90.0,
+              "probability": 1.1629,
+              "market_probability": 0.7881,
+              "difference": 0.3748
+            },
+            {
+              "key": "s03s03",
+              "label": "3-3",
+              "odds": 70.0,
+              "probability": 0.945,
+              "market_probability": 1.0133,
+              "difference": -0.0683
+            },
+            {
+              "key": "s00s03",
+              "label": "0-3",
+              "odds": 65.0,
+              "probability": 0.8065,
+              "market_probability": 1.0912,
+              "difference": -0.2847
+            },
+            {
+              "key": "s05s02",
+              "label": "5-2",
+              "odds": 150.0,
+              "probability": 0.55,
+              "market_probability": 0.4729,
+              "difference": 0.0771
+            },
+            {
+              "key": "s01s04",
+              "label": "1-4",
+              "odds": 150.0,
+              "probability": 0.3653,
+              "market_probability": 0.4729,
+              "difference": -0.1076
+            },
+            {
+              "key": "s02s04",
+              "label": "2-4",
+              "odds": 150.0,
+              "probability": 0.35,
+              "market_probability": 0.4729,
+              "difference": -0.1229
+            },
+            {
+              "key": "s1sa",
+              "label": "负其他",
+              "odds": 150.0,
+              "probability": 0.33,
+              "market_probability": 0.4729,
+              "difference": -0.1429
+            },
+            {
+              "key": "s00s04",
+              "label": "0-4",
+              "odds": 200.0,
+              "probability": 0.1907,
+              "market_probability": 0.3546,
+              "difference": -0.1639
+            },
+            {
+              "key": "s1sd",
+              "label": "平其他",
+              "odds": 350.0,
+              "probability": 0.1152,
+              "market_probability": 0.2027,
+              "difference": -0.0875
+            },
+            {
+              "key": "s01s05",
+              "label": "1-5",
+              "odds": 450.0,
+              "probability": 0.0691,
+              "market_probability": 0.1576,
+              "difference": -0.0885
+            },
+            {
+              "key": "s02s05",
+              "label": "2-5",
+              "odds": 450.0,
+              "probability": 0.0662,
+              "market_probability": 0.1576,
+              "difference": -0.0914
+            },
+            {
+              "key": "s00s05",
+              "label": "0-5",
+              "odds": 500.0,
+              "probability": 0.0361,
+              "market_probability": 0.1419,
+              "difference": -0.1058
+            }
+          ],
+          "selected_keys": [
+            "s01s00",
+            "s02s00",
+            "s01s01"
+          ],
+          "selection": "1-0 / 2-0 / 1-1",
+          "coverage": 31.8059,
+          "selection_count": 3,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "s00s00",
+          "covered": false
+        },
+        {
+          "code": "hhad",
+          "label": "让球胜平负",
+          "line": -1.0,
+          "origin": "model",
+          "options": [
+            {
+              "key": "a",
+              "label": "让负",
+              "odds": 2.0,
+              "probability": 39.937,
+              "market_probability": 43.8672,
+              "difference": -3.9302
+            },
+            {
+              "key": "h",
+              "label": "让胜",
+              "odds": 2.93,
+              "probability": 35.6921,
+              "market_probability": 29.9435,
+              "difference": 5.7486
+            },
+            {
+              "key": "d",
+              "label": "让平",
+              "odds": 3.35,
+              "probability": 24.3709,
+              "market_probability": 26.1894,
+              "difference": -1.8185
+            }
+          ],
+          "selected_keys": [
+            "a"
+          ],
+          "selection": "让负",
+          "coverage": 39.937,
+          "selection_count": 1,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "a",
+          "covered": true
+        },
+        {
+          "code": "hafu",
+          "label": "半全场",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "hh",
+              "label": "胜胜",
+              "odds": 2.55,
+              "probability": 38.4942,
+              "market_probability": 31.2511,
+              "difference": 7.2431
+            },
+            {
+              "key": "dh",
+              "label": "平胜",
+              "odds": 4.3,
+              "probability": 18.8997,
+              "market_probability": 18.5327,
+              "difference": 0.367
+            },
+            {
+              "key": "dd",
+              "label": "平平",
+              "odds": 5.6,
+              "probability": 13.1569,
+              "market_probability": 14.2304,
+              "difference": -1.0735
+            },
+            {
+              "key": "aa",
+              "label": "负负",
+              "odds": 7.3,
+              "probability": 8.8227,
+              "market_probability": 10.9165,
+              "difference": -2.0938
+            },
+            {
+              "key": "da",
+              "label": "平负",
+              "odds": 10.0,
+              "probability": 7.8035,
+              "market_probability": 7.969,
+              "difference": -0.1655
+            },
+            {
+              "key": "hd",
+              "label": "胜平",
+              "odds": 15.0,
+              "probability": 4.8087,
+              "market_probability": 5.3127,
+              "difference": -0.504
+            },
+            {
+              "key": "ad",
+              "label": "负平",
+              "odds": 15.0,
+              "probability": 3.8666,
+              "market_probability": 5.3127,
+              "difference": -1.4461
+            },
+            {
+              "key": "ah",
+              "label": "负胜",
+              "odds": 20.0,
+              "probability": 2.6692,
+              "market_probability": 3.9845,
+              "difference": -1.3153
+            },
+            {
+              "key": "ha",
+              "label": "胜负",
+              "odds": 32.0,
+              "probability": 1.4786,
+              "market_probability": 2.4903,
+              "difference": -1.0117
+            }
+          ],
+          "selected_keys": [
+            "hh"
+          ],
+          "selection": "胜胜",
+          "coverage": 38.4942,
+          "selection_count": 1,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "dd",
+          "covered": false
+        }
+      ],
+      "actual_score": "0-0",
+      "result_source": "体彩官方"
+    },
+    {
+      "id": "sporttery:2042414",
+      "home": "蔚山现代",
+      "away": "江原FC",
+      "kickoff": "2026-11-01T13:00:00+08:00",
+      "competition": {
+        "id": "kr.k1",
+        "country": "KR",
+        "region": "AFC",
+        "season": "2026",
+        "stage": null,
+        "period": "regular_time",
+        "rule_source": "https://www.kleague.com/about/competition.do"
+      },
+      "reference_run_id": "0137d965b05a489c876eeadfce343834",
+      "method": "dynamic_gamma",
+      "dataset_digest": "dca1f86e9493f165e28247e7c82f5d7fd1c877dc118e77320c0e480771347d4a",
+      "training_rows": 876,
+      "training_input_digest": "64ea842c795d6203456e3f1002404a146dae07e64f9b5ea3f3ef8116ef9db193",
+      "validation_end_before": "2026-03-07",
+      "feature_cutoff": "2026-10-26T00:00:00+08:00",
+      "prediction_horizon": "2026-11-01T12:00:00+08:00",
+      "model_digest": "20f5f362dc3de08aaf84d9daf9b8f100e108c4ad82344187ece6f27dccd0fd4b",
+      "expected_goals": [
+        1.2291275042391674,
+        1.3392561849717761
+      ],
+      "original_archive_id": "6250655e-8478-4147-a473-cb480e8818fb",
+      "original_archive_time": "2026-11-01T03:01:37.087582+00:00",
+      "markets": [
+        {
+          "code": "had",
+          "label": "胜平负",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "a",
+              "label": "客胜",
+              "odds": 3.18,
+              "probability": 39.4217,
+              "market_probability": 27.6055,
+              "difference": 11.8162
+            },
+            {
+              "key": "h",
+              "label": "主胜",
+              "odds": 2.0,
+              "probability": 34.3049,
+              "market_probability": 43.8927,
+              "difference": -9.5878
+            },
+            {
+              "key": "d",
+              "label": "平局",
+              "odds": 3.08,
+              "probability": 26.2734,
+              "market_probability": 28.5018,
+              "difference": -2.2284
+            }
+          ],
+          "selected_keys": [
+            "a"
+          ],
+          "selection": "客胜",
+          "coverage": 39.4217,
+          "selection_count": 1,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "h",
+          "covered": false
+        },
+        {
+          "code": "ttg",
+          "label": "总进球",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "s2",
+              "label": "2球",
+              "odds": 3.35,
+              "probability": 24.8187,
+              "market_probability": 23.8042,
+              "difference": 1.0145
+            },
+            {
+              "key": "s3",
+              "label": "3球",
+              "odds": 3.55,
+              "probability": 20.9767,
+              "market_probability": 22.4631,
+              "difference": -1.4864
+            },
+            {
+              "key": "s1",
+              "label": "1球",
+              "odds": 4.6,
+              "probability": 20.0046,
+              "market_probability": 17.3357,
+              "difference": 2.6689
+            },
+            {
+              "key": "s4",
+              "label": "4球",
+              "odds": 5.5,
+              "probability": 13.5859,
+              "market_probability": 14.4989,
+              "difference": -0.913
+            },
+            {
+              "key": "s0",
+              "label": "0球",
+              "odds": 12.0,
+              "probability": 8.2415,
+              "market_probability": 6.6453,
+              "difference": 1.5962
+            },
+            {
+              "key": "s5",
+              "label": "5球",
+              "odds": 10.0,
+              "probability": 7.1923,
+              "market_probability": 7.9744,
+              "difference": -0.7821
+            },
+            {
+              "key": "s6",
+              "label": "6球",
+              "odds": 18.0,
+              "probability": 3.2425,
+              "market_probability": 4.4302,
+              "difference": -1.1877
+            },
+            {
+              "key": "s7",
+              "label": "7+球",
+              "odds": 28.0,
+              "probability": 1.9378,
+              "market_probability": 2.848,
+              "difference": -0.9102
+            }
+          ],
+          "selected_keys": [
+            "s2",
+            "s3"
+          ],
+          "selection": "2球 / 3球",
+          "coverage": 45.7954,
+          "selection_count": 2,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "s3",
+          "covered": true
+        },
+        {
+          "code": "crs",
+          "label": "比分",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "s01s01",
+              "label": "1-1",
+              "odds": 6.0,
+              "probability": 12.1098,
+              "market_probability": 11.8275,
+              "difference": 0.2823
+            },
+            {
+              "key": "s00s01",
+              "label": "0-1",
+              "odds": 9.0,
+              "probability": 10.4498,
+              "market_probability": 7.885,
+              "difference": 2.5648
+            },
+            {
+              "key": "s01s00",
+              "label": "1-0",
+              "odds": 7.5,
+              "probability": 9.5549,
+              "market_probability": 9.462,
+              "difference": 0.0929
+            },
+            {
+              "key": "s00s00",
+              "label": "0-0",
+              "odds": 12.0,
+              "probability": 8.2415,
+              "market_probability": 5.9137,
+              "difference": 2.3278
+            },
+            {
+              "key": "s01s02",
+              "label": "1-2",
+              "odds": 9.0,
+              "probability": 7.9954,
+              "market_probability": 7.885,
+              "difference": 0.1104
+            },
+            {
+              "key": "s02s01",
+              "label": "2-1",
+              "odds": 7.0,
+              "probability": 7.3559,
+              "market_probability": 10.1378,
+              "difference": -2.7819
+            },
+            {
+              "key": "s00s02",
+              "label": "0-2",
+              "odds": 16.0,
+              "probability": 6.9002,
+              "market_probability": 4.4353,
+              "difference": 2.4649
+            },
+            {
+              "key": "s02s00",
+              "label": "2-0",
+              "odds": 9.5,
+              "probability": 5.8087,
+              "market_probability": 7.47,
+              "difference": -1.6613
+            },
+            {
+              "key": "s02s02",
+              "label": "2-2",
+              "odds": 12.0,
+              "probability": 4.8553,
+              "market_probability": 5.9137,
+              "difference": -1.0584
+            },
+            {
+              "key": "s01s03",
+              "label": "1-3",
+              "odds": 25.0,
+              "probability": 3.6629,
+              "market_probability": 2.8386,
+              "difference": 0.8243
+            },
+            {
+              "key": "s00s03",
+              "label": "0-3",
+              "odds": 40.0,
+              "probability": 3.1606,
+              "market_probability": 1.7741,
+              "difference": 1.3865
+            },
+            {
+              "key": "s03s01",
+              "label": "3-1",
+              "odds": 15.5,
+              "probability": 3.1192,
+              "market_probability": 4.5784,
+              "difference": -1.4592
+            },
+            {
+              "key": "s03s00",
+              "label": "3-0",
+              "odds": 18.0,
+              "probability": 2.4648,
+              "market_probability": 3.9425,
+              "difference": -1.4777
+            },
+            {
+              "key": "s02s03",
+              "label": "2-3",
+              "odds": 34.0,
+              "probability": 2.2248,
+              "market_probability": 2.0872,
+              "difference": 0.1376
+            },
+            {
+              "key": "s03s02",
+              "label": "3-2",
+              "odds": 24.0,
+              "probability": 2.0588,
+              "market_probability": 2.9569,
+              "difference": -0.8981
+            },
+            {
+              "key": "s01s04",
+              "label": "1-4",
+              "odds": 90.0,
+              "probability": 1.3086,
+              "market_probability": 0.7885,
+              "difference": 0.5201
+            },
+            {
+              "key": "s00s04",
+              "label": "0-4",
+              "odds": 125.0,
+              "probability": 1.1284,
+              "market_probability": 0.5677,
+              "difference": 0.5607
+            },
+            {
+              "key": "s04s01",
+              "label": "4-1",
+              "odds": 42.0,
+              "probability": 1.0377,
+              "market_probability": 1.6896,
+              "difference": -0.6519
+            },
+            {
+              "key": "s03s03",
+              "label": "3-3",
+              "odds": 60.0,
+              "probability": 0.9439,
+              "market_probability": 1.1827,
+              "difference": -0.2388
+            },
+            {
+              "key": "s1sa",
+              "label": "负其他",
+              "odds": 125.0,
+              "probability": 0.8365,
+              "market_probability": 0.5677,
+              "difference": 0.2688
+            },
+            {
+              "key": "s04s00",
+              "label": "4-0",
+              "odds": 50.0,
+              "probability": 0.82,
+              "market_probability": 1.4193,
+              "difference": -0.5993
+            },
+            {
+              "key": "s02s04",
+              "label": "2-4",
+              "odds": 110.0,
+              "probability": 0.7953,
+              "market_probability": 0.6451,
+              "difference": 0.1502
+            },
+            {
+              "key": "s1sh",
+              "label": "胜其他",
+              "odds": 75.0,
+              "probability": 0.6918,
+              "market_probability": 0.9462,
+              "difference": -0.2544
+            },
+            {
+              "key": "s04s02",
+              "label": "4-2",
+              "odds": 70.0,
+              "probability": 0.6854,
+              "market_probability": 1.0138,
+              "difference": -0.3284
+            },
+            {
+              "key": "s01s05",
+              "label": "1-5",
+              "odds": 350.0,
+              "probability": 0.3884,
+              "market_probability": 0.2028,
+              "difference": 0.1856
+            },
+            {
+              "key": "s00s05",
+              "label": "0-5",
+              "odds": 450.0,
+              "probability": 0.3345,
+              "market_probability": 0.1577,
+              "difference": 0.1768
+            },
+            {
+              "key": "s05s01",
+              "label": "5-1",
+              "odds": 125.0,
+              "probability": 0.2887,
+              "market_probability": 0.5677,
+              "difference": -0.279
+            },
+            {
+              "key": "s02s05",
+              "label": "2-5",
+              "odds": 400.0,
+              "probability": 0.2364,
+              "market_probability": 0.1774,
+              "difference": 0.059
+            },
+            {
+              "key": "s05s00",
+              "label": "5-0",
+              "odds": 150.0,
+              "probability": 0.2279,
+              "market_probability": 0.4731,
+              "difference": -0.2452
+            },
+            {
+              "key": "s05s02",
+              "label": "5-2",
+              "odds": 225.0,
+              "probability": 0.191,
+              "market_probability": 0.3154,
+              "difference": -0.1244
+            },
+            {
+              "key": "s1sd",
+              "label": "平其他",
+              "odds": 400.0,
+              "probability": 0.1229,
+              "market_probability": 0.1774,
+              "difference": -0.0545
+            }
+          ],
+          "selected_keys": [
+            "s01s01",
+            "s00s01",
+            "s01s00"
+          ],
+          "selection": "1-1 / 0-1 / 1-0",
+          "coverage": 32.1144,
+          "selection_count": 3,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "s02s01",
+          "covered": false
+        },
+        {
+          "code": "hhad",
+          "label": "让球胜平负",
+          "line": -1.0,
+          "origin": "model",
+          "options": [
+            {
+              "key": "a",
+              "label": "让负",
+              "odds": 1.59,
+              "probability": 65.6951,
+              "market_probability": 55.1958,
+              "difference": 10.4993
+            },
+            {
+              "key": "d",
+              "label": "让平",
+              "odds": 3.55,
+              "probability": 19.3183,
+              "market_probability": 24.7215,
+              "difference": -5.4032
+            },
+            {
+              "key": "h",
+              "label": "让胜",
+              "odds": 4.37,
+              "probability": 14.9867,
+              "market_probability": 20.0827,
+              "difference": -5.096
+            }
+          ],
+          "selected_keys": [
+            "a"
+          ],
+          "selection": "让负",
+          "coverage": 65.6951,
+          "selection_count": 1,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "d",
+          "covered": false
+        },
+        {
+          "code": "hafu",
+          "label": "半全场",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "aa",
+              "label": "负负",
+              "odds": 5.55,
+              "probability": 24.0596,
+              "market_probability": 14.3685,
+              "difference": 9.6911
+            },
+            {
+              "key": "hh",
+              "label": "胜胜",
+              "odds": 3.45,
+              "probability": 17.1032,
+              "market_probability": 23.1145,
+              "difference": -6.0113
+            },
+            {
+              "key": "dd",
+              "label": "平平",
+              "odds": 4.85,
+              "probability": 16.6093,
+              "market_probability": 16.4423,
+              "difference": 0.167
+            },
+            {
+              "key": "dh",
+              "label": "平胜",
+              "odds": 4.75,
+              "probability": 14.6317,
+              "market_probability": 16.7884,
+              "difference": -2.1567
+            },
+            {
+              "key": "da",
+              "label": "平负",
+              "odds": 6.75,
+              "probability": 13.6599,
+              "market_probability": 11.8141,
+              "difference": 1.8458
+            },
+            {
+              "key": "ad",
+              "label": "负平",
+              "odds": 14.5,
+              "probability": 5.673,
+              "market_probability": 5.4997,
+              "difference": 0.1733
+            },
+            {
+              "key": "hd",
+              "label": "胜平",
+              "odds": 14.5,
+              "probability": 3.9911,
+              "market_probability": 5.4997,
+              "difference": -1.5086
+            },
+            {
+              "key": "ah",
+              "label": "负胜",
+              "odds": 22.0,
+              "probability": 2.57,
+              "market_probability": 3.6248,
+              "difference": -1.0548
+            },
+            {
+              "key": "ha",
+              "label": "胜负",
+              "odds": 28.0,
+              "probability": 1.7023,
+              "market_probability": 2.848,
+              "difference": -1.1457
+            }
+          ],
+          "selected_keys": [
+            "aa"
+          ],
+          "selection": "负负",
+          "coverage": 24.0596,
+          "selection_count": 1,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "ah",
+          "covered": false
+        }
+      ],
+      "actual_score": "2-1",
+      "result_source": "体彩官方"
+    },
+    {
+      "id": "sporttery:2042416",
+      "home": "首尔FC",
+      "away": "仁川联",
+      "kickoff": "2026-11-01T15:30:00+08:00",
+      "competition": {
+        "id": "kr.k1",
+        "country": "KR",
+        "region": "AFC",
+        "season": "2026",
+        "stage": null,
+        "period": "regular_time",
+        "rule_source": "https://www.kleague.com/about/competition.do"
+      },
+      "reference_run_id": "0137d965b05a489c876eeadfce343834",
+      "method": "dynamic_gamma",
+      "dataset_digest": "dca1f86e9493f165e28247e7c82f5d7fd1c877dc118e77320c0e480771347d4a",
+      "training_rows": 876,
+      "training_input_digest": "64ea842c795d6203456e3f1002404a146dae07e64f9b5ea3f3ef8116ef9db193",
+      "validation_end_before": "2026-03-07",
+      "feature_cutoff": "2026-10-26T00:00:00+08:00",
+      "prediction_horizon": "2026-11-01T14:30:00+08:00",
+      "model_digest": "20f5f362dc3de08aaf84d9daf9b8f100e108c4ad82344187ece6f27dccd0fd4b",
+      "expected_goals": [
+        1.5189407140462226,
+        1.1257330295237207
+      ],
+      "original_archive_id": "d90690e2-b63e-4796-abd8-c0dc0871a290",
+      "original_archive_time": "2026-11-01T03:01:38.911740+00:00",
+      "markets": [
+        {
+          "code": "had",
+          "label": "胜平负",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "h",
+              "label": "主胜",
+              "odds": 1.71,
+              "probability": 46.0979,
+              "market_probability": 51.3392,
+              "difference": -5.2413
+            },
+            {
+              "key": "a",
+              "label": "客胜",
+              "odds": 3.98,
+              "probability": 28.591,
+              "market_probability": 22.0578,
+              "difference": 6.5332
+            },
+            {
+              "key": "d",
+              "label": "平局",
+              "odds": 3.3,
+              "probability": 25.3111,
+              "market_probability": 26.603,
+              "difference": -1.2919
+            }
+          ],
+          "selected_keys": [
+            "h"
+          ],
+          "selection": "主胜",
+          "coverage": 46.0979,
+          "selection_count": 1,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "a",
+          "covered": false
+        },
+        {
+          "code": "ttg",
+          "label": "总进球",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "s2",
+              "label": "2球",
+              "odds": 3.25,
+              "probability": 24.3429,
+              "market_probability": 24.5267,
+              "difference": -0.1838
+            },
+            {
+              "key": "s3",
+              "label": "3球",
+              "odds": 3.5,
+              "probability": 21.1081,
+              "market_probability": 22.7748,
+              "difference": -1.6667
+            },
+            {
+              "key": "s1",
+              "label": "1球",
+              "odds": 4.6,
+              "probability": 19.1854,
+              "market_probability": 17.3286,
+              "difference": 1.8568
+            },
+            {
+              "key": "s4",
+              "label": "4球",
+              "odds": 5.5,
+              "probability": 14.0669,
+              "market_probability": 14.493,
+              "difference": -0.4261
+            },
+            {
+              "key": "s0",
+              "label": "0球",
+              "odds": 12.0,
+              "probability": 7.7556,
+              "market_probability": 6.6426,
+              "difference": 1.113
+            },
+            {
+              "key": "s5",
+              "label": "5球",
+              "odds": 10.5,
+              "probability": 7.6846,
+              "market_probability": 7.5916,
+              "difference": 0.093
+            },
+            {
+              "key": "s6",
+              "label": "6球",
+              "odds": 20.0,
+              "probability": 3.5853,
+              "market_probability": 3.9856,
+              "difference": -0.4003
+            },
+            {
+              "key": "s7",
+              "label": "7+球",
+              "odds": 30.0,
+              "probability": 2.2713,
+              "market_probability": 2.6571,
+              "difference": -0.3858
+            }
+          ],
+          "selected_keys": [
+            "s2",
+            "s3"
+          ],
+          "selection": "2球 / 3球",
+          "coverage": 45.451,
+          "selection_count": 2,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "s1",
+          "covered": false
+        },
+        {
+          "code": "crs",
+          "label": "比分",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "s01s01",
+              "label": "1-1",
+              "odds": 6.0,
+              "probability": 11.6335,
+              "market_probability": 11.8305,
+              "difference": -0.197
+            },
+            {
+              "key": "s01s00",
+              "label": "1-0",
+              "odds": 6.7,
+              "probability": 10.9304,
+              "market_probability": 10.5945,
+              "difference": 0.3359
+            },
+            {
+              "key": "s02s01",
+              "label": "2-1",
+              "odds": 6.7,
+              "probability": 8.6088,
+              "market_probability": 10.5945,
+              "difference": -1.9857
+            },
+            {
+              "key": "s00s01",
+              "label": "0-1",
+              "odds": 11.0,
+              "probability": 8.255,
+              "market_probability": 6.453,
+              "difference": 1.802
+            },
+            {
+              "key": "s02s00",
+              "label": "2-0",
+              "odds": 8.5,
+              "probability": 8.0948,
+              "market_probability": 8.351,
+              "difference": -0.2562
+            },
+            {
+              "key": "s00s00",
+              "label": "0-0",
+              "odds": 12.0,
+              "probability": 7.7556,
+              "market_probability": 5.9153,
+              "difference": 1.8403
+            },
+            {
+              "key": "s01s02",
+              "label": "1-2",
+              "odds": 10.5,
+              "probability": 6.5047,
+              "market_probability": 6.7603,
+              "difference": -0.2556
+            },
+            {
+              "key": "s02s02",
+              "label": "2-2",
+              "odds": 13.0,
+              "probability": 4.8128,
+              "market_probability": 5.4603,
+              "difference": -0.6475
+            },
+            {
+              "key": "s00s02",
+              "label": "0-2",
+              "odds": 20.0,
+              "probability": 4.6145,
+              "market_probability": 3.5492,
+              "difference": 1.0653
+            },
+            {
+              "key": "s03s01",
+              "label": "3-1",
+              "odds": 14.0,
+              "probability": 4.4536,
+              "market_probability": 5.0702,
+              "difference": -0.6166
+            },
+            {
+              "key": "s03s00",
+              "label": "3-0",
+              "odds": 15.0,
+              "probability": 4.191,
+              "market_probability": 4.7322,
+              "difference": -0.5412
+            },
+            {
+              "key": "s01s03",
+              "label": "1-3",
+              "odds": 29.0,
+              "probability": 2.5438,
+              "market_probability": 2.4477,
+              "difference": 0.0961
+            },
+            {
+              "key": "s03s02",
+              "label": "3-2",
+              "odds": 24.0,
+              "probability": 2.4898,
+              "market_probability": 2.9576,
+              "difference": -0.4678
+            },
+            {
+              "key": "s02s03",
+              "label": "2-3",
+              "odds": 35.0,
+              "probability": 1.8829,
+              "market_probability": 2.0281,
+              "difference": -0.1452
+            },
+            {
+              "key": "s04s01",
+              "label": "4-1",
+              "odds": 35.0,
+              "probability": 1.8096,
+              "market_probability": 2.0281,
+              "difference": -0.2185
+            },
+            {
+              "key": "s00s03",
+              "label": "0-3",
+              "odds": 50.0,
+              "probability": 1.8036,
+              "market_probability": 1.4197,
+              "difference": 0.3839
+            },
+            {
+              "key": "s04s00",
+              "label": "4-0",
+              "odds": 35.0,
+              "probability": 1.7033,
+              "market_probability": 2.0281,
+              "difference": -0.3248
+            },
+            {
+              "key": "s1sh",
+              "label": "胜其他",
+              "odds": 60.0,
+              "probability": 1.2652,
+              "market_probability": 1.1831,
+              "difference": 0.0821
+            },
+            {
+              "key": "s04s02",
+              "label": "4-2",
+              "odds": 60.0,
+              "probability": 1.0124,
+              "market_probability": 1.1831,
+              "difference": -0.1707
+            },
+            {
+              "key": "s03s03",
+              "label": "3-3",
+              "odds": 65.0,
+              "probability": 0.9749,
+              "market_probability": 1.0921,
+              "difference": -0.1172
+            },
+            {
+              "key": "s01s04",
+              "label": "1-4",
+              "odds": 100.0,
+              "probability": 0.7815,
+              "market_probability": 0.7098,
+              "difference": 0.0717
+            },
+            {
+              "key": "s05s01",
+              "label": "5-1",
+              "odds": 100.0,
+              "probability": 0.6153,
+              "market_probability": 0.7098,
+              "difference": -0.0945
+            },
+            {
+              "key": "s1sa",
+              "label": "负其他",
+              "odds": 175.0,
+              "probability": 0.5805,
+              "market_probability": 0.4056,
+              "difference": 0.1749
+            },
+            {
+              "key": "s02s04",
+              "label": "2-4",
+              "odds": 150.0,
+              "probability": 0.5791,
+              "market_probability": 0.4732,
+              "difference": 0.1059
+            },
+            {
+              "key": "s05s00",
+              "label": "5-0",
+              "odds": 100.0,
+              "probability": 0.5788,
+              "market_probability": 0.7098,
+              "difference": -0.131
+            },
+            {
+              "key": "s00s04",
+              "label": "0-4",
+              "odds": 200.0,
+              "probability": 0.5535,
+              "market_probability": 0.3549,
+              "difference": 0.1986
+            },
+            {
+              "key": "s05s02",
+              "label": "5-2",
+              "odds": 200.0,
+              "probability": 0.3448,
+              "market_probability": 0.3549,
+              "difference": -0.0101
+            },
+            {
+              "key": "s01s05",
+              "label": "1-5",
+              "odds": 500.0,
+              "probability": 0.2008,
+              "market_probability": 0.142,
+              "difference": 0.0588
+            },
+            {
+              "key": "s02s05",
+              "label": "2-5",
+              "odds": 500.0,
+              "probability": 0.1492,
+              "market_probability": 0.142,
+              "difference": 0.0072
+            },
+            {
+              "key": "s00s05",
+              "label": "0-5",
+              "odds": 500.0,
+              "probability": 0.142,
+              "market_probability": 0.142,
+              "difference": 0.0
+            },
+            {
+              "key": "s1sd",
+              "label": "平其他",
+              "odds": 400.0,
+              "probability": 0.1343,
+              "market_probability": 0.1775,
+              "difference": -0.0432
+            }
+          ],
+          "selected_keys": [
+            "s01s01",
+            "s01s00",
+            "s02s01"
+          ],
+          "selection": "1-1 / 1-0 / 2-1",
+          "coverage": 31.1728,
+          "selection_count": 3,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "s00s01",
+          "covered": false
+        },
+        {
+          "code": "hhad",
+          "label": "让球胜平负",
+          "line": -1.0,
+          "origin": "model",
+          "options": [
+            {
+              "key": "a",
+              "label": "让负",
+              "odds": 1.83,
+              "probability": 53.9021,
+              "market_probability": 47.973,
+              "difference": 5.9291
+            },
+            {
+              "key": "h",
+              "label": "让胜",
+              "odds": 3.35,
+              "probability": 23.6263,
+              "market_probability": 26.2062,
+              "difference": -2.5799
+            },
+            {
+              "key": "d",
+              "label": "让平",
+              "odds": 3.4,
+              "probability": 22.4716,
+              "market_probability": 25.8208,
+              "difference": -3.3492
+            }
+          ],
+          "selected_keys": [
+            "a"
+          ],
+          "selection": "让负",
+          "coverage": 53.9021,
+          "selection_count": 1,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "a",
+          "covered": true
+        },
+        {
+          "code": "hafu",
+          "label": "半全场",
+          "line": null,
+          "origin": "model",
+          "options": [
+            {
+              "key": "hh",
+              "label": "胜胜",
+              "odds": 2.8,
+              "probability": 24.2508,
+              "market_probability": 28.4823,
+              "difference": -4.2315
+            },
+            {
+              "key": "dh",
+              "label": "平胜",
+              "odds": 4.7,
+              "probability": 18.5894,
+              "market_probability": 16.9682,
+              "difference": 1.6212
+            },
+            {
+              "key": "aa",
+              "label": "负负",
+              "odds": 6.5,
+              "probability": 16.899,
+              "market_probability": 12.2693,
+              "difference": 4.6297
+            },
+            {
+              "key": "dd",
+              "label": "平平",
+              "odds": 5.2,
+              "probability": 15.8761,
+              "market_probability": 15.3366,
+              "difference": 0.5395
+            },
+            {
+              "key": "da",
+              "label": "平负",
+              "odds": 8.25,
+              "probability": 10.3397,
+              "market_probability": 9.6667,
+              "difference": 0.673
+            },
+            {
+              "key": "ad",
+              "label": "负平",
+              "odds": 14.0,
+              "probability": 5.5406,
+              "market_probability": 5.6965,
+              "difference": -0.1559
+            },
+            {
+              "key": "hd",
+              "label": "胜平",
+              "odds": 14.0,
+              "probability": 3.8944,
+              "market_probability": 5.6965,
+              "difference": -1.8021
+            },
+            {
+              "key": "ah",
+              "label": "负胜",
+              "odds": 23.0,
+              "probability": 3.2577,
+              "market_probability": 3.4674,
+              "difference": -0.2097
+            },
+            {
+              "key": "ha",
+              "label": "胜负",
+              "odds": 33.0,
+              "probability": 1.3523,
+              "market_probability": 2.4167,
+              "difference": -1.0644
+            }
+          ],
+          "selected_keys": [
+            "hh"
+          ],
+          "selection": "胜胜",
+          "coverage": 24.2508,
+          "selection_count": 1,
+          "policy": "observation-top-v1",
+          "status": "观察",
+          "reason": "按概率排序；非收益优势判断",
+          "actual_key": "da",
+          "covered": false
+        }
+      ],
+      "actual_score": "0-1",
+      "result_source": "体彩官方"
+    }
+  ],
+  "summary": {
+    "had": {
+      "selected_matches": 4,
+      "covered_matches": 0
+    },
+    "hhad": {
+      "selected_matches": 4,
+      "covered_matches": 3
+    },
+    "ttg": {
+      "selected_matches": 4,
+      "covered_matches": 1
+    },
+    "crs": {
+      "selected_matches": 4,
+      "covered_matches": 0
+    },
+    "hafu": {
+      "selected_matches": 4,
+      "covered_matches": 0
+    }
+  },
+  "archive_unchanged": true
+}

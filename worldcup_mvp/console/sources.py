@@ -334,6 +334,11 @@ def recent_rows(summary, team_id, kickoff):
 
 
 def fetch_context(match):
+    from .fundamentals import fetch_context as enrich
+    return enrich(match)
+
+
+def fetch_espn_context(match):
     if match.get("league_code") == "KD1":
         return {
             "available": False,
