@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import LiveScore from "./LiveScore.vue";
+import IntelligencePanel from "./IntelligencePanel.vue";
+import LegacyPrediction from "./LegacyPrediction.vue";
+import MatchFacts from './MatchFacts.vue';
 import { MessagePlugin } from "tdesign-vue-next";
 import { RefreshIcon, SearchIcon } from "tdesign-icons-vue-next";
 import { api, timeLabel } from "./api";
@@ -18,6 +21,7 @@ const aiLabels = {
   waiting_result: "待赛果",
   not_configured: "未配置",
   disabled: "未开启",
+  no_prediction: "无归档",
 };
 const rows = ref([]),
   loading = ref(false),
@@ -34,9 +38,14 @@ const list = computed(() =>
     .map((r) => ({
       ...r,
       status:
-        props.state.reviewNotes[r.id] || r.ai_review?.status === "completed"
-          ? "已复盘"
-          : r.status,
+        r.postmatch_review?.status === "conflict"
+          ? "赛果待核实"
+          : r.postmatch_review?.status === "preliminary"
+            ? "初评已生成"
+            : props.state.reviewNotes[r.id] ||
+                r.ai_review?.status === "completed"
+              ? "已复盘"
+              : r.status,
     }))
     .filter(
       (r) =>
@@ -48,12 +57,18 @@ const pageRows = computed(() =>
   list.value.slice((page.value - 1) * 10, page.value * 10),
 );
 async function load(refresh = false) {
+  if (loading.value) return;
   loading.value = true;
   error.value = "";
   try {
     const d = await (refresh ? api.refreshReviews() : api.reviews());
     rows.value = d.reviews;
     aiConfig.value = d.ai_review_config;
+    if (!selected.value && location.hash.startsWith("#/reviews/")) {
+      const id = decodeURIComponent(location.hash.split("/")[2]);
+      const row = rows.value.find((r) => r.id === id);
+      if (row) inspect(row);
+    }
     if (selected.value)
       selected.value =
         rows.value.find((r) => r.id === selected.value.id) || selected.value;
@@ -80,6 +95,7 @@ function evidenceTitle(id) {
     (e) => e.id === id,
   );
   if (id === "official-result") return "体彩正式赛果";
+  if (id === "match-process") return "本场比赛统计与事件";
   if (id === "pregame-model") return "赛前模型记录";
   if (id.startsWith("market:"))
     return "市场参考 · " + marketNames[id.split(":")[1]];
@@ -90,6 +106,12 @@ function evidenceTitle(id) {
 function evidenceText(item) {
   const d = item.data;
   if (item.kind === "official_result") return d.score + "（90分钟）";
+  if (item.kind === "postmatch_process")
+    return [
+      ...(d.statistics || []).map((r) => `${r.label}（主 / 客）：${r.home ?? '待核实'} / ${r.away ?? '待核实'}`),
+      ...(d.events || []).map((r) => `${r.period_label || ''} ${r.clock || '时间待核实'} ${r.team || ''} ${r.label || ''}`),
+      d.statistics_scope,
+    ].filter(Boolean).join('；');
   if (item.kind === "computed_settlement")
     return `选择：${d.selection}；赛果：${d.actual || "待确认"}；${d.status}`;
   if (item.kind === "archived_claim_not_match_event") return d.text;
@@ -132,7 +154,7 @@ function exportCsv() {
       list.value.map((r) => ({
         ...r,
         fixture: `${r.home} vs ${r.away}`,
-        version: r.prediction.version,
+        version: r.prediction?.version ?? "无赛前归档",
         note: props.state.reviewNotes[r.id] || "",
       })),
       [
@@ -149,29 +171,23 @@ function exportCsv() {
   );
 }
 const columns = [
-  { colKey: "date", title: "开赛日期", width: 120 },
-  { colKey: "league", title: "赛事", width: 90 },
-  { colKey: "fixture", title: "比赛", minWidth: 230 },
-  { colKey: "pick", title: "赛前方向", width: 110 },
-  { colKey: "liveScore", title: "即时比分", width: 200 },
-  { colKey: "score", title: "实际比分", width: 110 },
+  { colKey: "date", title: "开赛日期", width: 110 },
+  { colKey: "league", title: "赛事", width: 100, ellipsis: true },
+  { colKey: "fixture", title: "比赛", minWidth: 220 },
+  { colKey: "pick", title: "赛前方向", width: 150 },
+  { colKey: "liveScore", title: "比分 / 进程", width: 180 },
+  { colKey: "score", title: "正式比分", width: 110 },
   { colKey: "result", title: "方向对照", width: 110 },
-  { colKey: "status", title: "复盘状态", width: 100 },
+  { colKey: "status", title: "复盘状态", width: 120 },
   { colKey: "ai", title: "AI复盘", width: 100 },
-  { colKey: "action", title: "操作", width: 100 },
+  { colKey: "action", title: "操作", width: 100, fixed: "right" },
 ];
 let timer;
 onMounted(() => {
-  load(true);
-  let ticks = 0;
+  load();
   timer = setInterval(() => {
-    ticks++;
-    const active = rows.value.some((r) =>
-      ["queued", "running"].includes(r.ai_review?.status),
-    );
-    if (!document.hidden && !loading.value && (active || ticks % 10 === 0))
-      load();
-  }, 3000);
+    if (!document.hidden && !loading.value) load();
+  }, 5000);
 });
 onBeforeUnmount(() => clearInterval(timer));
 </script>
@@ -181,6 +197,7 @@ onBeforeUnmount(() => clearInterval(timer));
       <h1>复盘记录</h1>
     </div>
     <div class="actions">
+      <t-tag variant="light">完场自动初评</t-tag>
       <t-tag v-if="aiConfig?.enabled && aiConfig?.configured" variant="light"
         >自动复盘已开启</t-tag
       >
@@ -192,27 +209,33 @@ onBeforeUnmount(() => clearInterval(timer));
       >
     </div>
   </div>
-  <div class="summary-strip">
+  <div class="summary-strip review-summary">
     <div>
-      <span>预测场次</span><strong>{{ rows.length }}</strong>
+      <span>记录场次</span><strong>{{ rows.length }}</strong>
+    </div>
+    <div>
+      <span>新版预测归档</span
+      ><strong>{{ rows.filter((r) => r.prediction).length }}</strong>
+    </div>
+    <div>
+      <span>已生成分析</span
+      ><strong>{{
+        rows.filter((r) =>
+          ["preliminary", "confirmed"].includes(r.postmatch_review?.status),
+        ).length
+      }}</strong>
     </div>
     <div>
       <span>已确认赛果</span
-      ><strong>{{ rows.filter((r) => r.status === "待复盘").length }}</strong>
-    </div>
-    <div>
-      <span>已完成复盘</span
       ><strong>{{
-        rows.filter(
-          (r) => state.reviewNotes[r.id] || r.ai_review?.status === "completed",
-        ).length
+        rows.filter((r) => r.postmatch_review?.status === "confirmed").length
       }}</strong>
     </div>
   </div>
   <section class="panel">
     <div class="panel-heading">
       <div class="actions">
-        <h2>预测与赛果</h2>
+        <h2>赛后分析与赛果</h2>
         <t-select
           v-model="status"
           clearable
@@ -220,7 +243,15 @@ onBeforeUnmount(() => clearInterval(timer));
           aria-label="复盘状态"
           style="width: 130px"
           :options="
-            ['待赛果', '待复盘', '已复盘', '已取消'].map((v) => ({
+            [
+              '待赛果',
+              '初评已生成',
+              '已分析',
+              '赛果待核实',
+              '待复盘',
+              '已复盘',
+              '已取消',
+            ].map((v) => ({
               label: v,
               value: v,
             }))
@@ -244,7 +275,7 @@ onBeforeUnmount(() => clearInterval(timer));
       :columns="columns"
       :loading="loading"
       hover
-      empty="暂无预测归档。先进入比赛详情生成赛前预测。"
+      empty="暂无已完场比赛或赛前预测归档，后台正在同步赛果。"
       ><template #fixture="{ row }"
         ><strong>{{ row.home }}</strong
         ><span class="versus">vs</span><strong>{{ row.away }}</strong></template
@@ -252,6 +283,13 @@ onBeforeUnmount(() => clearInterval(timer));
         ><LiveScore :value="row.live_score" compact /></template
       ><template #score="{ row }"
         ><strong class="mono">{{ row.score }}</strong></template
+      ><template #pick="{ row }">
+        <span v-if="row.prediction">{{ row.pick }}</span>
+        <span v-else-if="row.legacy_prediction"
+          >{{ row.legacy_prediction.direction }}
+          <small class="muted">· 旧版</small></span
+        >
+        <span v-else class="muted">未归档</span></template
       ><template #result="{ row }"
         ><span
           :class="
@@ -266,9 +304,11 @@ onBeforeUnmount(() => clearInterval(timer));
               ? "方向一致"
               : row.consistent === false
                 ? "出现偏差"
-                : row.direction_observed
-                  ? "观望"
-                  : "待核实"
+                : row.has_prediction === false
+                  ? "无赛前对照"
+                  : row.direction_observed
+                    ? "观望"
+                    : "待核实"
           }}</span
         ></template
       ><template #status="{ row }"
@@ -287,7 +327,8 @@ onBeforeUnmount(() => clearInterval(timer));
       ></t-table
     >
     <div class="table-footer">
-      <span class="small muted">赛果未核实前不计命中 · 历史预测只读</span
+      <span class="small muted"
+        >完场即初评 · 正式赛果确认后结算 · 历史预测只读</span
       ><t-pagination
         v-model="page"
         :page-size="10"
@@ -318,27 +359,129 @@ onBeforeUnmount(() => clearInterval(timer));
         {{ selected.home }} <span class="versus">vs</span> {{ selected.away }}
       </h2>
       <p class="muted">{{ selected.date }} · {{ selected.league }}</p>
+      <a :href="`#/match/${encodeURIComponent(selected.id)}/analysis`"
+        >查看本场预测分析与阵容情报</a
+      >
       <div class="review-comparison">
         <div>
-          <span class="label-caption"
-            >赛前方向 · v{{ selected.prediction.version }}</span
-          ><strong>{{ selected.pick }}</strong>
+          <span class="label-caption">{{
+            selected.prediction
+              ? `赛前方向 · v${selected.prediction.version}`
+              : selected.legacy_prediction
+                ? "旧版方向 · 参考"
+                : "赛前方向 · 未归档"
+          }}</span
+          ><strong>{{
+            selected.prediction
+              ? selected.pick
+              : selected.legacy_prediction?.direction || selected.pick
+          }}</strong>
         </div>
         <div>
-          <span class="label-caption">实际比分</span
+          <span class="label-caption">正式比分</span
           ><strong>{{ selected.score }}</strong>
         </div>
       </div>
-      <h3>赛前判断 · 只读</h3>
-      <p class="review-text">
-        {{ selected.prediction.title }}<br />{{
-          selected.prediction.evidence.map((e) => e.text).join("\n")
-        }}
-      </p>
-      <p class="small muted">
-        生成于 {{ timeLabel(selected.prediction.created) }} ·
-        {{ selected.prediction.model_version }}
-      </p>
+      <LegacyPrediction :record="selected.legacy_prediction" />
+      <MatchFacts :data="selected.match_facts" />
+      <section
+        v-if="selected.postmatch_review"
+        class="postmatch-review mt16"
+        aria-label="完场分析"
+      >
+        <template v-if="selected.postmatch_review.id">
+          <h3>
+            {{
+              selected.postmatch_review.status === "preliminary"
+                ? "完场初评 · 待正式确认"
+                : selected.postmatch_review.status === "conflict"
+                  ? "赛果待核实"
+                  : "完场分析 · 已确认"
+            }}
+          </h3>
+          <p class="review-text">{{ selected.postmatch_review.summary }}</p>
+          <p
+            v-if="
+              selected.postmatch_review.previous_score &&
+              selected.postmatch_review.previous_score !==
+                selected.postmatch_review.score
+            "
+            class="warning"
+          >
+            比分已从 {{ selected.postmatch_review.previous_score }} 修正为
+            {{ selected.postmatch_review.score }}，旧分析已保留。
+          </p>
+          <h4 v-if="selected.postmatch_review.findings.length">
+            {{ selected.prediction ? "对照与偏差" : "赛后事实" }}
+          </h4>
+          <ul>
+            <li
+              v-for="(finding, i) in selected.postmatch_review.findings"
+              :key="i"
+            >
+              {{ finding }}
+            </li>
+          </ul>
+          <h4>后续建议</h4>
+          <ol>
+            <li
+              v-for="(advice, i) in selected.postmatch_review.recommendations"
+              :key="i"
+            >
+              {{ advice }}
+            </li>
+          </ol>
+          <p class="small muted">
+            缺少资料：{{ selected.postmatch_review.missing_data.join("、") }}
+          </p>
+          <p class="small muted">
+            {{ selected.postmatch_review.source }} · 90分钟 · 获取于
+            {{ timeLabel(selected.postmatch_review.observed_at) }}<br />
+            本地规则分析 ·
+            {{
+              selected.prediction
+                ? `对照赛前 v${selected.postmatch_review.prediction_version}`
+                : "无赛前预测对照"
+            }}
+            · 生成于 {{ timeLabel(selected.postmatch_review.created_at) }}
+          </p>
+        </template>
+        <t-alert
+          v-else
+          theme="info"
+          :message="selected.postmatch_review.reason"
+        />
+      </section>
+      <IntelligencePanel
+        :data="selected.intelligence_review?.pregame"
+        title="赛前分析快照 · 只读"
+      />
+      <IntelligencePanel
+        :data="selected.intelligence_review?.current"
+        :title="
+          selected.intelligence_review?.current?.phase === 'pregame'
+            ? '当前阵容与盘口核查'
+            : '赛后阵容与盘口核查'
+        "
+      />
+      <template v-if="selected.prediction">
+        <h3>赛前判断 · 只读</h3>
+        <p class="review-text">
+          {{ selected.prediction.title }}<br />{{
+            (selected.prediction.evidence || []).map((e) => e.text).join("\n")
+          }}
+        </p>
+        <p class="small muted">
+          生成于 {{ timeLabel(selected.prediction.created) }} ·
+          {{ selected.prediction.model_version }}
+        </p>
+      </template>
+      <t-alert
+        v-else
+        class="mt16"
+        theme="info"
+        message="本场未归档赛前预测，仍可查看赛果和事实分析；不补算预测命中。"
+      />
       <section
         v-for="group in [
           { label: '市场观察复盘', rows: selected.market_results },
@@ -368,21 +511,23 @@ onBeforeUnmount(() => clearInterval(timer));
         </t-table>
         <p class="small muted">每选项1单位；未归档选择不计覆盖。</p>
       </section>
-      <h3 class="mt16">版本记录</h3>
-      <t-table
-        row-key="id"
-        :data="selected.versions"
-        size="small"
-        :columns="[
-          { colKey: 'version', title: '版本', width: 70 },
-          { colKey: 'created', title: '生成时间', width: 180 },
-          { colKey: 'direction', title: '方向', width: 80 },
-          { colKey: 'model_version', title: '计算版本' },
-        ]"
-        ><template #created="{ row }">{{
-          timeLabel(row.created)
-        }}</template></t-table
-      >
+      <template v-if="selected.versions?.length">
+        <h3 class="mt16">版本记录</h3>
+        <t-table
+          row-key="id"
+          :data="selected.versions"
+          size="small"
+          :columns="[
+            { colKey: 'version', title: '版本', width: 70 },
+            { colKey: 'created', title: '生成时间', width: 180 },
+            { colKey: 'direction', title: '方向', width: 80 },
+            { colKey: 'model_version', title: '计算版本' },
+          ]"
+          ><template #created="{ row }">{{
+            timeLabel(row.created)
+          }}</template></t-table
+        >
+      </template>
       <section v-if="selected.ai_review || aiConfig" class="ai-review mt16">
         <div class="panel-heading flush">
           <h3>AI复盘</h3>
@@ -476,10 +621,29 @@ onBeforeUnmount(() => clearInterval(timer));
 </template>
 
 <style scoped>
+.review-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.review-summary > div:last-child {
+  grid-column: auto;
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+@media (max-width: 600px) {
+  .review-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 16px;
+  }
+  .review-summary > div:nth-child(2n) {
+    border-right: 0;
+  }
+}
 .ai-review .panel-heading {
   padding: 0;
 }
-.ai-review h4 {
+.ai-review h4,
+.postmatch-review h4 {
   margin: 20px 0 8px;
   font-size: 14px;
 }
@@ -489,7 +653,8 @@ onBeforeUnmount(() => clearInterval(timer));
 .ai-finding p {
   margin-bottom: 4px;
 }
-.ai-review li {
+.ai-review li,
+.postmatch-review li {
   margin: 8px 0;
   line-height: 1.7;
 }

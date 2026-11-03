@@ -13,6 +13,10 @@ import { api, timeLabel, lifecycleNames } from "./api";
 import { price, marketNames } from "./domain";
 import LiveScore from "./LiveScore.vue";
 import MarketForecast from "./MarketForecast.vue";
+import IntelligencePanel from "./IntelligencePanel.vue";
+import LegacyPrediction from "./LegacyPrediction.vue";
+import MatchBriefing from './MatchBriefing.vue';
+import MatchFacts from './MatchFacts.vue';
 const props = defineProps({
   match: Object,
   tab: String,
@@ -91,6 +95,42 @@ const tabs = [
   ["analysis", "预测分析"],
 ];
 const context = computed(() => detail.value?.context || {});
+function lineupFor(i) {
+  const side = i === 0 ? "home" : "away";
+  const actual =
+    context.value.lineups?.find((r) => r.side === side) ||
+    context.value.lineups?.[i];
+  if (actual?.status === "confirmed")
+    return {
+      source: context.value.lineup_source || context.value.source,
+      source_url: context.value.lineup_source_url || context.value.source_url,
+      captured_at:
+        context.value.lineup_captured_at || context.value.captured_at,
+      ...actual,
+    };
+  return (
+    context.value.estimated_lineups?.find((r) => r.side === side) ||
+    actual ||
+    {}
+  );
+}
+const upcomingCols = [
+  { colKey: "when", title: "北京时间", width: 145 },
+  { colKey: "competition", title: "赛事 / 类型", width: 155 },
+  { colKey: "opponent", title: "对手", minWidth: 125, ellipsis: true },
+  { colKey: "venue", title: "主客", width: 55 },
+  { colKey: "source", title: "来源", width: 70 },
+];
+function upcomingRows(i) {
+  return (context.value.upcoming?.[i] || []).map((r) => ({
+    ...r,
+    when:
+      r.date_precision === "date"
+        ? r.date.slice(0, 10) + " 待定"
+        : r.date.slice(0, 16).replace("T", " "),
+    competition: `${r.league || "待核实"} · ${r.competition_type || "类型待核实"}`,
+  }));
+}
 const liveScore = computed(
   () =>
     [props.match.live_score, detail.value?.live_score]
@@ -160,7 +200,8 @@ const basicStats = computed(() => {
 });
 const formCols = [
   { colKey: "date", title: "日期", width: 106 },
-  { colKey: "opponent", title: "对手", minWidth: 160 },
+  { colKey: "competition", title: "赛事 / 类型", width: 150, ellipsis: true },
+  { colKey: "opponent", title: "对手", minWidth: 120, ellipsis: true },
   { colKey: "venue", title: "主客", width: 60 },
   { colKey: "score", title: "比分", width: 66 },
   { colKey: "result", title: "赛果", width: 58 },
@@ -169,6 +210,7 @@ function formRows(i) {
   return form.value[i].map((r) => ({
     ...r,
     date: r.date.slice(0, 10),
+    competition: `${r.league || "赛事待核实"} · ${r.competition_type || "类型待核实"}`,
     result: r.gf > r.ga ? "胜" : r.gf === r.ga ? "平" : "负",
   }));
 }
@@ -336,6 +378,7 @@ onBeforeUnmount(() => clearInterval(timer));
     </div>
     <LiveScore :value="liveScore" large />
     <div class="actions">
+      <a :href="`#/reviews/${encodeURIComponent(match.id)}`">查看关联复盘</a>
       <t-button
         variant="outline"
         :theme="followed ? 'primary' : 'default'"
@@ -439,7 +482,13 @@ onBeforeUnmount(() => clearInterval(timer));
           </div>
           <div>
             <dt>伤停</dt>
-            <dd>{{ context.injuries_verified ? "已核实" : "未获可靠确认" }}</dd>
+            <dd>
+              {{
+                context.injuries?.length
+                  ? `已获取 ${context.injuries.length} 条人员消息 · 覆盖不完整`
+                  : "来源暂无可核实伤停名单"
+              }}
+            </dd>
           </div>
           <div>
             <dt>基本面采集</dt>
@@ -483,6 +532,12 @@ onBeforeUnmount(() => clearInterval(timer));
         >
       </section>
     </div>
+    <section v-if="context.head_to_head?.length" class="panel mt16">
+      <div class="panel-heading"><h2>近期交锋</h2><span class="small muted">历史比赛主队比分在前 · 不同赛事分开标注</span></div>
+      <t-table row-key="id" :data="context.head_to_head.map(r => ({...r, date:r.date.slice(0,10), competition:`${r.league} · ${r.competition_type}`}))"
+        :columns="[{colKey:'date',title:'日期',width:115},{colKey:'competition',title:'赛事 / 类型',width:190},
+        {colKey:'home',title:'历史主队',minWidth:140},{colKey:'score',title:'比分',width:80},{colKey:'away',title:'历史客队',minWidth:140}]" size="small" />
+    </section>
     <section v-if="context.h2h" class="panel mt16">
       <div class="panel-heading">
         <h2>近 5 次联赛交锋</h2>
@@ -502,6 +557,35 @@ onBeforeUnmount(() => clearInterval(timer));
         empty="暂无联赛交锋记录"
       />
     </section>
+    <div class="two-column detail-grid mt16">
+      <section
+        class="panel"
+        v-for="(team, i) in [match.home, match.away]"
+        :key="team"
+      >
+        <div class="panel-heading">
+          <h2>{{ team }} · 后续赛程</h2>
+          <span class="small muted">时间可能调整</span>
+        </div>
+        <t-table
+          row-key="id"
+          :data="upcomingRows(i)"
+          :columns="upcomingCols"
+          size="small"
+          empty="来源暂未提供后续赛程"
+        >
+          <template #source="{ row }"
+            ><a
+              v-if="row.source_url"
+              :href="row.source_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              >{{ row.source }}</a
+            ><span v-else>{{ row.source }}</span></template
+          >
+        </t-table>
+      </section>
+    </div>
   </template>
   <template v-else-if="tab === 'lineups'"
     ><div class="two-column detail-grid">
@@ -513,33 +597,53 @@ onBeforeUnmount(() => clearInterval(timer));
         <div class="panel-heading">
           <h2>{{ team }}</h2>
           <t-tag
-            :theme="
-              context.lineups?.[i]?.status === 'confirmed'
-                ? 'success'
-                : 'default'
-            "
+            :theme="lineupFor(i).status === 'confirmed' ? 'success' : 'default'"
             variant="light"
             >{{
-              context.lineups?.[i]?.status === "confirmed"
+              lineupFor(i).status === "confirmed"
                 ? "首发已确认"
-                : "首发待确认"
+                : lineupFor(i).status === "estimated"
+                  ? "预计阵容 · 非正式首发"
+                  : "首发待确认"
             }}</t-tag
           >
         </div>
         <t-table
           row-key="name"
-          :data="context.lineups?.[i]?.players || []"
+          :data="lineupFor(i).players || []"
           :columns="[
             { colKey: 'number', title: '号码', width: 80 },
             { colKey: 'name', title: '球员', minWidth: 170 },
             { colKey: 'position', title: '位置', width: 100 },
+            ...(lineupFor(i).status === 'estimated'
+              ? [{ colKey: 'availability', title: '人员核查', width: 160 }]
+              : []),
           ]"
           empty="正式首发尚未公布或尚未获取"
-        />
+          ><template #availability="{ row }"
+            ><span :class="row.conflict ? 'warning' : 'muted'">{{
+              row.availability || "待核实"
+            }}</span></template
+          ></t-table
+        >
+        <p v-if="lineupFor(i).conflicts?.length" class="section-note warning">
+          来源冲突：{{
+            lineupFor(i).conflicts.join("、")
+          }}已被官方列为缺阵；本表不可作为确认首发使用。
+        </p>
+        <p v-if="lineupFor(i).source" class="section-note">
+          <a
+            :href="lineupFor(i).source_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            >{{ lineupFor(i).source }}来源</a
+          >
+          · 获取于 {{ timeLabel(lineupFor(i).captured_at) }}
+        </p>
         <div class="section-note">
           {{
-            context.lineups?.[i]?.formation
-              ? "阵型 " + context.lineups[i].formation
+            lineupFor(i).formation
+              ? "阵型 " + lineupFor(i).formation
               : "阵型尚未确认"
           }}
         </div>
@@ -547,7 +651,50 @@ onBeforeUnmount(() => clearInterval(timer));
     </div>
     <section class="panel mt16">
       <div class="panel-heading">
-        <h2>伤停与情报</h2>
+        <h2>伤停与出场状态</h2>
+        <span class="small muted">公开报道不等于完整名单</span>
+      </div>
+      <t-table
+        row-key="recordKey"
+        :data="
+          (context.injuries || []).map((r) => ({
+            ...r,
+            recordKey: `${r.side}:${r.name}:${r.source}`,
+          }))
+        "
+        :columns="[
+          { colKey: 'side', title: '球队', width: 110 },
+          { colKey: 'name', title: '球员', width: 150 },
+          { colKey: 'status', title: '状态', width: 180 },
+          { colKey: 'reason', title: '说明', minWidth: 230, ellipsis: true },
+          { colKey: 'source', title: '来源 / 时间', width: 360, ellipsis: true },
+        ]"
+        empty="来源暂未给出可核实伤停名单，不代表无人缺席"
+      >
+        <template #side="{ row }">{{
+          row.side === "home" ? match.home : match.away
+        }}</template>
+        <template #source="{ row }"
+          ><a
+            :href="row.source_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            >{{ row.source }}</a
+          >
+          · {{ timeLabel(row.published_at || row.captured_at) }}</template
+        >
+      </t-table>
+      <p v-if="context.injuries?.some((r) => r.official)" class="section-note">
+        官方公告为人工核验摘录，仅适用本场；不是实时伤停接口。
+      </p>
+      <p v-if="context.supplementary_error" class="section-note warning">
+        补充来源：{{ context.supplementary_error }}
+      </p>
+    </section>
+    <IntelligencePanel :data="detail?.intelligence" title="阵容与盘口情报" />
+    <section class="panel mt16">
+      <div class="panel-heading">
+        <h2>补充情报与观点</h2>
         <t-button variant="outline" @click="evidenceOpen = true"
           >添加情报</t-button
         >
@@ -573,7 +720,7 @@ onBeforeUnmount(() => clearInterval(timer));
         <p>{{ e.text }}</p>
       </div>
       <div v-if="!detail?.evidence?.length" class="empty-state compact">
-        <p>伤停待核实。</p>
+        <p>暂无手动补充情报。</p>
       </div>
       <div class="section-note">
         {{
@@ -654,9 +801,20 @@ onBeforeUnmount(() => clearInterval(timer));
           >
         </div></template
       >
+      <div v-else-if="context.external_odds?.rows?.length">
+        <t-table row-key="id" :data="context.external_odds.rows" :columns="[
+          {colKey:'company',title:'来源公司',width:150},{colKey:'initial',title:'初始 主 / 平 / 客',minWidth:200},
+          {colKey:'latest',title:'最新 主 / 平 / 客',minWidth:200},{colKey:'updated_at',title:'来源报价时间',width:190}
+        ]" size="small">
+          <template #initial="{row}">{{ row.initial.map(v => v.toFixed(2)).join(' / ') }}</template>
+          <template #latest="{row}">{{ row.latest.map(v => v.toFixed(2)).join(' / ') }}</template>
+          <template #updated_at="{row}">{{ timeLabel(row.updated_at) }}</template>
+        </t-table>
+        <p class="section-note"><a :href="context.external_odds.source_url" target="_blank" rel="noopener noreferrer">{{ context.external_odds.source }}</a> · 获取于 {{ timeLabel(context.external_odds.captured_at) }}<br />胜平负欧赔，保留来源脱敏公司名；不是亚洲让球盘口，也不是资金热度。</p>
+      </div>
       <div v-else class="empty-state compact">
         <h3>暂无已匹配的外盘数据</h3>
-        <p>数据源未配置</p>
+        <p>{{ context.external_odds?.reason || '本场暂未取得通过身份与时间核验的公开欧赔' }}</p>
       </div>
     </section>
     <section v-if="oddsSource === 'sporttery'" class="panel mt16">
@@ -744,7 +902,9 @@ onBeforeUnmount(() => clearInterval(timer));
     </section></template
   >
   <template v-else-if="tab === 'analysis'"
-    ><div class="analysis-toolbar">
+    ><MatchBriefing :data="detail?.briefing" :match-id="match.id" />
+    <MatchFacts v-if="detail?.briefing?.phase !== 'pregame'" :data="context.match_facts" />
+    <div class="analysis-toolbar">
       <span class="muted">{{ analysis?.engine || "尚无预测" }}</span>
       <div class="actions">
         <t-select
@@ -777,6 +937,13 @@ onBeforeUnmount(() => clearInterval(timer));
     <div v-if="predictionBlocked" class="inline-notice">
       无法生成赛前预测，可查看历史版本。
     </div>
+    <LegacyPrediction :record="detail?.legacy_prediction" />
+    <IntelligencePanel
+      :data="analysis?.intelligence || detail?.intelligence"
+      :title="
+        analysis?.intelligence ? '已归档分析线索' : '当前分析线索与核查建议'
+      "
+    />
     <template v-if="analysis"
       ><section class="panel analysis-summary">
         <div class="label-caption">
@@ -916,8 +1083,9 @@ onBeforeUnmount(() => clearInterval(timer));
         </div>
       </section></template
     >
-    <section v-else class="panel empty-state">
-      <h3>尚无赛前预测</h3>
+    <section v-else class="panel empty-state compact">
+      <h3>尚无已保存的赛前预测版本</h3>
+      <p>上方自动研判持续更新；开赛前保存版本后，赛后将按该版本对照。</p>
     </section>
     <section class="panel mt16">
       <div class="panel-heading">

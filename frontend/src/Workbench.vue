@@ -38,6 +38,27 @@ const state = ref({
   drafts: {},
 });
 const capabilities = ref({ ai_configured: false });
+const reviewNotice = ref(null);
+const reviewNoticeError = ref("");
+let reviewCursor = null,
+  reviewPolling = false,
+  reviewTimer;
+async function pollReviewUpdates() {
+  if (reviewPolling || document.hidden) return;
+  reviewPolling = true;
+  try {
+    const data = await api.reviewUpdates(reviewCursor);
+    reviewCursor = data.cursor;
+    reviewNoticeError.value = "";
+    if (data.updates.length) {
+      reviewNotice.value = data.updates[data.updates.length - 1];
+    }
+  } catch {
+    reviewNoticeError.value = "分析更新连接暂不可用，正在重试";
+  } finally {
+    reviewPolling = false;
+  }
+}
 const filter = reactive({
   date: "",
   league: [],
@@ -218,6 +239,7 @@ const allColumns = [
   { colKey: "sp", title: "胜 / 平 / 负 SP", width: 250 },
   { colKey: "eligibility", title: "销售", width: 88 },
   { colKey: "analysisState", title: "分析", width: 88 },
+  { colKey: "coverage", title: "资料核查", width: 100 },
   { colKey: "action", title: "操作", width: 86, fixed: "right" },
 ];
 const columns = computed(() =>
@@ -231,6 +253,8 @@ let timer;
 onMounted(async () => {
   window.addEventListener("hashchange", hashChange);
   reload();
+  pollReviewUpdates();
+  reviewTimer = setInterval(pollReviewUpdates, 5000);
   try {
     capabilities.value = await api.capabilities();
   } catch {}
@@ -241,6 +265,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener("hashchange", hashChange);
   clearInterval(timer);
+  clearInterval(reviewTimer);
 });
 </script>
 <template>
@@ -259,6 +284,31 @@ onBeforeUnmount(() => {
     </nav>
   </header>
   <main class="main-shell">
+    <div
+      v-if="reviewNotice || reviewNoticeError"
+      class="panel panel-heading mb16"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <span v-if="reviewNoticeError">{{ reviewNoticeError }}</span>
+      <template v-else>
+        <span
+          >{{ reviewNotice.fixture }} ·
+          {{
+            reviewNotice.status === "preliminary"
+              ? "完场初评已生成"
+              : reviewNotice.status === "conflict"
+                ? "赛果冲突待核实"
+                : "赛果已确认，分析已更新"
+          }}</span
+        >
+        <div class="actions">
+          <a href="#/reviews" class="score-page-link">查看复盘</a>
+          <t-button variant="text" @click="reviewNotice = null">收起</t-button>
+        </div>
+      </template>
+    </div>
     <t-alert
       v-if="stateError"
       theme="warning"
@@ -461,8 +511,9 @@ onBeforeUnmount(() => {
           ><template #analysisState="{ row }"
             ><span
               :class="state.versions[row.id]?.length ? 'primary' : 'muted'"
-              >{{ state.versions[row.id]?.length ? "已分析" : "未分析" }}</span
+              >{{ state.versions[row.id]?.length ? "已归档" : row.data_coverage?.total ? "自动研判" : "待采集" }}</span
             ></template
+          ><template #coverage="{ row }"><a :href="`#/match/${row.id}/analysis`">{{ row.data_coverage?.total ? `${row.data_coverage.available}/${row.data_coverage.total}项` : '待采集' }}</a></template
           ><template #action="{ row }"
             ><t-button
               theme="primary"

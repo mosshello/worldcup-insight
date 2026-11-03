@@ -1,5 +1,235 @@
 import { test, expect } from "@playwright/test";
 
+test("legacy directions stay distinct and match analysis links to its review", async ({
+  page,
+}) => {
+  const { match, detail } = await setup(page);
+  detail.legacy_prediction = {
+    direction: "客胜",
+    score: "1-2",
+    recorded_at: new Date().toISOString(),
+    recorded_before_kickoff: true,
+    notice: "旧日志仅供查阅，不计入新版命中与模型评估。",
+  };
+  detail.intelligence = {
+    phase: "pregame",
+    lineups: [{ side: "home", summary: "测试主队：首发待确认" }],
+    markets: [],
+    evidence: [],
+    checks: ["伤停尚未完整核实"],
+    limitations: ["不能证明操控意图"],
+  };
+  await page.route("**/api/v1/reviews", async (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        reviews: [
+          {
+            ...match,
+            date: "2026-11-03",
+            pick: "未归档",
+            score: "待赛果",
+            has_prediction: false,
+            prediction: null,
+            legacy_prediction: detail.legacy_prediction,
+            consistent: null,
+            postmatch_review: { status: "waiting", reason: "等待全场结束" },
+            ai_review: { status: "no_prediction" },
+            market_results: [],
+            model_results: [],
+            intelligence_review: { current: detail.intelligence },
+          },
+        ],
+      }),
+    }),
+  );
+  await page.goto(`/club-preview.html#/match/${match.id}/analysis`);
+  await expect(
+    page.getByRole("heading", { name: "当前分析线索与核查建议" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("旧版预测记录")).toContainText("客胜");
+  await page.getByRole("link", { name: "查看关联复盘", exact: true }).click();
+  await expect(page.locator(".t-drawer")).toBeVisible();
+  await expect(page.locator(".t-drawer")).toContainText("不计入新版命中");
+  await expect(page.locator(".t-table").first()).toContainText("客胜 · 旧版");
+  await expect(page.locator(".t-table").first()).toContainText("无赛前对照");
+});
+
+test("finished match without pregame archive exposes factual analysis and export", async ({
+  page,
+}) => {
+  const { match } = await setup(page);
+  await page.route("**/api/v1/reviews**", async (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        reviews: [
+          {
+            ...match,
+            date: "2026-11-03",
+            pick: "未归档",
+            score: "4-3",
+            status: "已分析",
+            has_prediction: false,
+            prediction: null,
+            versions: [],
+            consistent: null,
+            market_results: [],
+            model_results: [],
+            ai_review: { status: "no_prediction" },
+            live_score: {
+              score: "4-3",
+              state: "completed",
+              label: "全场结束",
+              stale: false,
+            },
+            postmatch_review: {
+              id: 1,
+              status: "confirmed",
+              score: "4-3",
+              summary: "90分钟比分4-3，主胜，总进球7。",
+              findings: ["本场没有赛前预测归档，仅作赛后事实分析。"],
+              recommendations: ["核实本场事件资料。"],
+              missing_data: ["射门与xG"],
+              source: "测试来源",
+              created_at: new Date().toISOString(),
+            },
+          },
+        ],
+      }),
+    }),
+  );
+  await page.goto("/club-preview.html#/reviews");
+  await expect(
+    page.getByRole("cell", { name: "无赛前对照", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "查看复盘", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "赛后事实", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".t-drawer")).toContainText("本场没有赛前预测归档");
+  await expect(
+    page.getByRole("heading", { name: "赛前判断 · 只读" }),
+  ).toHaveCount(0);
+  await page
+    .locator(".t-drawer")
+    .getByRole("button", { name: "关闭", exact: true })
+    .click();
+  const downloaded = page.waitForEvent("download");
+  await page.getByRole("button", { name: "导出记录", exact: true }).click();
+  expect((await downloaded).suggestedFilename()).toBe("复盘记录.csv");
+  await page.setViewportSize({ width: 850, height: 900 });
+  const positions = await page
+    .locator(".review-summary > div")
+    .evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().top));
+  expect(new Set(positions).size).toBe(1);
+});
+
+test("full-time analysis updates before official settlement and preserves notes", async ({
+  page,
+}) => {
+  const { match } = await setup(page);
+  let report = { status: "waiting", reason: "等待比分源确认全场结束" };
+  let official = "待赛果";
+  const prediction = {
+    id: "pre-game",
+    version: 1,
+    created: "2026-11-01T03:00:00Z",
+    model_version: "test-model",
+    direction: "主胜",
+    title: "赛前归档",
+    evidence: [],
+  };
+  await page.route("**/api/v1/reviews**", async (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        ai_review_config: { configured: false, enabled: true },
+        reviews: [
+          {
+            ...match,
+            date: "2026-11-01",
+            pick: "主胜",
+            score: official,
+            status: official === "待赛果" ? "待赛果" : "待复盘",
+            consistent: null,
+            prediction,
+            versions: [prediction],
+            postmatch_review: report,
+            ai_review: { status: "waiting_result" },
+          },
+        ],
+      }),
+    }),
+  );
+  await page.route("**/api/v1/review-updates*", async (route) => {
+    const after = new URL(route.request().url()).searchParams.get("after");
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        cursor: report.id || 0,
+        updates:
+          after !== null && Number(after) < (report.id || 0)
+            ? [{ ...report, fixture: "测试主队 vs 测试客队" }]
+            : [],
+      }),
+    });
+  });
+  await page.goto("/club-preview.html#/reviews");
+  await page.getByRole("button", { name: "查看复盘", exact: true }).click();
+  const drawer = page.locator(".t-drawer");
+  await expect(drawer).toContainText("等待比分源确认全场结束");
+  const note = page.getByPlaceholder("记录判断偏差、关键事件与后续改进…");
+  await note.fill("保留未保存的本场观察");
+  report = {
+    id: 1,
+    status: "preliminary",
+    score: "1-2",
+    summary: "完场初评：90分钟比分1-2，客胜。",
+    findings: ["赛前主胜与完场结果存在偏差。", "缺少事件证据，原因无法确认。"],
+    recommendations: ["累计同赛事样本后核查概率校准。"],
+    missing_data: ["射门与xG"],
+    source: "测试比分源",
+    observed_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    prediction_version: 1,
+  };
+  await expect(
+    drawer.getByRole("heading", { name: "完场初评 · 待正式确认" }),
+  ).toBeVisible({ timeout: 10000 });
+  await expect(drawer).toContainText("累计同赛事样本后核查概率校准");
+  await expect(note).toHaveValue("保留未保存的本场观察");
+  await expect(page.locator("main > [role=status]")).toContainText(
+    "完场初评已生成",
+    { timeout: 10000 },
+  );
+  await expect(page.locator(".t-table").first()).toContainText("待赛果");
+  official = "2-1";
+  report = {
+    ...report,
+    id: 2,
+    status: "confirmed",
+    score: "2-1",
+    previous_score: "1-2",
+    summary: "赛果已确认：90分钟比分2-1，主胜。",
+  };
+  await expect(
+    drawer.getByRole("heading", { name: "完场分析 · 已确认" }),
+  ).toBeVisible({ timeout: 10000 });
+  await expect(drawer).toContainText("旧分析已保留");
+  await expect(note).toHaveValue("保留未保存的本场观察");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
 test("AI postmatch review is separate from editable notes and supports retry", async ({
   page,
 }) => {
@@ -38,6 +268,13 @@ test("AI postmatch review is separate from editable notes and supports retry", a
             id: "official-result",
             kind: "official_result",
             data: { score: "2-0" },
+          },
+          {
+            id: "match-process",
+            kind: "postmatch_process",
+            data: { statistics: [{label:'射门',home:'12',away:'5'}], events: [
+              {period_label:'常规时间',clock:"43'",team:'主队',label:'进球'}
+            ] },
           },
         ],
       };
@@ -78,6 +315,8 @@ test("AI postmatch review is separate from editable notes and supports retry", a
   expect(state.reviewNotes[match.id]).toBeUndefined();
   await page.getByText("查看依据", { exact: true }).click();
   await expect(page.getByText("2-0（90分钟）", { exact: true })).toBeVisible();
+  await expect(page.getByText('本场比赛统计与事件', {exact:true})).toBeVisible();
+  await expect(page.getByText('射门（主 / 客）：12 / 5', {exact:false})).toBeVisible();
 });
 
 test("competition selection scopes datasets, training and observation selection", async ({
@@ -146,7 +385,10 @@ test("competition selection scopes datasets, training and observation selection"
   await page.getByText("训练与评估", { exact: true }).click();
   await page.getByRole("button", { name: "训练与回测", exact: true }).click();
   await expect.poll(() => actions.length).toBe(2);
-  expect(actions[1]).toMatchObject({ competition_id: "kr.k1", target: "full_time" });
+  expect(actions[1]).toMatchObject({
+    competition_id: "kr.k1",
+    target: "full_time",
+  });
   await page.locator('input[type="file"]').setInputFiles({
     name: "history.json",
     mimeType: "application/json",
@@ -310,6 +552,7 @@ async function setup(page) {
       out = { matches: [match], server_time: new Date().toISOString() };
     else if (p === "/api/v1/scores")
       out = { scores: { [match.id]: match.live_score } };
+    else if (p === "/api/v1/review-updates") out = { cursor: 0, updates: [] };
     else if (p === "/api/v1/state" && req.method() === "GET") out = { state };
     else if (p === "/api/v1/state") {
       const b = req.postDataJSON();
@@ -610,11 +853,11 @@ test("model coverage and responsive pages", async ({ page }) => {
   await setup(page);
   await page.getByRole("link", { name: "数据与模型", exact: true }).click();
   await page.getByText("预测模型", { exact: true }).click();
-  await page.getByRole('button', { name: '详情', exact: true }).first().click();
+  await page.getByRole("button", { name: "详情", exact: true }).first().click();
   await expect(
     page.getByText("market-baseline-v1", { exact: true }),
   ).toBeVisible();
-  await page.keyboard.press('Escape');
+  await page.keyboard.press("Escape");
   await page.getByText("训练与评估", { exact: true }).click();
   await expect(page.getByText("等待授权历史数据")).toBeVisible();
   await expect(

@@ -13,6 +13,8 @@ from . import sources, live
 from .predictor import predict, narrate
 from .quality import select_markets, assess
 from .catalog import catalog, classify, provider_configuration
+from . import intelligence, legacy_predictions, briefing
+from .team_labels import localize_context
 
 
 class ConsoleService:
@@ -27,7 +29,10 @@ class ConsoleService:
         self.collector_stop = threading.Event()
         self.collector_thread = None
         self.score_thread = None
+        self.context_thread = None
+        self.context_check_times = {}
         self.last_score_sync = 0
+        self.result_check_times = {}
         from .training_jobs import TrainingJobs
         self.training_jobs = TrainingJobs(self.store)
         from .ai_reviews import ReviewEngine
@@ -46,6 +51,9 @@ class ConsoleService:
                 began = time.monotonic()
                 try:
                     self.sync(force=True)
+                    # Formal reconciliation must not depend on an LLM key being configured.
+                    self.reviews(refresh=True)
+                    self.refresh_review_context()
                     self.store.status(
                         "collector",
                         {
@@ -87,6 +95,15 @@ class ConsoleService:
             target=collect_scores, name="football-scores", daemon=True
         )
         self.score_thread.start()
+        def collect_context():
+            while not self.collector_stop.is_set():
+                try:
+                    self.refresh_upcoming_context()
+                except Exception:
+                    self.store.status('fundamentals-collector', {'status': 'error', 'error': '基本面补采失败，下一轮重试'})
+                self.collector_stop.wait(60)
+        self.context_thread = threading.Thread(target=collect_context, name='football-fundamentals', daemon=True)
+        self.context_thread.start()
         return self.collector_stop
 
     def sync_scores(self):
@@ -98,7 +115,7 @@ class ConsoleService:
             for m in self.store.list_matches():
                 age = (now - sources.parse_date(m["kickoff"])).total_seconds()
                 key = live.group_key(m)
-                if key and -86400 <= age <= 86400:
+                if key and -86400 <= age <= 7 * 86400:
                     groups.setdefault(key, []).append(m)
 
             def collect(item):
@@ -142,11 +159,37 @@ class ConsoleService:
                     "last_success": now_iso() if good else None,
                 },
             )
+            # Persist a local report as soon as the score feed confirms full time.
+            # No official-result request or LLM call is on this path.
+            self.reviews()
 
     def scores(self):
-        return {
+        scores = {
             mid: live.display(value) for mid, value in self.store.live_scores().items()
         }
+        # Explicit official-result fallback for providers without live coverage.
+        # Keep its source/timestamp visible; do not call it an ESPN live update.
+        for m in self.store.list_matches():
+            current = scores.get(m["id"], {})
+            if current.get("score") and not current.get("stale") and current.get("state") == "completed":
+                continue
+            cached = self.store.detail(m["id"])
+            data = (cached or {}).get("data", {})
+            results = {str(r.get("code", "")).lower(): str(r.get("combination", "")).lower()
+                       for r in data.get("results", [])}
+            exact = data.get("official_score") or results.get("crs", "").replace(":", "-")
+            exact = exact if re.fullmatch(r"\d{1,2}-\d{1,2}", exact) else None
+            if exact or results.get("had") in ("h", "d", "a") or data.get("cancelled"):
+                scores[m["id"]] = {
+                    "score": None if data.get("cancelled") else exact,
+                    "state": "cancelled" if data.get("cancelled") else "completed",
+                    "label": "已取消" if data.get("cancelled") else "全场结束" if exact else "已结束·比分待核实",
+                    "source": "体彩官方", "source_url": m.get("source_url"),
+                    "provider_event_id": m["provider_id"], "source_status": "official_result",
+                    "score_period": "regular_time" if exact else "unknown", "stale": False,
+                    "observed_at": data.get("result_captured_at") or (cached or {}).get("captured_at"),
+                }
+        return scores
 
     def lock(self, key):
         with self._locks_guard:
@@ -203,6 +246,9 @@ class ConsoleService:
             cached = self.store.detail(m["id"])
             if cached:
                 context = cached["data"].get("context", {})
+                coverage = (cached['data'].get('briefing') or {}).get('coverage') or []
+                m['data_coverage'] = {'available': sum(r['status'] == 'available' for r in coverage),
+                                      'total': len(coverage), 'checked_at': cached['data'].get('context_checked_at')}
                 if context.get("state") in ("live", "completed"):
                     m["lifecycle"] = context["state"]
                 m["score"] = context.get("score")
@@ -234,7 +280,82 @@ class ConsoleService:
             "server_time": now_iso(),
         }
 
+    def refresh_review_context(self):
+        # Enrichment follows result reconciliation; a slow lineup provider cannot block initial reports.
+        now = datetime.now(timezone.utc)
+        completed = self.scores()
+        matches = [m for m in self.store.list_matches()
+                   if 0 < (now - sources.parse_date(m["kickoff"])).total_seconds() < 7*86400
+                   and completed.get(m["id"], {}).get("state") == "completed"]
+        def enrich(m):
+            with self.lock("detail:" + m["id"]):
+                data = (self.store.detail(m["id"]) or {}).get("data", {})
+                checked = intelligence.valid_time(data.get("postmatch_context_checked_at"))
+                if checked and (now - checked).total_seconds() < 900:
+                    return
+                try:
+                    context = sources.fetch_context(m)
+                    if context.get("available"):
+                        data["context"] = context
+                except sources.SourceError:
+                    pass
+                data["postmatch_context_checked_at"] = now_iso()
+                self.store.save_detail(m["id"], data)
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            list(pool.map(enrich, matches[:30]))
+        self.reviews()
+
+    def legacy_entries(self):
+        return legacy_predictions.read_journal(self.store.path.parent.parent / "cache" / "prediction_journal.json")
+
+    def refresh_upcoming_context(self, now=None, limit=6):
+        """Bounded fair sweep; independent of result/score collectors and page visits."""
+        now = now or datetime.now(timezone.utc)
+        pending = []
+        for match in self.store.list_matches():
+            start = intelligence.valid_time(match.get('kickoff'))
+            if not start or not 0 < (start - now).total_seconds() < 7*86400: continue
+            cached = (self.store.detail(match['id']) or {}).get('data', {})
+            checked = intelligence.valid_time(cached.get('context_checked_at'))
+            interval = 180 if (start - now).total_seconds() < 7200 else 900
+            if checked and 0 <= (now-checked).total_seconds() < interval: continue
+            pending.append(match)
+        pending.sort(key=lambda m: (self.context_check_times.get(m['id'], 0), m['kickoff']))
+        def collect(match):
+            try:
+                self.detail(match['id'], force=True)
+                return True
+            except (ValueError, sources.SourceError, OSError):
+                return False
+            finally:
+                self.context_check_times[match['id']] = time.monotonic()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(collect, pending[:limit]))
+        self.store.status('fundamentals-collector', {'status': 'available' if all(results) else 'partial',
+                         'checked': len(results), 'remaining': max(0, len(pending)-limit),
+                         'last_success': now_iso(), 'interval_seconds': 60})
+        return len(results)
+
+    def enrich_detail(self, match, data):
+        data["context"] = localize_context(data.get("context") or {})
+        data["evidence"] = self.store.evidence(match["id"])
+        data["intelligence"] = intelligence.build(match, data)
+        data["legacy_prediction"] = legacy_predictions.for_match(match, self.legacy_entries())
+        from .model_registry import forecast
+        model = forecast(match, data) if sources.parse_date(match['kickoff']) > datetime.now(timezone.utc) else None
+        data['briefing'] = briefing.build(match, data, model=model)
+        return data
+
     def detail(self, match_id, force=False):
+        # A scheduled refresh must not block the first paint of a fresh saved detail.
+        if not force:
+            match = self.store.match(match_id)
+            cached = self.store.detail(match_id) if match else None
+            if cached and (datetime.now(timezone.utc)-sources.parse_date(cached['captured_at'])).total_seconds() < 60:
+                data = cached['data']
+                data['quality'] = assess(match, data)
+                data['live_score'] = self.scores().get(match_id)
+                return self.enrich_detail(match, data)
         with self.lock("detail:" + match_id):
             m = self.store.match(match_id)
             if not m:
@@ -253,7 +374,7 @@ class ConsoleService:
                 data["quality"] = assess(m, data)
                 data["evidence"] = self.store.evidence(match_id)
                 data["live_score"] = self.scores().get(match_id)
-                return data
+                return self.enrich_detail(m, data)
             errors = []
             with ThreadPoolExecutor(max_workers=2) as pool:
                 odds_task = pool.submit(sources.fetch_odds, m)
@@ -262,7 +383,9 @@ class ConsoleService:
                     odds = odds_task.result()
                 except sources.SourceError as exc:
                     errors.append("赔率详情：" + str(exc))
-                    odds = {"history": {}, "captured_at": m["captured_at"]}
+                    old = (cached or {}).get("data", {})
+                    odds = {k: old.get(k) for k in ("results", "official_score", "cancelled") if k in old}
+                    odds.update(history={}, captured_at=m["captured_at"])
                 try:
                     context = context_task.result()
                 except sources.SourceError as exc:
@@ -273,6 +396,11 @@ class ConsoleService:
                         "recent": [[], []],
                         "lineups": [],
                     }
+            if not context.get('available') and cached and cached['data'].get('context', {}).get('available'):
+                context = {**cached['data']['context'], 'stale': True,
+                           'refresh_error': context.get('reason') or '本轮基本面获取失败',
+                           'attempted_at': now_iso()}
+                errors.append('基本面更新失败，展示上次资料及原采集时间')
             markets, market_issues = select_markets(
                 m["markets"], odds.get("history", {})
             )
@@ -281,7 +409,9 @@ class ConsoleService:
                 "markets": markets,
                 "history": odds.get("history", {}),
                 "context": context,
+                "context_checked_at": now_iso(),
                 "results": odds.get("results", []),
+                "official_score": odds.get("official_score"),
                 "cancelled": odds.get("cancelled", False),
                 "captured_at": odds["captured_at"],
                 "errors": errors,
@@ -293,6 +423,7 @@ class ConsoleService:
                 "live_score": self.scores().get(match_id),
             }
             data["quality"] = assess(m, data)
+            self.enrich_detail(m, data)
             self.store.save_detail(match_id, data)
             self.store.status(
                 "context:" + m.get("league_code", "unknown"),
@@ -336,6 +467,11 @@ class ConsoleService:
             if not quality["can_predict"]:
                 raise ValueError("；".join(quality["reasons"]))
             result = predict(m, detail)
+            result["intelligence"] = intelligence.build(m, detail)
+            result['briefing'] = detail.get('briefing')
+            for item in result["intelligence"]["lineups"]:
+                result["evidence"].append({"title": "阵容与赛程", "text": item["summary"], "tab": "lineups"})
+            result["risks"].extend(result["intelligence"]["checks"])
             from .model_registry import forecast as shadow_forecast
             result["football_model"] = shadow_forecast(m, detail)
             football = result["football_model"]
@@ -362,6 +498,7 @@ class ConsoleService:
                 },
                 "history": detail["history"],
                 "evidence": detail.get("evidence", []),
+                "intelligence": result["intelligence"],
                 "football_model": {k: result["football_model"].get(k) for k in ("status", "model_id", "dataset_digest", "trained_before", "competition_id", "run_id", "training_scope")},
                 "data_receipt": {
                     "fixtures_verified_at": m.get("captured_at"),
@@ -377,43 +514,64 @@ class ConsoleService:
 
     def reviews(self, refresh=False):
         from .football_markets import settle_markets
+        from .postmatch import analyze
         if refresh:
             pending = [
                 m
                 for m in self.store.list_matches()
                 if sources.parse_date(m["kickoff"]) < datetime.now(timezone.utc)
-                and self.store.versions(m["id"])
+                and ((datetime.now(timezone.utc) - sources.parse_date(m["kickoff"])).total_seconds() <= 7*86400
+                     or self.store.versions(m["id"]))
             ]
 
             def refresh_one(m):
                 try:
-                    self.detail(m["id"], force=True)
+                    # Only fetch results here; unrelated fundamental requests must
+                    # not delay post-match reconciliation or erase a valid result.
+                    with self.lock("detail:" + m["id"]):
+                        odds = sources.fetch_odds(m)
+                        data = (self.store.detail(m["id"]) or {}).get("data", {})
+                        self.store.save_detail(m["id"], {
+                            **data, "results": odds.get("results", []),
+                            "history": odds.get("history", {}),
+                            "official_score": odds.get("official_score"),
+                            "cancelled": odds.get("cancelled", False),
+                            "result_captured_at": odds.get("captured_at"),
+                        })
                 except (ValueError, sources.SourceError):
                     pass
+                finally:
+                    self.result_check_times[m["id"]] = time.monotonic()
 
+            pending.sort(key=lambda m: (self.result_check_times.get(m["id"], 0), m["kickoff"]))
             with ThreadPoolExecutor(max_workers=3) as pool:
-                list(pool.map(refresh_one, pending[-30:]))
+                list(pool.map(refresh_one, pending[:30]))
         rows = []
+        scores = self.scores()
+        legacy_entries = self.legacy_entries()
         for m in self.store.list_matches():
             versions = self.store.versions(m["id"])
-            if not versions:
-                continue
             cached = self.store.detail(m["id"])
             detail = (cached or {}).get("data", {})
             context = detail.get("context", {})
             results = {
                 str(r.get("code", "")).lower(): r for r in detail.get("results", [])
             }
-            official_score = str(results.get("crs", {}).get("combination", ""))
+            official_score = str(detail.get("official_score") or results.get("crs", {}).get("combination", ""))
             # Sports feeds may include extra time. Settle this 90-minute product only against official results.
             score = (
                 official_score.replace(":", "-")
                 if re.fullmatch(r"\d+[:-]\d+", official_score)
                 else None
             )
-            latest = versions[0]
+            latest = versions[0] if versions else {}
+            legacy = legacy_predictions.for_match(m, legacy_entries)
+            detail["evidence"] = self.store.evidence(m["id"])
             consistent = None
             actual = str(results.get("had", {}).get("combination", "")).lower()
+            if not latest and not legacy and not (score or actual in ("h", "d", "a") or detail.get("cancelled")
+                                   or scores.get(m["id"], {}).get("state") in ("completed", "cancelled")):
+                continue
             if actual in ("h", "d", "a") and latest.get("direction_key") in ("h", "d", "a"):
                 consistent = latest["direction_key"] == actual
             if actual not in ("h", "d", "a") and score and "-" in score and latest.get("direction_key") in ("h", "d", "a"):
@@ -433,12 +591,17 @@ class ConsoleService:
                     "league": m["league"],
                     "home": m["home"],
                     "away": m["away"],
-                    "pick": latest["direction"],
+                    "pick": latest.get("direction", "未归档"),
+                    "legacy_prediction": legacy,
+                    "intelligence_review": intelligence.review_link(latest, detail, m),
+                    "match_facts": context.get('match_facts'),
+                    "has_prediction": bool(latest),
                     "score": "已取消" if detail.get("cancelled") else score or "待赛果",
-                    "live_score": self.scores().get(m["id"]),
+                    "live_score": scores.get(m["id"]),
+                    "postmatch_review": analyze(self.store, m, latest or None, detail, scores.get(m["id"])),
                     "consistent": consistent,
                     "direction_observed": latest.get("direction_key") is None,
-                    "market_results": settle_markets(latest, detail.get("results", []), detail.get("cancelled", False)),
+                    "market_results": settle_markets(latest, detail.get("results", []), detail.get("cancelled", False)) if latest else [],
                     "model_results": settle_markets({"market_assessments": latest.get("football_model", {}).get("markets", [])}, detail.get("results", []), detail.get("cancelled", False)) if latest.get("football_model", {}).get("status") == "shadow" else [],
                     "status": (
                         "已取消"
@@ -447,7 +610,7 @@ class ConsoleService:
                             "待复盘" if score or actual in ("h", "d", "a") else "待赛果"
                         )
                     ),
-                    "prediction": latest,
+                    "prediction": latest or None,
                     "versions": versions,
                     "reply": latest.get("narrative"),
                     "result_source": (
@@ -456,6 +619,13 @@ class ConsoleService:
                 }
             )
         for row in rows:
+            if not row["has_prediction"] and row["postmatch_review"].get("id"):
+                row["status"] = "已分析"
+            if row["postmatch_review"].get("status") == "conflict":
+                row["consistent"] = None
+                row["status"] = "赛果待核实"
+                for item in row["market_results"] + row["model_results"]:
+                    item.update(hit=None, status="赛果冲突", unit_return=None, unit_profit=None)
             row["ai_review"] = self.ai_reviews.view(row)
         return rows
 

@@ -4,7 +4,8 @@ import path from "node:path";
 const html = readFileSync(
   new URL("../../web/console/index.html", import.meta.url),
   "utf8",
-);
+).replace(/\r+\n/g, "\n");
+writeFileSync(new URL("../../web/console/index.html", import.meta.url), html);
 writeFileSync(
   new URL("../../web/club-preview.html", import.meta.url),
   html.replaceAll("./assets/", "./console/assets/"),

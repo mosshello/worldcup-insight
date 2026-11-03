@@ -80,6 +80,8 @@ class ReviewEngine:
                 input_snapshot TEXT NOT NULL, report TEXT, error TEXT)""")
 
     def packet(self,row):
+        if not row.get("prediction"):
+            raise ValueError("缺少赛前预测归档；本场只提供赛后事实分析")
         if row.get("status") == "已取消" or row.get("result_source") != "体彩官方" or not re.fullmatch(r"\d+-\d+",row.get("score", "")):
             raise ValueError("等待正式90分钟赛果")
         prediction=row["prediction"]
@@ -95,6 +97,11 @@ class ReviewEngine:
         had=next((r for r in row.get("market_results",[]) if r["code"]=="had"),None)
         if had and had.get("actual_key") and had["actual_key"] != actual:raise ValueError("正式比分与胜平负结果冲突")
         evidence=[{"id":"official-result","kind":"official_result","data":{"score":row["score"],"period":"regular_time"},"source_url":match.get("source_url")}]
+        facts = row.get('match_facts') or {}
+        if facts.get('provider_event_id') and (facts.get('statistics') or facts.get('events')):
+            evidence.append({'id':'match-process', 'kind':'postmatch_process',
+                             'data':{k:facts.get(k) for k in ('statistics','events','statistics_scope','events_scope')},
+                             'source_url':facts.get('source_url')})
         for group,key in (("market","market_results"),("football","model_results")):
             for item in row.get(key,[]):
                 result=dict(item)
@@ -130,6 +137,8 @@ class ReviewEngine:
         return fingerprint({"packet":packet,"model":configuration()["model"]})
 
     def view(self,row):
+        if not row.get("prediction"):
+            return {"status":"no_prediction"}
         cfg=configuration()
         try:packet=self.packet(row)
         except (ValueError,KeyError,TypeError):return {"status":"waiting_result"}
@@ -190,7 +199,7 @@ class ReviewEngine:
                     cfg=configuration()
                     if cfg["enabled"] and cfg["configured"]:
                         try:
-                            for row in self.service.reviews(refresh=True):
+                            for row in self.service.reviews():
                                 try:self.enqueue(row)
                                 except (ValueError,KeyError,TypeError):pass
                             for _ in range(5):

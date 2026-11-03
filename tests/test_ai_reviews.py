@@ -111,7 +111,7 @@ class AIReviewTests(unittest.TestCase):
         with patch.object(self.app,'reviews',return_value=[row]) as reviews, patch('worldcup_mvp.ai_analyst._call_deepseek',side_effect=reply) as provider:
             self.engine.start();self.engine.thread.join(3)
             self.assertFalse(self.engine.thread.is_alive())
-            reviews.assert_any_call(refresh=True)
+            reviews.assert_any_call()
             self.assertEqual(provider.call_count,1)
         self.assertEqual(self.row()['ai_review']['status'],'completed')
 

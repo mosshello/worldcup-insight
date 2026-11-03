@@ -56,5 +56,27 @@ class ModelWorkspaceStatusTests(unittest.TestCase):
         self.assertEqual(by_id['2026-27']['context_count'],1)
         self.assertEqual(by_id['2026-27']['training_count'],126)
 
+    def test_actual_coverage_does_not_leak_between_competitions(self):
+        from worldcup_mvp.console import model_registry
+        matches = [dict(id='a', league_code='JD1', kickoff='2026-11-01T13:00:00+08:00'),
+                   dict(id='b', league_code='KD1', kickoff='2026-11-01T13:00:00+08:00')]
+        context = {'available':True, 'estimated_lineups':[{'players':[{}]*11}],
+                   'lineups':[{'status':'confirmed','players':[{}]*10}],
+                   'injuries':[{'name':'reported'}], 'external_odds':{'rows':[{'h':2}]},
+                   'match_facts':{'statistics':[{'code':'totalShots','home':'2'}, {'code':'expectedGoals','home':None,'away':None}]}}
+        with patch.object(model_registry, 'REGISTRY', Path(self.tmp.name)/'empty-models'), \
+             patch.object(self.app.store, 'list_matches', return_value=matches), \
+             patch.object(self.app.store, 'detail', side_effect=lambda mid: {'data':{'context':context}} if mid=='a' else None):
+            scopes = self.app.capabilities()['competition_workspaces']
+        jp, kr = scopes['jp.j1'], scopes['kr.k1']
+        self.assertEqual(jp['coverage_summary']['estimated'], 1)
+        self.assertEqual(jp['coverage_summary']['confirmed'], 0)
+        self.assertEqual(jp['coverage_summary']['xg'], 0)
+        self.assertEqual(jp['coverage_summary']['process'], 1)
+        self.assertEqual(jp['coverage_summary']['injuries'], 1)
+        self.assertEqual(jp['odds'][1]['status'], '已取得1/1场')
+        self.assertEqual(kr['coverage_summary']['external'], 0)
+        self.assertFalse(any(s['id'].startswith('context:500:') for s in kr['sources']))
+
 
 if __name__ == '__main__': unittest.main()

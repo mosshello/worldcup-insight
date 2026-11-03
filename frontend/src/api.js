@@ -6,7 +6,7 @@ export const api = {
   sync: () => request("/api/v1/sync", { method: "POST", body: "{}" }),
   state: () => request("/api/v1/state"),
   capabilities: () => request("/api/v1/capabilities"),
-  evaluate: (competition_id, target = 'full_time') =>
+  evaluate: (competition_id, target = "full_time") =>
     request("/api/v1/training/evaluate", {
       method: "POST",
       body: JSON.stringify({ competition_id, target }),
@@ -41,6 +41,10 @@ export const api = {
       body: JSON.stringify({ kind, key, value }),
     }),
   reviews: () => request("/api/v1/reviews"),
+  reviewUpdates: (after = null) =>
+    request(
+      "/api/v1/review-updates" + (after === null ? "" : `?after=${after}`),
+    ),
   generateReview: (match_id) =>
     request("/api/v1/reviews/generate", {
       method: "POST",

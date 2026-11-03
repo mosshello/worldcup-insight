@@ -182,6 +182,8 @@ def predict(match, detail, now=None):
             }
         )
     risks = []
+    if context.get('stale'):
+        risks.append('基本面本轮更新失败，近期资料为上次采集结果；请复核来源时间。')
     if not form:
         risks.append("近期表现不足，当前仅为市场基线预测。")
     else:

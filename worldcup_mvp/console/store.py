@@ -73,6 +73,19 @@ class Store:
                 CREATE TABLE IF NOT EXISTS live_score_snapshots(id INTEGER PRIMARY KEY, match_id TEXT NOT NULL REFERENCES matches(id), captured_at TEXT NOT NULL, digest TEXT NOT NULL, payload TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS live_snapshot_match ON live_score_snapshots(match_id,id);
                 INSERT OR IGNORE INTO schema_versions VALUES(3);
+                CREATE TABLE IF NOT EXISTS postmatch_reports(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, match_id TEXT NOT NULL REFERENCES matches(id),
+                    prediction_id TEXT NOT NULL REFERENCES analyses(id), digest TEXT NOT NULL,
+                    created_at TEXT NOT NULL, payload TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS postmatch_prediction ON postmatch_reports(prediction_id,id);
+                INSERT OR IGNORE INTO schema_versions VALUES(4);
+                CREATE TABLE IF NOT EXISTS match_reports(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, match_id TEXT NOT NULL REFERENCES matches(id),
+                    prediction_id TEXT REFERENCES analyses(id), digest TEXT NOT NULL,
+                    created_at TEXT NOT NULL, payload TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS match_report_subject ON match_reports(match_id,prediction_id,id);
+                INSERT OR IGNORE INTO match_reports SELECT * FROM postmatch_reports;
+                INSERT OR IGNORE INTO schema_versions VALUES(5);
             """)
 
     @contextmanager
@@ -92,6 +105,38 @@ class Store:
                 r["match_id"]: json.loads(r["payload"])
                 for r in db.execute("SELECT * FROM live_scores")
             }
+
+    def save_postmatch_report(self, match_id, prediction_id, report):
+        # Only timestamps vary on unchanged polls. A -> B -> A is a new correction.
+        digest = fingerprint({k: v for k, v in report.items() if k != "observed_at"})
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            previous = db.execute(
+                "SELECT * FROM match_reports WHERE match_id=? AND prediction_id IS ? ORDER BY id DESC LIMIT 1",
+                (match_id, prediction_id),
+            ).fetchone()
+            if previous and previous["digest"] == digest:
+                return {**json.loads(previous["payload"]), "id": previous["id"], "created_at": previous["created_at"]}
+            created = now_iso()
+            if previous:
+                old = json.loads(previous["payload"])
+                report = {**report, "previous_score": old.get("score"), "previous_status": old.get("status")}
+            cursor = db.execute(
+                "INSERT INTO match_reports(match_id,prediction_id,digest,created_at,payload) VALUES(?,?,?,?,?)",
+                (match_id, prediction_id, digest, created, encode(report)),
+            )
+            return {**report, "id": cursor.lastrowid, "created_at": created}
+
+    def review_updates(self, after=None):
+        with self.connect() as db:
+            if after is None:
+                return {"cursor": db.execute("SELECT coalesce(max(id),0) FROM match_reports").fetchone()[0], "updates": []}
+            rows = db.execute("SELECT * FROM match_reports WHERE id>? ORDER BY id LIMIT 50", (after,)).fetchall()
+        return {"cursor": rows[-1]["id"] if rows else after, "updates": [
+            {"id": r["id"], "match_id": r["match_id"], "created_at": r["created_at"],
+             **{k: json.loads(r["payload"]).get(k) for k in ("fixture", "score", "status", "summary")}}
+            for r in rows
+        ]}
 
     def save_live_score(self, match_id, result=None, error=None):
         with self.connect() as db:

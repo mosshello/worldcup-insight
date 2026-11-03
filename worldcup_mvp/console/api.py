@@ -21,6 +21,11 @@ def get(route, query):
     if route == "/api/v1/reviews":
         from .ai_reviews import configuration
         return {"success": True, "reviews": app.reviews(), "ai_review_config":configuration()}
+    if route == "/api/v1/review-updates":
+        raw = (query.get("after") or [None])[0]
+        if raw is not None and (not raw.isascii() or not raw.isdigit() or len(raw) > 18):
+            raise ValueError("复盘更新游标无效")
+        return {"success": True, **app.store.review_updates(int(raw) if raw is not None else None)}
     if route.startswith("/api/v1/matches/"):
         match_id = unquote(route.removeprefix("/api/v1/matches/"))
         return {

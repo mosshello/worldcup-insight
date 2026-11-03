@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from urllib import request, parse, error
 
 from .store import now_iso
+from .competition_labels import label as competition_label
 
 BEIJING = timezone(timedelta(hours=8))
 SPORTTERY = "https://webapi.sporttery.cn/gateway/uniform/football/"
@@ -53,11 +54,23 @@ LEAGUES = {
     "SAL": "swe.1",
     "FVL": "fin.1",
     "UCL": "uefa.champions",
+    "ACL": "afc.champions",
     "UEL": "uefa.europa",
     "WC": "fifa.world",
 }
 # Explicit aliases scoped by competition; never match clubs solely by a kickoff or one team.
 ALIASES = {
+    "afc.champions": {"NCJ":"NEW", "SSP":"SHP", "KAH":"KRE", "DJC":"DHC", "PTF":"PORT", "FBJ":"BEI", "PHS":"POH", "GAB":"GAM", "BUU":"BUR", "KAS":"KAN"},
+    # Verified against both teams and kickoff in the provider feeds, 2026-11-03.
+    "ita.1": {"SSL": "SAS"},
+    "swe.1": {"GIS": "GAIS", "ASA": "AIK"},
+    "fra.2": {"RST": "RSFC", "ASN": "ASNL"},
+    "por.1": {"BEN": "SLB"},
+    "bra.1": {"RBG": "BRA", "SAT": "SAN"},
+    "uefa.champions": {"STU": "VFB", "BMN": "MUN", "LNZ": "LAS", "INM": "INT",
+                       "MNU": "MAN", "ROM": "ROMA", "ASV": "AVL", "BOD": "BODO", "LIL": "LILL",
+                       "POT":"FCP", "NPL":"NAP", "RBT":"BET", "VIK":"VFK", "SBH":"SAB",
+                       "LEN":"RCL", "CMO":"COMO", "SLA":"SLP"},
     "jpn.1": {"KAH": "KRE", "NGV": "VVN", "TOK": "TYKV", "MCZ": "ZEL", "GAB": "GAM"},
     "eng.1": {
         "MNU": "MAN",
@@ -246,6 +259,8 @@ def fetch_odds(match):
     history = value.get("oddsHistory") or {}
     if str(history.get("matchId")) != match["provider_id"]:
         raise SourceError("体彩详情比赛 ID 不一致")
+    if any(str(r["matchId"]) != match["provider_id"] for r in value.get("matchResultList", []) if "matchId" in r):
+        raise SourceError("体彩赛果比赛 ID 不一致")
     series = {
         code: sorted(
             [normalize_market(code, p) for p in history.get(code + "List", [])],
@@ -257,8 +272,40 @@ def fetch_odds(match):
         "history": series,
         "results": value.get("matchResultList") or [],
         "cancelled": value.get("isCancel") in (1, "1", True),
+        "official_score": official_score(value),
         "captured_at": now_iso(),
     }
+
+
+def official_score(value):
+    """Exact 90-minute result; 'other score' market buckets are not exact scores.
+
+    sectionsNo999 is checked against the published CRS bucket, HAD and TTG.
+    Never infer a score from the payout bucket itself.
+    """
+    if value.get("isCancel") in (1, "1", True):
+        return None
+    results = {str(r.get("code", "")).lower(): str(r.get("combination", "")).lower()
+               for r in value.get("matchResultList", [])}
+    crs = results.get("crs", "")
+    raw = value.get("sectionsNo999") or crs
+    if not isinstance(raw, str) or not re.fullmatch(r"\d{1,2}[:-]\d{1,2}", raw):
+        return None
+    h, a = map(int, re.split("[:-]", raw))
+    from .football_markets import score_key
+    bucket = {"-1:-h": "s1sh", "-1:-d": "s1sd", "-1:-a": "s1sa"}.get(crs, crs)
+    if re.fullmatch(r"\d{1,2}[:-]\d{1,2}", crs):
+        if tuple(map(int, re.split("[:-]", crs))) != (h, a):
+            raise SourceError("体彩精确比分与比分玩法结果冲突")
+    elif bucket != score_key(h, a):
+        return None
+    actual = "h" if h > a else "a" if a > h else "d"
+    if results.get("had") in ("h", "d", "a") and results["had"] != actual:
+        raise SourceError("体彩精确比分与胜平负结果冲突")
+    ttg = results.get("ttg", "")
+    if (ttg.isdigit() and int(ttg) != min(h+a, 7)) or (ttg in ("7+", "7及以上") and h+a < 7):
+        raise SourceError("体彩精确比分与总进球结果冲突")
+    return f"{h}-{a}"
 
 
 def parse_date(value):
@@ -315,22 +362,24 @@ def recent_rows(summary, team_id, kickoff):
                         "date": parse_date(event["gameDate"])
                         .astimezone(BEIJING)
                         .isoformat(),
-                        "opponent": event.get("opponent", {}).get(
+                        "opponent_original": event.get("opponent", {}).get(
                             "displayName", "未知球队"
                         ),
+                        "opponent": event.get("opponent", {}).get("displayName", "未知球队"),
+                        "opponent_id": event.get("opponent", {}).get("id"),
                         "venue": "主" if home else "客",
                         "gf": gf,
                         "ga": ga,
                         "score": f"{gf}-{ga}",
-                        "league": event.get("leagueName")
-                        or event.get("competitionName")
-                        or "",
+                        **competition_label(
+                            event.get("leagueName") or event.get("competitionName") or ""),
                         "source": "ESPN",
                     }
                 )
             except (KeyError, ValueError, TypeError):
                 continue
-    return sorted(rows, key=lambda r: r["date"], reverse=True)[:5]
+    from .team_labels import localize_context
+    return localize_context({"recent": [sorted(rows, key=lambda r: r["date"], reverse=True)[:5]]})["recent"][0]
 
 
 def fetch_context(match):
@@ -390,6 +439,7 @@ def fetch_espn_context(match):
             athlete = r.get("athlete") or {}
             players.append(
                 {
+                    "id": athlete.get("id"),
                     "name": athlete.get("displayName"),
                     "number": r.get("jersey") or athlete.get("jersey"),
                     "position": (
@@ -409,18 +459,22 @@ def fetch_espn_context(match):
         recent_rows(summary, competitors[side]["id"], match["kickoff"])
         for side in ("home", "away")
     ]
-    status = event["competitions"][0].get("status", {}).get("type", {})
+    status = (event.get("status") or event["competitions"][0].get("status", {})).get("type", {})
     score = None
     if status.get("completed"):
         score = f"{competitors['home'].get('score')}-{competitors['away'].get('score')}"
     venue = (summary.get("gameInfo") or {}).get("venue") or event["competitions"][
         0
     ].get("venue", {})
+    from .match_facts import extract, head_to_head
+    captured = now_iso()
     return {
         "available": True,
         "event_id": event["id"],
         "provider_ids": {side: competitors[side]["id"] for side in ("home", "away")},
         "recent": recent,
+        "head_to_head": head_to_head(summary, match, competitors),
+        "match_facts": extract(summary, match, competitors, captured),
         "lineups": lineups,
         "venue": venue.get("fullName"),
         "injuries": [],
@@ -433,5 +487,5 @@ def fetch_espn_context(match):
         "score": score,
         "source": "ESPN",
         "source_url": f"https://www.espn.com/soccer/match/_/gameId/{event['id']}",
-        "captured_at": now_iso(),
+        "captured_at": captured,
     }

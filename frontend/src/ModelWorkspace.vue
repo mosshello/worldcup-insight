@@ -417,13 +417,14 @@ onBeforeUnmount(() => clearInterval(timer));
                 </dd>
               </div>
               <div>
-                <dt>阵容</dt>
-                <dd>未公布时显示待确认</dd>
+                <dt>所选赛事</dt>
+                <dd>{{ data?.match_count || 0 }}场已收录比赛；以下数量表示至少取得部分资料</dd>
               </div>
-              <div>
-                <dt>伤停 / xG</dt>
-                <dd>未接入</dd>
+              <div v-for="[key, label] in [['recent', '近期赛果'], ['confirmed', '正式阵容'], ['estimated', '预计阵容'], ['injuries', '人员消息'], ['process', '比赛统计 / 事件'], ['xg', 'xG'], ['external', '公开欧赔']]" :key="key">
+                <dt>{{ label }}</dt>
+                <dd>{{ data?.coverage_summary ? `已取得${data.coverage_summary[key]}/${data.coverage_summary.total}场` : '等待覆盖核查' }}</dd>
               </div>
+              <div><dt>最近资料采集</dt><dd>{{ timeLabel(data?.coverage_summary?.checked_at) }}；逐场新鲜度见比赛详情</dd></div>
             </dl>
           </section>
         </div></template

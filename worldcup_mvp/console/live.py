@@ -165,6 +165,8 @@ def normalize(match, rows, key):
             "label": label,
             "clock": clock,
             "score": score,
+            # K League 1 has no extra-time/shoot-out match outcome.
+            "score_period": "regular_time" if state == "completed" and status == "FE" else "unknown",
             "source_status": status,
             "source_home": row["homeTeam"],
             "source_away": row["awayTeam"],
@@ -222,6 +224,12 @@ def normalize(match, rows, key):
         "label": label,
         "clock": clock,
         "score": score,
+        "score_period": (
+            "regular_time"
+            if state == "completed" and name == "STATUS_FULL_TIME"
+            and status.get("period") == 2 and kind.get("completed") is True
+            else "unknown"
+        ),
         "source_status": name,
         "source_home": teams["home"]["team"]["id"],
         "source_away": teams["away"]["team"]["id"],
