@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>足球分析 · 第一版操作示意</title>
+<style>
+*{box-sizing:border-box;border-radius:0}body{margin:0;background:#edf0f3;color:#18212c;font:14px/1.6 "Microsoft YaHei",sans-serif}header{background:#fff;border-bottom:1px solid #cbd1d8;padding:15px 24px}h1{margin:0;font-size:20px}header p{margin:4px 0 0;color:#5d6673}nav{display:flex;gap:0;flex-wrap:wrap;margin-top:14px}button,a{font:inherit}nav button{cursor:pointer;border:1px solid #d4d9df;background:white;padding:8px 15px;margin:0 -1px -1px 0}nav button[aria-current="page"]{background:#075bed;color:white;border-color:#075bed}main{max-width:1600px;margin:18px auto;padding:0 20px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:10px}.toolbar strong{font-size:17px}.toolbar a{color:#075bed}.canvas{border:1px solid #cad1da;background:white}.canvas img{display:block;width:100%;height:auto}.steps{padding:12px 16px;background:white;border:1px solid #cad1da;border-top:0;margin:0}.bottom{display:flex;justify-content:space-between;margin:14px 0}.bottom button{padding:8px 20px;background:white;border:1px solid #bcc5d1;cursor:pointer}.bottom button:disabled{opacity:.35;cursor:default}button:focus-visible,a:focus-visible{outline:3px solid #87b2ff;outline-offset:2px}footer{color:#68717e;font-size:12px;padding-bottom:24px}@media(max-width:600px){header{padding:12px}main{padding:0 8px}nav button{padding:7px 10px}.toolbar{align-items:flex-start}}
+</style>
+<header><h1>第一版页面 · 操作示意</h1><p>7 个核心视图。点击页签切换，或用键盘 ← → 浏览。图内按钮为静态示意；数据均为演示。</p><nav aria-label="页面选择" id="nav"></nav></header>
+<main><div class="toolbar"><strong id="title"></strong><a id="original" target="_blank" rel="noopener">打开原图放大</a></div><div class="canvas"><img id="screen" alt=""></div><p class="steps" id="steps"></p><div class="bottom"><button id="prev">← 上一张</button><span id="count" aria-live="polite"></span><button id="next">下一张 →</button></div><footer>确认重点：功能是否齐全、操作顺序是否顺手、各页信息是否清楚。此稿用于确认结构，尚未接入业务数据；训练评估数字不代表现有模型表现。</footer></main>
+<script>
+const pages=[
+['比赛中心','01-matches.png','筛选体彩在售比赛 → 点击对阵或“查看” → 进入基本面'],
+['基本面','02-fundamentals.png','切换统计范围 → 比较主客场表现 → 查看阵容情报'],
+['阵容情报','03-lineups.png','核对预计／确认阵容 → 查看伤停与消息来源 → 首发更新后重新分析'],
+['赔率','04-odds.png','选择体彩 SP／外盘参考 → 切换玩法 → 查看变化记录 → 更新 AI 分析'],
+['AI 分析','05-analysis.png','生成或更新分析 → 点击依据核对数据 → 对比版本 → 保存个人笔记'],
+['复盘记录','06-review.png','筛选历史比赛 → 对照锁定的赛前版本 → 记录原因 → 保存复盘'],
+['数据与模型','07-models.png','管理视图：检查覆盖与缺失 → 检查训练样本 → 创建任务 → 查看评估报告']
+];
+const nav=document.getElementById('nav');let current=0;
+pages.forEach((p,i)=>{const b=document.createElement('button');b.type='button';b.textContent=`${i+1}. ${p[0]}`;b.addEventListener('click',()=>show(i));nav.appendChild(b)});
+function show(i){current=Math.max(0,Math.min(pages.length-1,i));const p=pages[current];document.getElementById('title').textContent=`${String(current+1).padStart(2,'0')} / ${p[0]}`;const img=document.getElementById('screen');img.src=p[1];img.alt=p[0]+'页面操作示意';document.getElementById('original').href=p[1];document.getElementById('steps').textContent=p[2];document.getElementById('count').textContent=`${current+1} / ${pages.length}`;document.getElementById('prev').disabled=current===0;document.getElementById('next').disabled=current===pages.length-1;Array.from(nav.children).forEach((b,n)=>{if(n===current)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});history.replaceState(null,'','#'+(current+1))}
+document.getElementById('prev').onclick=()=>show(current-1);document.getElementById('next').onclick=()=>show(current+1);document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();show(current-1)}if(e.key==='ArrowRight'){e.preventDefault();show(current+1)}});const initial=Number(location.hash.slice(1));show(Number.isInteger(initial)&&initial>=1&&initial<=pages.length?initial-1:0);
+</script>
+</html>

@@ -8,7 +8,11 @@ __pycache__/
 venv/
 data/odds_live_feed.json
 data/cache/
+data/console/
 data/snapshots/
 .ai/tmp/
+frontend/node_modules/
+frontend/test-results/
+frontend/playwright-report/
 data/training/*
 !data/training/historical_outcomes.example.json

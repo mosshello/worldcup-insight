@@ -16,6 +16,26 @@ from worldcup_mvp.dashboard_data import (
 
 
 class DashboardDataTests(unittest.TestCase):
+    def setUp(self) -> None:
+        if not self._testMethodName.startswith("test_overview_"):
+            return
+        # Overview contract tests must neither contact live providers nor settle
+        # the user's ledger. Individual provider/settlement behavior is tested separately.
+        dependencies = {
+            "_auto_settle_finished": {},
+            "get_sporttery_matches": {"success": True, "matches": []},
+            "get_upcoming_score_predictions": {"success": True, "predictions": []},
+            "load_unified_index_merged": {"success": True, "by_sporttery_id": {}},
+            "get_provider_health": {},
+            "get_settlement_summary": {},
+            "build_training_report": {},
+            "build_tournament_forecast": {},
+        }
+        for name, value in dependencies.items():
+            stub = patch("worldcup_mvp.dashboard_data." + name, return_value=value)
+            stub.start()
+            self.addCleanup(stub.stop)
+
     def test_overview_includes_yesterday_date(self) -> None:
         payload = get_overview()
         stats = payload.get("dashboard_stats") or {}

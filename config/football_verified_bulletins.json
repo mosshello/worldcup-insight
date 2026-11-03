@@ -1,0 +1,23 @@
+[
+  {
+    "provider_match_id": "2042499",
+    "home": "马竞",
+    "away": "拜仁",
+    "kickoff": "2026-11-04T04:00:00+08:00",
+    "side": "away",
+    "source": "拜仁俱乐部官方",
+    "source_url": "https://fcbayern.com/es/noticias/matchpreviews/2026/11/previa-champions-league-atletico-de-madrid-fc-bayern",
+    "published_at": "2026-11-02T19:59:00+00:00",
+    "verified_at": "2026-11-03T03:45:09+00:00",
+    "mode": "人工核验官方公告，仅适用于本场；不是实时伤停接口",
+    "players": [
+      {"name":"穆西亚拉","aliases":["Jamal Musiala","贾马尔·穆西亚拉"],"status":"官方确认缺阵","reason":"仍在单独训练，本场不可用"},
+      {"name":"路易斯·迪亚斯","aliases":["Luis Díaz","路易斯·迪亚斯"],"status":"官方确认缺阵","reason":"仍在单独训练，本场不可用"},
+      {"name":"格纳布里","aliases":["Serge Gnabry","泽格·格纳布里"],"status":"官方确认缺阵","reason":"肌肉受伤"},
+      {"name":"赛巴里","aliases":["Ismael Saibari","伊斯梅尔·赛巴里"],"status":"官方确认缺阵","reason":"韧带受伤"},
+      {"name":"巴拉·恩迪亚耶","aliases":["Bara Ndiaye"],"status":"官方确认缺阵","reason":"术后恢复"},
+      {"name":"诺伊尔","aliases":["Manuel Neuer","曼努埃尔·诺伊尔"],"status":"随队出征，出场待定","reason":"已恢复合练；是否出场仍待确认"},
+      {"name":"奥利塞","aliases":["Michael Olise","迈克尔·奥利塞"],"status":"随队出征，出场待定","reason":"已进入出征名单；是否出场仍待确认"}
+    ]
+  }
+]

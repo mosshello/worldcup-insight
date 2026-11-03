@@ -9,6 +9,38 @@ from dashboard import DashboardHandler
 
 
 class DashboardHandlerTests(unittest.TestCase):
+    def test_web_stylesheet_mime_does_not_depend_on_host_registry(self):
+        import tempfile
+        from pathlib import Path
+        handler=self._handler()
+        handler.send_response=MagicMock();handler.send_header=MagicMock();handler.end_headers=MagicMock()
+        with tempfile.TemporaryDirectory() as root:
+            path=Path(root)/'test.css';path.write_text('body {color: black}',encoding='utf8')
+            with patch('dashboard.mimetypes.guess_type',return_value=('text/plain',None)):
+                handler._send_file(path)
+        handler.send_header.assert_any_call('Content-Type','text/css; charset=utf-8')
+
+    def test_dataset_import_has_separate_size_limit_and_keeps_origin_check(self):
+        handler = self._handler()
+        handler.path = "/api/v1/datasets/import"
+        handler.headers = {"Content-Length":"70000", "Content-Type":"application/json", "Host":"127.0.0.1:8891"}
+        handler._read_json_body = MagicMock(return_value={"competition_id":"jp.j1", "dataset":{}})
+        handler._send_json = MagicMock()
+        with patch("worldcup_mvp.console.api.post", return_value={"success":True}) as post:
+            handler.do_POST()
+            post.assert_called_once()
+        handler.headers["Origin"] = "https://unrelated.example"
+        handler.do_POST()
+        self.assertEqual(handler._send_json.call_args.kwargs["status"],403)
+        handler.headers.pop("Origin")
+        handler.headers["Content-Length"] = str(16*1024*1024+1)
+        handler.do_POST()
+        self.assertEqual(handler._send_json.call_args.kwargs["status"],413)
+        handler.headers["Content-Length"] = "70000"
+        handler.path = "/api/v1/state"
+        handler.do_POST()
+        self.assertEqual(handler._send_json.call_args.kwargs["status"],413)
+
     def _handler(self) -> DashboardHandler:
         request = MagicMock()
         request.makefile.return_value = io.BytesIO()
@@ -55,6 +87,14 @@ class DashboardHandlerTests(unittest.TestCase):
 
 
 class CacheRefresherTests(unittest.TestCase):
+    def setUp(self):
+        # Test refresh orchestration without touching live settlement or LLMs.
+        for name, value in (("sync_finished_matches", {"settled": 0}),
+                            ("auto_review_finished_deviations", {"generated": 0})):
+            stub = patch("worldcup_mvp.cache_refresher." + name, return_value=value)
+            stub.start()
+            self.addCleanup(stub.stop)
+
     @patch("worldcup_mvp.cache_refresher.get_upcoming_score_predictions")
     def test_refresh_success(self, mock_predict: MagicMock) -> None:
         from worldcup_mvp.cache_refresher import refresh_sporttery_cache

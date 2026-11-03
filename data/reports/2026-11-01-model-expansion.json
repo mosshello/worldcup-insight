@@ -1,0 +1,5039 @@
+{
+  "date": "2026-11-01",
+  "status": "research_only",
+  "observation_changed": false,
+  "competitions": {
+    "jp.j1": {
+      "run_id": "800ef9353c8046aa80e51de90900db4f",
+      "dataset_digest": "4f121d906093f31a1f5c52740b1a06abe52208c7d525d570c3ef4a787e6158ee",
+      "rows": 1391,
+      "target": "full_time",
+      "selected": "poisson",
+      "test": {
+        "count": 300,
+        "log_loss": 1.0301371372547596,
+        "brier": 0.6172848413296754,
+        "calibration": [
+          {
+            "bin": 0,
+            "count": 2,
+            "predicted": 0.09101590952546054,
+            "observed": 0.0
+          },
+          {
+            "bin": 1,
+            "count": 74,
+            "predicted": 0.17075620885473028,
+            "observed": 0.16216216216216217
+          },
+          {
+            "bin": 2,
+            "count": 404,
+            "predicted": 0.2544994265604377,
+            "observed": 0.24752475247524752
+          },
+          {
+            "bin": 3,
+            "count": 171,
+            "predicted": 0.34340105907705637,
+            "observed": 0.3508771929824561
+          },
+          {
+            "bin": 4,
+            "count": 137,
+            "predicted": 0.451461627538283,
+            "observed": 0.4306569343065693
+          },
+          {
+            "bin": 5,
+            "count": 80,
+            "predicted": 0.5415232684844641,
+            "observed": 0.6375
+          },
+          {
+            "bin": 6,
+            "count": 30,
+            "predicted": 0.6346075329705128,
+            "observed": 0.5333333333333333
+          },
+          {
+            "bin": 7,
+            "count": 2,
+            "predicted": 0.7161644262441138,
+            "observed": 1.0
+          }
+        ]
+      },
+      "models": [
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "poisson",
+          "key": "poisson:180",
+          "name": "攻防泊松",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 270,
+            "log_loss": 1.03541089761183,
+            "brier": 0.6216737351905015,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 2,
+                "predicted": 0.09295267018524445,
+                "observed": 0.5
+              },
+              {
+                "bin": 1,
+                "count": 50,
+                "predicted": 0.1744510254257179,
+                "observed": 0.18
+              },
+              {
+                "bin": 2,
+                "count": 338,
+                "predicted": 0.25688845017381207,
+                "observed": 0.22485207100591717
+              },
+              {
+                "bin": 3,
+                "count": 219,
+                "predicted": 0.34444098629937014,
+                "observed": 0.3607305936073059
+              },
+              {
+                "bin": 4,
+                "count": 118,
+                "predicted": 0.44128396213602333,
+                "observed": 0.4830508474576271
+              },
+              {
+                "bin": 5,
+                "count": 65,
+                "predicted": 0.5441599779440426,
+                "observed": 0.5846153846153846
+              },
+              {
+                "bin": 6,
+                "count": 18,
+                "predicted": 0.6327091739788612,
+                "observed": 0.5555555555555556
+              }
+            ]
+          },
+          "by_competition": {
+            "jp.j1": {
+              "count": 270,
+              "log_loss": 1.03541089761183,
+              "brier": 0.6216737351905015,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 2,
+                  "predicted": 0.09295267018524445,
+                  "observed": 0.5
+                },
+                {
+                  "bin": 1,
+                  "count": 50,
+                  "predicted": 0.1744510254257179,
+                  "observed": 0.18
+                },
+                {
+                  "bin": 2,
+                  "count": 338,
+                  "predicted": 0.25688845017381207,
+                  "observed": 0.22485207100591717
+                },
+                {
+                  "bin": 3,
+                  "count": 219,
+                  "predicted": 0.34444098629937014,
+                  "observed": 0.3607305936073059
+                },
+                {
+                  "bin": 4,
+                  "count": 118,
+                  "predicted": 0.44128396213602333,
+                  "observed": 0.4830508474576271
+                },
+                {
+                  "bin": 5,
+                  "count": 65,
+                  "predicted": 0.5441599779440426,
+                  "observed": 0.5846153846153846
+                },
+                {
+                  "bin": 6,
+                  "count": 18,
+                  "predicted": 0.6327091739788612,
+                  "observed": 0.5555555555555556
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 300,
+            "log_loss": 1.0301371372547596,
+            "brier": 0.6172848413296754,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 2,
+                "predicted": 0.09101590952546054,
+                "observed": 0.0
+              },
+              {
+                "bin": 1,
+                "count": 74,
+                "predicted": 0.17075620885473028,
+                "observed": 0.16216216216216217
+              },
+              {
+                "bin": 2,
+                "count": 404,
+                "predicted": 0.2544994265604377,
+                "observed": 0.24752475247524752
+              },
+              {
+                "bin": 3,
+                "count": 171,
+                "predicted": 0.34340105907705637,
+                "observed": 0.3508771929824561
+              },
+              {
+                "bin": 4,
+                "count": 137,
+                "predicted": 0.451461627538283,
+                "observed": 0.4306569343065693
+              },
+              {
+                "bin": 5,
+                "count": 80,
+                "predicted": 0.5415232684844641,
+                "observed": 0.6375
+              },
+              {
+                "bin": 6,
+                "count": 30,
+                "predicted": 0.6346075329705128,
+                "observed": 0.5333333333333333
+              },
+              {
+                "bin": 7,
+                "count": 2,
+                "predicted": 0.7161644262441138,
+                "observed": 1.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 300,
+              "log_loss": 1.0301371372547596,
+              "brier": 0.6172848413296754,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 2,
+                  "predicted": 0.09101590952546054,
+                  "observed": 0.0
+                },
+                {
+                  "bin": 1,
+                  "count": 74,
+                  "predicted": 0.17075620885473028,
+                  "observed": 0.16216216216216217
+                },
+                {
+                  "bin": 2,
+                  "count": 404,
+                  "predicted": 0.2544994265604377,
+                  "observed": 0.24752475247524752
+                },
+                {
+                  "bin": 3,
+                  "count": 171,
+                  "predicted": 0.34340105907705637,
+                  "observed": 0.3508771929824561
+                },
+                {
+                  "bin": 4,
+                  "count": 137,
+                  "predicted": 0.451461627538283,
+                  "observed": 0.4306569343065693
+                },
+                {
+                  "bin": 5,
+                  "count": 80,
+                  "predicted": 0.5415232684844641,
+                  "observed": 0.6375
+                },
+                {
+                  "bin": 6,
+                  "count": 30,
+                  "predicted": 0.6346075329705128,
+                  "observed": 0.5333333333333333
+                },
+                {
+                  "bin": 7,
+                  "count": 2,
+                  "predicted": 0.7161644262441138,
+                  "observed": 1.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 300,
+              "log_loss": 1.9056085319621445,
+              "brier": 0.8328189053507379,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1090,
+                  "predicted": 0.04382469432997655,
+                  "observed": 0.05045871559633028
+                },
+                {
+                  "bin": 1,
+                  "count": 652,
+                  "predicted": 0.1474019044059195,
+                  "observed": 0.1441717791411043
+                },
+                {
+                  "bin": 2,
+                  "count": 652,
+                  "predicted": 0.2363893947225081,
+                  "observed": 0.23159509202453987
+                },
+                {
+                  "bin": 3,
+                  "count": 6,
+                  "predicted": 0.33319269143179625,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hafu": {
+              "count": 300,
+              "log_loss": 1.9043658269627997,
+              "brier": 0.8246292329837389,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1381,
+                  "predicted": 0.03954800656152604,
+                  "observed": 0.041274438812454746
+                },
+                {
+                  "bin": 1,
+                  "count": 937,
+                  "predicted": 0.15121379568413845,
+                  "observed": 0.16008537886872998
+                },
+                {
+                  "bin": 2,
+                  "count": 278,
+                  "predicted": 0.24047851531186382,
+                  "observed": 0.20503597122302158
+                },
+                {
+                  "bin": 3,
+                  "count": 88,
+                  "predicted": 0.3403538083813223,
+                  "observed": 0.32954545454545453
+                },
+                {
+                  "bin": 4,
+                  "count": 16,
+                  "predicted": 0.43079462426501597,
+                  "observed": 0.4375
+                }
+              ]
+            },
+            "crs": {
+              "count": 300,
+              "log_loss": 2.987430752832896,
+              "brier": 0.9361827004067631,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 8586,
+                  "predicted": 0.024574067885159,
+                  "observed": 0.025273701374330305
+                },
+                {
+                  "bin": 1,
+                  "count": 707,
+                  "predicted": 0.1235378673635591,
+                  "observed": 0.1173974540311174
+                },
+                {
+                  "bin": 2,
+                  "count": 7,
+                  "predicted": 0.23796870171264922,
+                  "observed": 0.0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "dc",
+          "key": "dc:180",
+          "name": "两阶段低比分修正",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 270,
+            "log_loss": 1.0370127757805572,
+            "brier": 0.6222761377839259,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 1,
+                "predicted": 0.09558460551945881,
+                "observed": 1.0
+              },
+              {
+                "bin": 1,
+                "count": 47,
+                "predicted": 0.17469737222533313,
+                "observed": 0.23404255319148937
+              },
+              {
+                "bin": 2,
+                "count": 356,
+                "predicted": 0.25136531829502745,
+                "observed": 0.21629213483146068
+              },
+              {
+                "bin": 3,
+                "count": 192,
+                "predicted": 0.3472391320387466,
+                "observed": 0.3697916666666667
+              },
+              {
+                "bin": 4,
+                "count": 124,
+                "predicted": 0.4411648977488029,
+                "observed": 0.46774193548387094
+              },
+              {
+                "bin": 5,
+                "count": 69,
+                "predicted": 0.544168152860921,
+                "observed": 0.6086956521739131
+              },
+              {
+                "bin": 6,
+                "count": 20,
+                "predicted": 0.6290693616544215,
+                "observed": 0.5
+              },
+              {
+                "bin": 7,
+                "count": 1,
+                "predicted": 0.7042351340771665,
+                "observed": 0.0
+              }
+            ]
+          },
+          "by_competition": {
+            "jp.j1": {
+              "count": 270,
+              "log_loss": 1.0370127757805572,
+              "brier": 0.6222761377839259,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1,
+                  "predicted": 0.09558460551945881,
+                  "observed": 1.0
+                },
+                {
+                  "bin": 1,
+                  "count": 47,
+                  "predicted": 0.17469737222533313,
+                  "observed": 0.23404255319148937
+                },
+                {
+                  "bin": 2,
+                  "count": 356,
+                  "predicted": 0.25136531829502745,
+                  "observed": 0.21629213483146068
+                },
+                {
+                  "bin": 3,
+                  "count": 192,
+                  "predicted": 0.3472391320387466,
+                  "observed": 0.3697916666666667
+                },
+                {
+                  "bin": 4,
+                  "count": 124,
+                  "predicted": 0.4411648977488029,
+                  "observed": 0.46774193548387094
+                },
+                {
+                  "bin": 5,
+                  "count": 69,
+                  "predicted": 0.544168152860921,
+                  "observed": 0.6086956521739131
+                },
+                {
+                  "bin": 6,
+                  "count": 20,
+                  "predicted": 0.6290693616544215,
+                  "observed": 0.5
+                },
+                {
+                  "bin": 7,
+                  "count": 1,
+                  "predicted": 0.7042351340771665,
+                  "observed": 0.0
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 300,
+            "log_loss": 1.0299778152047079,
+            "brier": 0.6171407335336735,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 2,
+                "predicted": 0.08988745606151027,
+                "observed": 0.0
+              },
+              {
+                "bin": 1,
+                "count": 73,
+                "predicted": 0.16987062655370433,
+                "observed": 0.1643835616438356
+              },
+              {
+                "bin": 2,
+                "count": 399,
+                "predicted": 0.25479094007723196,
+                "observed": 0.24561403508771928
+              },
+              {
+                "bin": 3,
+                "count": 183,
+                "predicted": 0.3429570694476092,
+                "observed": 0.34972677595628415
+              },
+              {
+                "bin": 4,
+                "count": 132,
+                "predicted": 0.45290165274506633,
+                "observed": 0.4393939393939394
+              },
+              {
+                "bin": 5,
+                "count": 80,
+                "predicted": 0.5418604000039297,
+                "observed": 0.625
+              },
+              {
+                "bin": 6,
+                "count": 29,
+                "predicted": 0.6356818880944579,
+                "observed": 0.5517241379310345
+              },
+              {
+                "bin": 7,
+                "count": 2,
+                "predicted": 0.7151578161630323,
+                "observed": 1.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 300,
+              "log_loss": 1.0299778152047079,
+              "brier": 0.6171407335336735,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 2,
+                  "predicted": 0.08988745606151027,
+                  "observed": 0.0
+                },
+                {
+                  "bin": 1,
+                  "count": 73,
+                  "predicted": 0.16987062655370433,
+                  "observed": 0.1643835616438356
+                },
+                {
+                  "bin": 2,
+                  "count": 399,
+                  "predicted": 0.25479094007723196,
+                  "observed": 0.24561403508771928
+                },
+                {
+                  "bin": 3,
+                  "count": 183,
+                  "predicted": 0.3429570694476092,
+                  "observed": 0.34972677595628415
+                },
+                {
+                  "bin": 4,
+                  "count": 132,
+                  "predicted": 0.45290165274506633,
+                  "observed": 0.4393939393939394
+                },
+                {
+                  "bin": 5,
+                  "count": 80,
+                  "predicted": 0.5418604000039297,
+                  "observed": 0.625
+                },
+                {
+                  "bin": 6,
+                  "count": 29,
+                  "predicted": 0.6356818880944579,
+                  "observed": 0.5517241379310345
+                },
+                {
+                  "bin": 7,
+                  "count": 2,
+                  "predicted": 0.7151578161630323,
+                  "observed": 1.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 300,
+              "log_loss": 1.9071114392058879,
+              "brier": 0.8330861322606229,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1086,
+                  "predicted": 0.0437741754277136,
+                  "observed": 0.05064456721915286
+                },
+                {
+                  "bin": 1,
+                  "count": 659,
+                  "predicted": 0.14724683425285387,
+                  "observed": 0.1441578148710167
+                },
+                {
+                  "bin": 2,
+                  "count": 649,
+                  "predicted": 0.23642922288528045,
+                  "observed": 0.23112480739599384
+                },
+                {
+                  "bin": 3,
+                  "count": 6,
+                  "predicted": 0.3305026767208865,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hafu": {
+              "count": 300,
+              "log_loss": 1.90416604760736,
+              "brier": 0.8245442136594263,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1382,
+                  "predicted": 0.03965777602192787,
+                  "observed": 0.04052098408104197
+                },
+                {
+                  "bin": 1,
+                  "count": 935,
+                  "predicted": 0.1511814377483385,
+                  "observed": 0.16149732620320856
+                },
+                {
+                  "bin": 2,
+                  "count": 281,
+                  "predicted": 0.24067179233450156,
+                  "observed": 0.2099644128113879
+                },
+                {
+                  "bin": 3,
+                  "count": 86,
+                  "predicted": 0.34090419404238304,
+                  "observed": 0.313953488372093
+                },
+                {
+                  "bin": 4,
+                  "count": 16,
+                  "predicted": 0.4307359318349542,
+                  "observed": 0.4375
+                }
+              ]
+            },
+            "crs": {
+              "count": 300,
+              "log_loss": 2.9885370967319953,
+              "brier": 0.9362999951569416,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 8596,
+                  "predicted": 0.024648491763977202,
+                  "observed": 0.025709632387156817
+                },
+                {
+                  "bin": 1,
+                  "count": 697,
+                  "predicted": 0.12404414711737663,
+                  "observed": 0.1133428981348637
+                },
+                {
+                  "bin": 2,
+                  "count": 7,
+                  "predicted": 0.2375420365772081,
+                  "observed": 0.0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 365,
+          "kind": "poisson",
+          "key": "poisson:365",
+          "name": "攻防泊松",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 270,
+            "log_loss": 1.0357530087845954,
+            "brier": 0.622208554138059,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 1,
+                "predicted": 0.09275362286416901,
+                "observed": 1.0
+              },
+              {
+                "bin": 1,
+                "count": 33,
+                "predicted": 0.17293364385519797,
+                "observed": 0.15151515151515152
+              },
+              {
+                "bin": 2,
+                "count": 360,
+                "predicted": 0.25834408438050116,
+                "observed": 0.23055555555555557
+              },
+              {
+                "bin": 3,
+                "count": 220,
+                "predicted": 0.34642826915917024,
+                "observed": 0.35454545454545455
+              },
+              {
+                "bin": 4,
+                "count": 122,
+                "predicted": 0.44341646078863817,
+                "observed": 0.47540983606557374
+              },
+              {
+                "bin": 5,
+                "count": 65,
+                "predicted": 0.5395358754380233,
+                "observed": 0.6
+              },
+              {
+                "bin": 6,
+                "count": 9,
+                "predicted": 0.6461896020256682,
+                "observed": 0.6666666666666666
+              }
+            ]
+          },
+          "by_competition": {
+            "jp.j1": {
+              "count": 270,
+              "log_loss": 1.0357530087845954,
+              "brier": 0.622208554138059,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1,
+                  "predicted": 0.09275362286416901,
+                  "observed": 1.0
+                },
+                {
+                  "bin": 1,
+                  "count": 33,
+                  "predicted": 0.17293364385519797,
+                  "observed": 0.15151515151515152
+                },
+                {
+                  "bin": 2,
+                  "count": 360,
+                  "predicted": 0.25834408438050116,
+                  "observed": 0.23055555555555557
+                },
+                {
+                  "bin": 3,
+                  "count": 220,
+                  "predicted": 0.34642826915917024,
+                  "observed": 0.35454545454545455
+                },
+                {
+                  "bin": 4,
+                  "count": 122,
+                  "predicted": 0.44341646078863817,
+                  "observed": 0.47540983606557374
+                },
+                {
+                  "bin": 5,
+                  "count": 65,
+                  "predicted": 0.5395358754380233,
+                  "observed": 0.6
+                },
+                {
+                  "bin": 6,
+                  "count": 9,
+                  "predicted": 0.6461896020256682,
+                  "observed": 0.6666666666666666
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 300,
+            "log_loss": 1.025908235435722,
+            "brier": 0.6141325051976083,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 1,
+                "predicted": 0.08796548660745841,
+                "observed": 0.0
+              },
+              {
+                "bin": 1,
+                "count": 54,
+                "predicted": 0.16857337520420698,
+                "observed": 0.18518518518518517
+              },
+              {
+                "bin": 2,
+                "count": 418,
+                "predicted": 0.25549577992131234,
+                "observed": 0.23923444976076555
+              },
+              {
+                "bin": 3,
+                "count": 186,
+                "predicted": 0.3442909648131681,
+                "observed": 0.34408602150537637
+              },
+              {
+                "bin": 4,
+                "count": 140,
+                "predicted": 0.4504562615011355,
+                "observed": 0.4357142857142857
+              },
+              {
+                "bin": 5,
+                "count": 79,
+                "predicted": 0.5420942297696145,
+                "observed": 0.6455696202531646
+              },
+              {
+                "bin": 6,
+                "count": 20,
+                "predicted": 0.63359519337793,
+                "observed": 0.6
+              },
+              {
+                "bin": 7,
+                "count": 2,
+                "predicted": 0.7062460802451695,
+                "observed": 1.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 300,
+              "log_loss": 1.025908235435722,
+              "brier": 0.6141325051976083,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1,
+                  "predicted": 0.08796548660745841,
+                  "observed": 0.0
+                },
+                {
+                  "bin": 1,
+                  "count": 54,
+                  "predicted": 0.16857337520420698,
+                  "observed": 0.18518518518518517
+                },
+                {
+                  "bin": 2,
+                  "count": 418,
+                  "predicted": 0.25549577992131234,
+                  "observed": 0.23923444976076555
+                },
+                {
+                  "bin": 3,
+                  "count": 186,
+                  "predicted": 0.3442909648131681,
+                  "observed": 0.34408602150537637
+                },
+                {
+                  "bin": 4,
+                  "count": 140,
+                  "predicted": 0.4504562615011355,
+                  "observed": 0.4357142857142857
+                },
+                {
+                  "bin": 5,
+                  "count": 79,
+                  "predicted": 0.5420942297696145,
+                  "observed": 0.6455696202531646
+                },
+                {
+                  "bin": 6,
+                  "count": 20,
+                  "predicted": 0.63359519337793,
+                  "observed": 0.6
+                },
+                {
+                  "bin": 7,
+                  "count": 2,
+                  "predicted": 0.7062460802451695,
+                  "observed": 1.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 300,
+              "log_loss": 1.9010885789914567,
+              "brier": 0.8318194158795715,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1110,
+                  "predicted": 0.043988446921774206,
+                  "observed": 0.05225225225225225
+                },
+                {
+                  "bin": 1,
+                  "count": 629,
+                  "predicted": 0.14885618958201507,
+                  "observed": 0.14467408585055644
+                },
+                {
+                  "bin": 2,
+                  "count": 657,
+                  "predicted": 0.23776867008831,
+                  "observed": 0.2298325722983257
+                },
+                {
+                  "bin": 3,
+                  "count": 4,
+                  "predicted": 0.332066105430872,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hafu": {
+              "count": 300,
+              "log_loss": 1.897672607749039,
+              "brier": 0.8219485504593237,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1355,
+                  "predicted": 0.03879175243346735,
+                  "observed": 0.03985239852398524
+                },
+                {
+                  "bin": 1,
+                  "count": 964,
+                  "predicted": 0.15169262901015096,
+                  "observed": 0.15871369294605808
+                },
+                {
+                  "bin": 2,
+                  "count": 288,
+                  "predicted": 0.23875529359300485,
+                  "observed": 0.20833333333333334
+                },
+                {
+                  "bin": 3,
+                  "count": 83,
+                  "predicted": 0.33874537826810763,
+                  "observed": 0.3373493975903614
+                },
+                {
+                  "bin": 4,
+                  "count": 10,
+                  "predicted": 0.4328090135827856,
+                  "observed": 0.5
+                }
+              ]
+            },
+            "crs": {
+              "count": 300,
+              "log_loss": 2.9797077749918475,
+              "brier": 0.9353548511818205,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 8554,
+                  "predicted": 0.024216869872166414,
+                  "observed": 0.025017535655833527
+                },
+                {
+                  "bin": 1,
+                  "count": 739,
+                  "predicted": 0.12344237394549008,
+                  "observed": 0.11637347767253045
+                },
+                {
+                  "bin": 2,
+                  "count": 7,
+                  "predicted": 0.23214010968161422,
+                  "observed": 0.0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 365,
+          "kind": "dc",
+          "key": "dc:365",
+          "name": "两阶段低比分修正",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 270,
+            "log_loss": 1.0371373129666852,
+            "brier": 0.6227648252166732,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 1,
+                "predicted": 0.0979034212378386,
+                "observed": 1.0
+              },
+              {
+                "bin": 1,
+                "count": 35,
+                "predicted": 0.1779595446589408,
+                "observed": 0.14285714285714285
+              },
+              {
+                "bin": 2,
+                "count": 370,
+                "predicted": 0.25510870013126846,
+                "observed": 0.22702702702702704
+              },
+              {
+                "bin": 3,
+                "count": 197,
+                "predicted": 0.34950659387201444,
+                "observed": 0.3756345177664975
+              },
+              {
+                "bin": 4,
+                "count": 131,
+                "predicted": 0.4439799965956585,
+                "observed": 0.4580152671755725
+              },
+              {
+                "bin": 5,
+                "count": 67,
+                "predicted": 0.5435666114951406,
+                "observed": 0.5970149253731343
+              },
+              {
+                "bin": 6,
+                "count": 8,
+                "predicted": 0.6436696988965712,
+                "observed": 0.75
+              },
+              {
+                "bin": 7,
+                "count": 1,
+                "predicted": 0.7007943589647542,
+                "observed": 0.0
+              }
+            ]
+          },
+          "by_competition": {
+            "jp.j1": {
+              "count": 270,
+              "log_loss": 1.0371373129666852,
+              "brier": 0.6227648252166732,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1,
+                  "predicted": 0.0979034212378386,
+                  "observed": 1.0
+                },
+                {
+                  "bin": 1,
+                  "count": 35,
+                  "predicted": 0.1779595446589408,
+                  "observed": 0.14285714285714285
+                },
+                {
+                  "bin": 2,
+                  "count": 370,
+                  "predicted": 0.25510870013126846,
+                  "observed": 0.22702702702702704
+                },
+                {
+                  "bin": 3,
+                  "count": 197,
+                  "predicted": 0.34950659387201444,
+                  "observed": 0.3756345177664975
+                },
+                {
+                  "bin": 4,
+                  "count": 131,
+                  "predicted": 0.4439799965956585,
+                  "observed": 0.4580152671755725
+                },
+                {
+                  "bin": 5,
+                  "count": 67,
+                  "predicted": 0.5435666114951406,
+                  "observed": 0.5970149253731343
+                },
+                {
+                  "bin": 6,
+                  "count": 8,
+                  "predicted": 0.6436696988965712,
+                  "observed": 0.75
+                },
+                {
+                  "bin": 7,
+                  "count": 1,
+                  "predicted": 0.7007943589647542,
+                  "observed": 0.0
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 300,
+            "log_loss": 1.0257261842793515,
+            "brier": 0.6139909567339298,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 1,
+                "predicted": 0.08904586075461822,
+                "observed": 0.0
+              },
+              {
+                "bin": 1,
+                "count": 56,
+                "predicted": 0.1702692207786573,
+                "observed": 0.17857142857142858
+              },
+              {
+                "bin": 2,
+                "count": 417,
+                "predicted": 0.25505729422190027,
+                "observed": 0.23741007194244604
+              },
+              {
+                "bin": 3,
+                "count": 183,
+                "predicted": 0.34439350654074835,
+                "observed": 0.34972677595628415
+              },
+              {
+                "bin": 4,
+                "count": 141,
+                "predicted": 0.45032744177475414,
+                "observed": 0.4326241134751773
+              },
+              {
+                "bin": 5,
+                "count": 78,
+                "predicted": 0.5409203350859733,
+                "observed": 0.6410256410256411
+              },
+              {
+                "bin": 6,
+                "count": 22,
+                "predicted": 0.6314313391533413,
+                "observed": 0.6363636363636364
+              },
+              {
+                "bin": 7,
+                "count": 2,
+                "predicted": 0.7067647499156973,
+                "observed": 1.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 300,
+              "log_loss": 1.0257261842793515,
+              "brier": 0.6139909567339298,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1,
+                  "predicted": 0.08904586075461822,
+                  "observed": 0.0
+                },
+                {
+                  "bin": 1,
+                  "count": 56,
+                  "predicted": 0.1702692207786573,
+                  "observed": 0.17857142857142858
+                },
+                {
+                  "bin": 2,
+                  "count": 417,
+                  "predicted": 0.25505729422190027,
+                  "observed": 0.23741007194244604
+                },
+                {
+                  "bin": 3,
+                  "count": 183,
+                  "predicted": 0.34439350654074835,
+                  "observed": 0.34972677595628415
+                },
+                {
+                  "bin": 4,
+                  "count": 141,
+                  "predicted": 0.45032744177475414,
+                  "observed": 0.4326241134751773
+                },
+                {
+                  "bin": 5,
+                  "count": 78,
+                  "predicted": 0.5409203350859733,
+                  "observed": 0.6410256410256411
+                },
+                {
+                  "bin": 6,
+                  "count": 22,
+                  "predicted": 0.6314313391533413,
+                  "observed": 0.6363636363636364
+                },
+                {
+                  "bin": 7,
+                  "count": 2,
+                  "predicted": 0.7067647499156973,
+                  "observed": 1.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 300,
+              "log_loss": 1.901680588717157,
+              "brier": 0.8321229690728367,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1112,
+                  "predicted": 0.04393907972746991,
+                  "observed": 0.052158273381294966
+                },
+                {
+                  "bin": 1,
+                  "count": 626,
+                  "predicted": 0.1491502018222839,
+                  "observed": 0.14696485623003194
+                },
+                {
+                  "bin": 2,
+                  "count": 656,
+                  "predicted": 0.23755183451562692,
+                  "observed": 0.22865853658536586
+                },
+                {
+                  "bin": 3,
+                  "count": 6,
+                  "predicted": 0.32295226000874405,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hafu": {
+              "count": 300,
+              "log_loss": 1.8974773865505628,
+              "brier": 0.8218646818367907,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1352,
+                  "predicted": 0.03860818031927475,
+                  "observed": 0.03920118343195266
+                },
+                {
+                  "bin": 1,
+                  "count": 972,
+                  "predicted": 0.15177900791478682,
+                  "observed": 0.16152263374485595
+                },
+                {
+                  "bin": 2,
+                  "count": 284,
+                  "predicted": 0.23977371198133351,
+                  "observed": 0.20422535211267606
+                },
+                {
+                  "bin": 3,
+                  "count": 82,
+                  "predicted": 0.3395714028807333,
+                  "observed": 0.32926829268292684
+                },
+                {
+                  "bin": 4,
+                  "count": 10,
+                  "predicted": 0.43319552762488395,
+                  "observed": 0.5
+                }
+              ]
+            },
+            "crs": {
+              "count": 300,
+              "log_loss": 2.9802909466782728,
+              "brier": 0.9354777332382089,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 8552,
+                  "predicted": 0.02420576076495406,
+                  "observed": 0.02490645463049579
+                },
+                {
+                  "bin": 1,
+                  "count": 741,
+                  "predicted": 0.1232994300340873,
+                  "observed": 0.11740890688259109
+                },
+                {
+                  "bin": 2,
+                  "count": 7,
+                  "predicted": 0.2324937546934533,
+                  "observed": 0.0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "joint_dc",
+          "key": "joint_dc:180",
+          "name": "联合 Dixon–Coles",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 270,
+            "log_loss": 1.0370594649427165,
+            "brier": 0.6222662413017747,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 2,
+                "predicted": 0.09771380317775355,
+                "observed": 0.5
+              },
+              {
+                "bin": 1,
+                "count": 48,
+                "predicted": 0.17655539063435624,
+                "observed": 0.22916666666666666
+              },
+              {
+                "bin": 2,
+                "count": 353,
+                "predicted": 0.25100705450129634,
+                "observed": 0.21529745042492918
+              },
+              {
+                "bin": 3,
+                "count": 192,
+                "predicted": 0.34691838854747176,
+                "observed": 0.375
+              },
+              {
+                "bin": 4,
+                "count": 125,
+                "predicted": 0.4412295663200522,
+                "observed": 0.456
+              },
+              {
+                "bin": 5,
+                "count": 68,
+                "predicted": 0.5446624672501428,
+                "observed": 0.6323529411764706
+              },
+              {
+                "bin": 6,
+                "count": 21,
+                "predicted": 0.6294530877336194,
+                "observed": 0.47619047619047616
+              },
+              {
+                "bin": 7,
+                "count": 1,
+                "predicted": 0.7068343977008967,
+                "observed": 0.0
+              }
+            ]
+          },
+          "by_competition": {
+            "jp.j1": {
+              "count": 270,
+              "log_loss": 1.0370594649427165,
+              "brier": 0.6222662413017747,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 2,
+                  "predicted": 0.09771380317775355,
+                  "observed": 0.5
+                },
+                {
+                  "bin": 1,
+                  "count": 48,
+                  "predicted": 0.17655539063435624,
+                  "observed": 0.22916666666666666
+                },
+                {
+                  "bin": 2,
+                  "count": 353,
+                  "predicted": 0.25100705450129634,
+                  "observed": 0.21529745042492918
+                },
+                {
+                  "bin": 3,
+                  "count": 192,
+                  "predicted": 0.34691838854747176,
+                  "observed": 0.375
+                },
+                {
+                  "bin": 4,
+                  "count": 125,
+                  "predicted": 0.4412295663200522,
+                  "observed": 0.456
+                },
+                {
+                  "bin": 5,
+                  "count": 68,
+                  "predicted": 0.5446624672501428,
+                  "observed": 0.6323529411764706
+                },
+                {
+                  "bin": 6,
+                  "count": 21,
+                  "predicted": 0.6294530877336194,
+                  "observed": 0.47619047619047616
+                },
+                {
+                  "bin": 7,
+                  "count": 1,
+                  "predicted": 0.7068343977008967,
+                  "observed": 0.0
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 300,
+            "log_loss": 1.030068996233657,
+            "brier": 0.6171912347659535,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 1,
+                "predicted": 0.09028301217668384,
+                "observed": 0.0
+              },
+              {
+                "bin": 1,
+                "count": 78,
+                "predicted": 0.16977890261781392,
+                "observed": 0.16666666666666666
+              },
+              {
+                "bin": 2,
+                "count": 398,
+                "predicted": 0.2556726358561094,
+                "observed": 0.24874371859296482
+              },
+              {
+                "bin": 3,
+                "count": 180,
+                "predicted": 0.34358877109654373,
+                "observed": 0.35
+              },
+              {
+                "bin": 4,
+                "count": 132,
+                "predicted": 0.45282114974853577,
+                "observed": 0.4318181818181818
+              },
+              {
+                "bin": 5,
+                "count": 79,
+                "predicted": 0.5416559036627807,
+                "observed": 0.6329113924050633
+              },
+              {
+                "bin": 6,
+                "count": 30,
+                "predicted": 0.6355983602128058,
+                "observed": 0.5333333333333333
+              },
+              {
+                "bin": 7,
+                "count": 2,
+                "predicted": 0.7160578764869034,
+                "observed": 1.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 300,
+              "log_loss": 1.030068996233657,
+              "brier": 0.6171912347659535,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1,
+                  "predicted": 0.09028301217668384,
+                  "observed": 0.0
+                },
+                {
+                  "bin": 1,
+                  "count": 78,
+                  "predicted": 0.16977890261781392,
+                  "observed": 0.16666666666666666
+                },
+                {
+                  "bin": 2,
+                  "count": 398,
+                  "predicted": 0.2556726358561094,
+                  "observed": 0.24874371859296482
+                },
+                {
+                  "bin": 3,
+                  "count": 180,
+                  "predicted": 0.34358877109654373,
+                  "observed": 0.35
+                },
+                {
+                  "bin": 4,
+                  "count": 132,
+                  "predicted": 0.45282114974853577,
+                  "observed": 0.4318181818181818
+                },
+                {
+                  "bin": 5,
+                  "count": 79,
+                  "predicted": 0.5416559036627807,
+                  "observed": 0.6329113924050633
+                },
+                {
+                  "bin": 6,
+                  "count": 30,
+                  "predicted": 0.6355983602128058,
+                  "observed": 0.5333333333333333
+                },
+                {
+                  "bin": 7,
+                  "count": 2,
+                  "predicted": 0.7160578764869034,
+                  "observed": 1.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 300,
+              "log_loss": 1.906742536598838,
+              "brier": 0.8329146650779721,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1085,
+                  "predicted": 0.04369301662129759,
+                  "observed": 0.05069124423963134
+                },
+                {
+                  "bin": 1,
+                  "count": 660,
+                  "predicted": 0.14719333663054182,
+                  "observed": 0.14393939393939395
+                },
+                {
+                  "bin": 2,
+                  "count": 649,
+                  "predicted": 0.23648133701166618,
+                  "observed": 0.23112480739599384
+                },
+                {
+                  "bin": 3,
+                  "count": 6,
+                  "predicted": 0.32818117819385945,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hafu": {
+              "count": 300,
+              "log_loss": 1.9041996090871471,
+              "brier": 0.8245519943600857,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1384,
+                  "predicted": 0.03969729332189289,
+                  "observed": 0.04046242774566474
+                },
+                {
+                  "bin": 1,
+                  "count": 931,
+                  "predicted": 0.15119215882313594,
+                  "observed": 0.16326530612244897
+                },
+                {
+                  "bin": 2,
+                  "count": 280,
+                  "predicted": 0.23973936478547272,
+                  "observed": 0.19642857142857142
+                },
+                {
+                  "bin": 3,
+                  "count": 89,
+                  "predicted": 0.3399880821209663,
+                  "observed": 0.33707865168539325
+                },
+                {
+                  "bin": 4,
+                  "count": 16,
+                  "predicted": 0.43206779559139197,
+                  "observed": 0.4375
+                }
+              ]
+            },
+            "crs": {
+              "count": 300,
+              "log_loss": 2.9881378423501306,
+              "brier": 0.936190395281965,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 8595,
+                  "predicted": 0.02463335717152399,
+                  "observed": 0.02571262361838278
+                },
+                {
+                  "bin": 1,
+                  "count": 698,
+                  "predicted": 0.12412047986697708,
+                  "observed": 0.11318051575931232
+                },
+                {
+                  "bin": 2,
+                  "count": 7,
+                  "predicted": 0.23431430908590076,
+                  "observed": 0.0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "elo_logistic",
+          "key": "elo_logistic:180",
+          "name": "Elo 逻辑回归",
+          "supported_markets": [
+            "had"
+          ],
+          "validation": {
+            "count": 270,
+            "log_loss": 1.056167341851206,
+            "brier": 0.6366519157814656,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 1,
+                "predicted": 0.1908392657953374,
+                "observed": 0.0
+              },
+              {
+                "bin": 2,
+                "count": 358,
+                "predicted": 0.2640113299429337,
+                "observed": 0.2541899441340782
+              },
+              {
+                "bin": 3,
+                "count": 277,
+                "predicted": 0.34968061355082397,
+                "observed": 0.3249097472924188
+              },
+              {
+                "bin": 4,
+                "count": 152,
+                "predicted": 0.43936946612982664,
+                "observed": 0.506578947368421
+              },
+              {
+                "bin": 5,
+                "count": 22,
+                "predicted": 0.5294279913328405,
+                "observed": 0.5454545454545454
+              }
+            ]
+          },
+          "by_competition": {
+            "jp.j1": {
+              "count": 270,
+              "log_loss": 1.056167341851206,
+              "brier": 0.6366519157814656,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 1,
+                  "predicted": 0.1908392657953374,
+                  "observed": 0.0
+                },
+                {
+                  "bin": 2,
+                  "count": 358,
+                  "predicted": 0.2640113299429337,
+                  "observed": 0.2541899441340782
+                },
+                {
+                  "bin": 3,
+                  "count": 277,
+                  "predicted": 0.34968061355082397,
+                  "observed": 0.3249097472924188
+                },
+                {
+                  "bin": 4,
+                  "count": 152,
+                  "predicted": 0.43936946612982664,
+                  "observed": 0.506578947368421
+                },
+                {
+                  "bin": 5,
+                  "count": 22,
+                  "predicted": 0.5294279913328405,
+                  "observed": 0.5454545454545454
+                }
+              ]
+            }
+          },
+          "eligible_for_target": false,
+          "test": {
+            "count": 300,
+            "log_loss": 1.0440030205010742,
+            "brier": 0.6279607547349029,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 4,
+                "predicted": 0.19100255739901761,
+                "observed": 0.25
+              },
+              {
+                "bin": 2,
+                "count": 421,
+                "predicted": 0.26106572792547655,
+                "observed": 0.23990498812351543
+              },
+              {
+                "bin": 3,
+                "count": 267,
+                "predicted": 0.34813285591235066,
+                "observed": 0.3408239700374532
+              },
+              {
+                "bin": 4,
+                "count": 167,
+                "predicted": 0.44681557749866413,
+                "observed": 0.47904191616766467
+              },
+              {
+                "bin": 5,
+                "count": 40,
+                "predicted": 0.5287020385651454,
+                "observed": 0.65
+              },
+              {
+                "bin": 6,
+                "count": 1,
+                "predicted": 0.6095628002979377,
+                "observed": 1.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 300,
+              "log_loss": 1.0440030205010742,
+              "brier": 0.6279607547349029,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 4,
+                  "predicted": 0.19100255739901761,
+                  "observed": 0.25
+                },
+                {
+                  "bin": 2,
+                  "count": 421,
+                  "predicted": 0.26106572792547655,
+                  "observed": 0.23990498812351543
+                },
+                {
+                  "bin": 3,
+                  "count": 267,
+                  "predicted": 0.34813285591235066,
+                  "observed": 0.3408239700374532
+                },
+                {
+                  "bin": 4,
+                  "count": 167,
+                  "predicted": 0.44681557749866413,
+                  "observed": 0.47904191616766467
+                },
+                {
+                  "bin": 5,
+                  "count": 40,
+                  "predicted": 0.5287020385651454,
+                  "observed": 0.65
+                },
+                {
+                  "bin": 6,
+                  "count": 1,
+                  "predicted": 0.6095628002979377,
+                  "observed": 1.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 0
+            },
+            "hafu": {
+              "count": 0
+            },
+            "crs": {
+              "count": 0
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "catboost",
+          "key": "catboost:180",
+          "name": "CatBoost 胜平负",
+          "supported_markets": [
+            "had"
+          ],
+          "validation": {
+            "count": 270,
+            "log_loss": 1.0469727666576174,
+            "brier": 0.6300633470433212,
+            "calibration": [
+              {
+                "bin": 2,
+                "count": 388,
+                "predicted": 0.26846786777017245,
+                "observed": 0.24742268041237114
+              },
+              {
+                "bin": 3,
+                "count": 216,
+                "predicted": 0.34443499939738154,
+                "observed": 0.3194444444444444
+              },
+              {
+                "bin": 4,
+                "count": 200,
+                "predicted": 0.441310483213111,
+                "observed": 0.495
+              },
+              {
+                "bin": 5,
+                "count": 6,
+                "predicted": 0.5290684654527448,
+                "observed": 1.0
+              }
+            ]
+          },
+          "by_competition": {
+            "jp.j1": {
+              "count": 270,
+              "log_loss": 1.0469727666576174,
+              "brier": 0.6300633470433212,
+              "calibration": [
+                {
+                  "bin": 2,
+                  "count": 388,
+                  "predicted": 0.26846786777017245,
+                  "observed": 0.24742268041237114
+                },
+                {
+                  "bin": 3,
+                  "count": 216,
+                  "predicted": 0.34443499939738154,
+                  "observed": 0.3194444444444444
+                },
+                {
+                  "bin": 4,
+                  "count": 200,
+                  "predicted": 0.441310483213111,
+                  "observed": 0.495
+                },
+                {
+                  "bin": 5,
+                  "count": 6,
+                  "predicted": 0.5290684654527448,
+                  "observed": 1.0
+                }
+              ]
+            }
+          },
+          "eligible_for_target": false,
+          "test": {
+            "count": 300,
+            "log_loss": 1.0429230930989282,
+            "brier": 0.6272942138411801,
+            "calibration": [
+              {
+                "bin": 2,
+                "count": 459,
+                "predicted": 0.26553343673203234,
+                "observed": 0.24618736383442266
+              },
+              {
+                "bin": 3,
+                "count": 204,
+                "predicted": 0.34405474255375834,
+                "observed": 0.3382352941176471
+              },
+              {
+                "bin": 4,
+                "count": 212,
+                "predicted": 0.4466973125437099,
+                "observed": 0.4811320754716981
+              },
+              {
+                "bin": 5,
+                "count": 25,
+                "predicted": 0.5293261919905581,
+                "observed": 0.64
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 300,
+              "log_loss": 1.0429230930989282,
+              "brier": 0.6272942138411801,
+              "calibration": [
+                {
+                  "bin": 2,
+                  "count": 459,
+                  "predicted": 0.26553343673203234,
+                  "observed": 0.24618736383442266
+                },
+                {
+                  "bin": 3,
+                  "count": 204,
+                  "predicted": 0.34405474255375834,
+                  "observed": 0.3382352941176471
+                },
+                {
+                  "bin": 4,
+                  "count": 212,
+                  "predicted": 0.4466973125437099,
+                  "observed": 0.4811320754716981
+                },
+                {
+                  "bin": 5,
+                  "count": 25,
+                  "predicted": 0.5293261919905581,
+                  "observed": 0.64
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 0
+            },
+            "hafu": {
+              "count": 0
+            },
+            "crs": {
+              "count": 0
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "lightgbm_goals",
+          "key": "lightgbm_goals:180",
+          "name": "LightGBM 进球",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 270,
+            "log_loss": 1.056541360568005,
+            "brier": 0.6369483207167561,
+            "calibration": [
+              {
+                "bin": 2,
+                "count": 411,
+                "predicted": 0.26598353635702154,
+                "observed": 0.25304136253041365
+              },
+              {
+                "bin": 3,
+                "count": 203,
+                "predicted": 0.35253682847268725,
+                "observed": 0.3497536945812808
+              },
+              {
+                "bin": 4,
+                "count": 172,
+                "predicted": 0.44510173652098595,
+                "observed": 0.47093023255813954
+              },
+              {
+                "bin": 5,
+                "count": 24,
+                "predicted": 0.5232621539874577,
+                "observed": 0.5833333333333334
+              }
+            ]
+          },
+          "by_competition": {
+            "jp.j1": {
+              "count": 270,
+              "log_loss": 1.056541360568005,
+              "brier": 0.6369483207167561,
+              "calibration": [
+                {
+                  "bin": 2,
+                  "count": 411,
+                  "predicted": 0.26598353635702154,
+                  "observed": 0.25304136253041365
+                },
+                {
+                  "bin": 3,
+                  "count": 203,
+                  "predicted": 0.35253682847268725,
+                  "observed": 0.3497536945812808
+                },
+                {
+                  "bin": 4,
+                  "count": 172,
+                  "predicted": 0.44510173652098595,
+                  "observed": 0.47093023255813954
+                },
+                {
+                  "bin": 5,
+                  "count": 24,
+                  "predicted": 0.5232621539874577,
+                  "observed": 0.5833333333333334
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 300,
+            "log_loss": 1.0474276250324865,
+            "brier": 0.630284649682441,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 4,
+                "predicted": 0.19391536064861092,
+                "observed": 0.25
+              },
+              {
+                "bin": 2,
+                "count": 434,
+                "predicted": 0.26098463920923987,
+                "observed": 0.2465437788018433
+              },
+              {
+                "bin": 3,
+                "count": 243,
+                "predicted": 0.3519861558989223,
+                "observed": 0.34156378600823045
+              },
+              {
+                "bin": 4,
+                "count": 183,
+                "predicted": 0.44568467250284105,
+                "observed": 0.48633879781420764
+              },
+              {
+                "bin": 5,
+                "count": 36,
+                "predicted": 0.5240020608093716,
+                "observed": 0.5555555555555556
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 300,
+              "log_loss": 1.0474276250324865,
+              "brier": 0.630284649682441,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 4,
+                  "predicted": 0.19391536064861092,
+                  "observed": 0.25
+                },
+                {
+                  "bin": 2,
+                  "count": 434,
+                  "predicted": 0.26098463920923987,
+                  "observed": 0.2465437788018433
+                },
+                {
+                  "bin": 3,
+                  "count": 243,
+                  "predicted": 0.3519861558989223,
+                  "observed": 0.34156378600823045
+                },
+                {
+                  "bin": 4,
+                  "count": 183,
+                  "predicted": 0.44568467250284105,
+                  "observed": 0.48633879781420764
+                },
+                {
+                  "bin": 5,
+                  "count": 36,
+                  "predicted": 0.5240020608093716,
+                  "observed": 0.5555555555555556
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 300,
+              "log_loss": 1.8686503179471239,
+              "brier": 0.8230429664416338,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1191,
+                  "predicted": 0.04876054886435711,
+                  "observed": 0.05037783375314862
+                },
+                {
+                  "bin": 1,
+                  "count": 489,
+                  "predicted": 0.15586590555682997,
+                  "observed": 0.1574642126789366
+                },
+                {
+                  "bin": 2,
+                  "count": 720,
+                  "predicted": 0.23014966456286226,
+                  "observed": 0.2263888888888889
+                }
+              ]
+            },
+            "hafu": {
+              "count": 300,
+              "log_loss": 1.9207808783535207,
+              "brier": 0.8299359399662706,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1235,
+                  "predicted": 0.03681467250988424,
+                  "observed": 0.0340080971659919
+                },
+                {
+                  "bin": 1,
+                  "count": 1130,
+                  "predicted": 0.15117293118183908,
+                  "observed": 0.15398230088495576
+                },
+                {
+                  "bin": 2,
+                  "count": 299,
+                  "predicted": 0.24174210402577587,
+                  "observed": 0.24749163879598662
+                },
+                {
+                  "bin": 3,
+                  "count": 36,
+                  "predicted": 0.3174327253085497,
+                  "observed": 0.2777777777777778
+                }
+              ]
+            },
+            "crs": {
+              "count": 300,
+              "log_loss": 2.9702008001355797,
+              "brier": 0.9336375390388347,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 8737,
+                  "predicted": 0.026672353610533314,
+                  "observed": 0.026897104269199956
+                },
+                {
+                  "bin": 1,
+                  "count": 563,
+                  "predicted": 0.11894075755731869,
+                  "observed": 0.11545293072824156
+                }
+              ]
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "dynamic_gamma",
+          "key": "dynamic_gamma:180",
+          "name": "动态 Gamma–Poisson",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 270,
+            "log_loss": 1.0374116309082337,
+            "brier": 0.6231579909757459,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 18,
+                "predicted": 0.17901839459393212,
+                "observed": 0.1111111111111111
+              },
+              {
+                "bin": 2,
+                "count": 355,
+                "predicted": 0.2598300649306201,
+                "observed": 0.23098591549295774
+              },
+              {
+                "bin": 3,
+                "count": 248,
+                "predicted": 0.344414268050361,
+                "observed": 0.34274193548387094
+              },
+              {
+                "bin": 4,
+                "count": 137,
+                "predicted": 0.4426642120179614,
+                "observed": 0.5182481751824818
+              },
+              {
+                "bin": 5,
+                "count": 47,
+                "predicted": 0.5398149092388146,
+                "observed": 0.574468085106383
+              },
+              {
+                "bin": 6,
+                "count": 5,
+                "predicted": 0.6213919179528943,
+                "observed": 0.6
+              }
+            ]
+          },
+          "by_competition": {
+            "jp.j1": {
+              "count": 270,
+              "log_loss": 1.0374116309082337,
+              "brier": 0.6231579909757459,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 18,
+                  "predicted": 0.17901839459393212,
+                  "observed": 0.1111111111111111
+                },
+                {
+                  "bin": 2,
+                  "count": 355,
+                  "predicted": 0.2598300649306201,
+                  "observed": 0.23098591549295774
+                },
+                {
+                  "bin": 3,
+                  "count": 248,
+                  "predicted": 0.344414268050361,
+                  "observed": 0.34274193548387094
+                },
+                {
+                  "bin": 4,
+                  "count": 137,
+                  "predicted": 0.4426642120179614,
+                  "observed": 0.5182481751824818
+                },
+                {
+                  "bin": 5,
+                  "count": 47,
+                  "predicted": 0.5398149092388146,
+                  "observed": 0.574468085106383
+                },
+                {
+                  "bin": 6,
+                  "count": 5,
+                  "predicted": 0.6213919179528943,
+                  "observed": 0.6
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 300,
+            "log_loss": 1.031500520160006,
+            "brier": 0.6185982837640758,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 24,
+                "predicted": 0.17902370302964168,
+                "observed": 0.25
+              },
+              {
+                "bin": 2,
+                "count": 443,
+                "predicted": 0.2539310877378848,
+                "observed": 0.23702031602708803
+              },
+              {
+                "bin": 3,
+                "count": 193,
+                "predicted": 0.3499267507751143,
+                "observed": 0.35233160621761656
+              },
+              {
+                "bin": 4,
+                "count": 165,
+                "predicted": 0.45176337951493,
+                "observed": 0.4484848484848485
+              },
+              {
+                "bin": 5,
+                "count": 70,
+                "predicted": 0.5434204368368161,
+                "observed": 0.6
+              },
+              {
+                "bin": 6,
+                "count": 5,
+                "predicted": 0.6191416322535843,
+                "observed": 1.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 300,
+              "log_loss": 1.031500520160006,
+              "brier": 0.6185982837640758,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 24,
+                  "predicted": 0.17902370302964168,
+                  "observed": 0.25
+                },
+                {
+                  "bin": 2,
+                  "count": 443,
+                  "predicted": 0.2539310877378848,
+                  "observed": 0.23702031602708803
+                },
+                {
+                  "bin": 3,
+                  "count": 193,
+                  "predicted": 0.3499267507751143,
+                  "observed": 0.35233160621761656
+                },
+                {
+                  "bin": 4,
+                  "count": 165,
+                  "predicted": 0.45176337951493,
+                  "observed": 0.4484848484848485
+                },
+                {
+                  "bin": 5,
+                  "count": 70,
+                  "predicted": 0.5434204368368161,
+                  "observed": 0.6
+                },
+                {
+                  "bin": 6,
+                  "count": 5,
+                  "predicted": 0.6191416322535843,
+                  "observed": 1.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 300,
+              "log_loss": 1.879673684348974,
+              "brier": 0.8264515855739704,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1088,
+                  "predicted": 0.04954405673970055,
+                  "observed": 0.04871323529411765
+                },
+                {
+                  "bin": 1,
+                  "count": 661,
+                  "predicted": 0.1480349684486491,
+                  "observed": 0.14523449319213314
+                },
+                {
+                  "bin": 2,
+                  "count": 651,
+                  "predicted": 0.22771882046489825,
+                  "observed": 0.23195084485407066
+                }
+              ]
+            },
+            "hafu": {
+              "count": 300,
+              "log_loss": 1.9066212776451261,
+              "brier": 0.8248829054301313,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1304,
+                  "predicted": 0.03773303474887813,
+                  "observed": 0.03450920245398773
+                },
+                {
+                  "bin": 1,
+                  "count": 1036,
+                  "predicted": 0.15038612780219515,
+                  "observed": 0.15733590733590733
+                },
+                {
+                  "bin": 2,
+                  "count": 281,
+                  "predicted": 0.24326728407091075,
+                  "observed": 0.22419928825622776
+                },
+                {
+                  "bin": 3,
+                  "count": 77,
+                  "predicted": 0.33530852486386836,
+                  "observed": 0.37662337662337664
+                },
+                {
+                  "bin": 4,
+                  "count": 2,
+                  "predicted": 0.409615522972433,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "crs": {
+              "count": 300,
+              "log_loss": 2.961753074645236,
+              "brier": 0.934218893495983,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 8675,
+                  "predicted": 0.02612403153893139,
+                  "observed": 0.02639769452449568
+                },
+                {
+                  "bin": 1,
+                  "count": 625,
+                  "predicted": 0.1173984422396323,
+                  "observed": 0.1136
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "data_audit": {
+        "rows": 1391,
+        "half_rows": 1391,
+        "historical_odds_rows": 0,
+        "availability_policy": "historical_7_day_lag_or_observed",
+        "missing_features": [
+          "xG",
+          "伤停",
+          "阵容",
+          "外盘"
+        ]
+      },
+      "limitations": [
+        "已查看的历史测试段仅用于探索；需要独立前瞻验证",
+        "赛果可用时间沿用历史模拟假设；不等同当年采集快照",
+        "未使用 xG、伤停、阵容或外盘；分类器只输出胜平负",
+        "半全场仍为条件二项分配；动态 Gamma 使用近似共轭滤波，非联合 MCMC"
+      ]
+    },
+    "kr.k1": {
+      "run_id": "0137d965b05a489c876eeadfce343834",
+      "dataset_digest": "dca1f86e9493f165e28247e7c82f5d7fd1c877dc118e77320c0e480771347d4a",
+      "rows": 884,
+      "target": "full_time",
+      "selected": "dynamic_gamma",
+      "test": {
+        "count": 194,
+        "log_loss": 1.0997912485777652,
+        "brier": 0.6677066410083465,
+        "calibration": [
+          {
+            "bin": 1,
+            "count": 12,
+            "predicted": 0.1746875070234072,
+            "observed": 0.16666666666666666
+          },
+          {
+            "bin": 2,
+            "count": 256,
+            "predicted": 0.2654070042416663,
+            "observed": 0.3125
+          },
+          {
+            "bin": 3,
+            "count": 186,
+            "predicted": 0.3467461992724161,
+            "observed": 0.3172043010752688
+          },
+          {
+            "bin": 4,
+            "count": 105,
+            "predicted": 0.44307166013619026,
+            "observed": 0.42857142857142855
+          },
+          {
+            "bin": 5,
+            "count": 19,
+            "predicted": 0.5481361625635238,
+            "observed": 0.2631578947368421
+          },
+          {
+            "bin": 6,
+            "count": 4,
+            "predicted": 0.6319130905440427,
+            "observed": 0.75
+          }
+        ]
+      },
+      "models": [
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "poisson",
+          "key": "poisson:180",
+          "name": "攻防泊松",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 172,
+            "log_loss": 1.084762270415615,
+            "brier": 0.6573050545687181,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 13,
+                "predicted": 0.18012804336225424,
+                "observed": 0.23076923076923078
+              },
+              {
+                "bin": 2,
+                "count": 240,
+                "predicted": 0.2616982690598472,
+                "observed": 0.275
+              },
+              {
+                "bin": 3,
+                "count": 144,
+                "predicted": 0.34766679593282057,
+                "observed": 0.3541666666666667
+              },
+              {
+                "bin": 4,
+                "count": 82,
+                "predicted": 0.4465173607178651,
+                "observed": 0.4268292682926829
+              },
+              {
+                "bin": 5,
+                "count": 33,
+                "predicted": 0.533774733485131,
+                "observed": 0.45454545454545453
+              },
+              {
+                "bin": 6,
+                "count": 4,
+                "predicted": 0.6394356159317278,
+                "observed": 0.5
+              }
+            ]
+          },
+          "by_competition": {
+            "kr.k1": {
+              "count": 172,
+              "log_loss": 1.084762270415615,
+              "brier": 0.6573050545687181,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 13,
+                  "predicted": 0.18012804336225424,
+                  "observed": 0.23076923076923078
+                },
+                {
+                  "bin": 2,
+                  "count": 240,
+                  "predicted": 0.2616982690598472,
+                  "observed": 0.275
+                },
+                {
+                  "bin": 3,
+                  "count": 144,
+                  "predicted": 0.34766679593282057,
+                  "observed": 0.3541666666666667
+                },
+                {
+                  "bin": 4,
+                  "count": 82,
+                  "predicted": 0.4465173607178651,
+                  "observed": 0.4268292682926829
+                },
+                {
+                  "bin": 5,
+                  "count": 33,
+                  "predicted": 0.533774733485131,
+                  "observed": 0.45454545454545453
+                },
+                {
+                  "bin": 6,
+                  "count": 4,
+                  "predicted": 0.6394356159317278,
+                  "observed": 0.5
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 194,
+            "log_loss": 1.1075035396504396,
+            "brier": 0.673796033870201,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 1,
+                "predicted": 0.09679583690879755,
+                "observed": 1.0
+              },
+              {
+                "bin": 1,
+                "count": 26,
+                "predicted": 0.16523491335738025,
+                "observed": 0.19230769230769232
+              },
+              {
+                "bin": 2,
+                "count": 250,
+                "predicted": 0.26211943736025584,
+                "observed": 0.308
+              },
+              {
+                "bin": 3,
+                "count": 167,
+                "predicted": 0.3443118496299955,
+                "observed": 0.32934131736526945
+              },
+              {
+                "bin": 4,
+                "count": 98,
+                "predicted": 0.4462385296734981,
+                "observed": 0.3877551020408163
+              },
+              {
+                "bin": 5,
+                "count": 27,
+                "predicted": 0.5333004104572957,
+                "observed": 0.4444444444444444
+              },
+              {
+                "bin": 6,
+                "count": 12,
+                "predicted": 0.6381414071529266,
+                "observed": 0.5
+              },
+              {
+                "bin": 7,
+                "count": 1,
+                "predicted": 0.788974311341161,
+                "observed": 0.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 194,
+              "log_loss": 1.1075035396504396,
+              "brier": 0.673796033870201,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1,
+                  "predicted": 0.09679583690879755,
+                  "observed": 1.0
+                },
+                {
+                  "bin": 1,
+                  "count": 26,
+                  "predicted": 0.16523491335738025,
+                  "observed": 0.19230769230769232
+                },
+                {
+                  "bin": 2,
+                  "count": 250,
+                  "predicted": 0.26211943736025584,
+                  "observed": 0.308
+                },
+                {
+                  "bin": 3,
+                  "count": 167,
+                  "predicted": 0.3443118496299955,
+                  "observed": 0.32934131736526945
+                },
+                {
+                  "bin": 4,
+                  "count": 98,
+                  "predicted": 0.4462385296734981,
+                  "observed": 0.3877551020408163
+                },
+                {
+                  "bin": 5,
+                  "count": 27,
+                  "predicted": 0.5333004104572957,
+                  "observed": 0.4444444444444444
+                },
+                {
+                  "bin": 6,
+                  "count": 12,
+                  "predicted": 0.6381414071529266,
+                  "observed": 0.5
+                },
+                {
+                  "bin": 7,
+                  "count": 1,
+                  "predicted": 0.788974311341161,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 194,
+              "log_loss": 1.8777050742879307,
+              "brier": 0.8302476120472406,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 734,
+                  "predicted": 0.041876422619339174,
+                  "observed": 0.051771117166212535
+                },
+                {
+                  "bin": 1,
+                  "count": 378,
+                  "predicted": 0.14988291541798865,
+                  "observed": 0.15608465608465608
+                },
+                {
+                  "bin": 2,
+                  "count": 436,
+                  "predicted": 0.24166563338875754,
+                  "observed": 0.22018348623853212
+                },
+                {
+                  "bin": 3,
+                  "count": 4,
+                  "predicted": 0.31018690297676244,
+                  "observed": 0.25
+                }
+              ]
+            },
+            "hafu": {
+              "count": 194,
+              "log_loss": 1.9390680591149647,
+              "brier": 0.8455988312791599,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 841,
+                  "predicted": 0.03620828166959855,
+                  "observed": 0.03804994054696789
+                },
+                {
+                  "bin": 1,
+                  "count": 641,
+                  "predicted": 0.153731580485387,
+                  "observed": 0.17628705148205928
+                },
+                {
+                  "bin": 2,
+                  "count": 235,
+                  "predicted": 0.23212336001469502,
+                  "observed": 0.19148936170212766
+                },
+                {
+                  "bin": 3,
+                  "count": 26,
+                  "predicted": 0.34675809121546575,
+                  "observed": 0.11538461538461539
+                },
+                {
+                  "bin": 4,
+                  "count": 2,
+                  "predicted": 0.44728032210550606,
+                  "observed": 0.5
+                },
+                {
+                  "bin": 5,
+                  "count": 1,
+                  "predicted": 0.5476314054680641,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "crs": {
+              "count": 194,
+              "log_loss": 2.8676051888725578,
+              "brier": 0.9288029397985926,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 5477,
+                  "predicted": 0.02296885925132931,
+                  "observed": 0.022822713164140952
+                },
+                {
+                  "bin": 1,
+                  "count": 535,
+                  "predicted": 0.1267177060039719,
+                  "observed": 0.12897196261682242
+                },
+                {
+                  "bin": 2,
+                  "count": 2,
+                  "predicted": 0.20279258417220547,
+                  "observed": 0.0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "dc",
+          "key": "dc:180",
+          "name": "两阶段低比分修正",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 172,
+            "log_loss": 1.0870304216508837,
+            "brier": 0.6586536597165998,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 10,
+                "predicted": 0.1757455462253239,
+                "observed": 0.2
+              },
+              {
+                "bin": 2,
+                "count": 246,
+                "predicted": 0.25863311621759005,
+                "observed": 0.2845528455284553
+              },
+              {
+                "bin": 3,
+                "count": 136,
+                "predicted": 0.3495842719283094,
+                "observed": 0.3382352941176471
+              },
+              {
+                "bin": 4,
+                "count": 84,
+                "predicted": 0.44453013553539705,
+                "observed": 0.42857142857142855
+              },
+              {
+                "bin": 5,
+                "count": 34,
+                "predicted": 0.5283963893492762,
+                "observed": 0.47058823529411764
+              },
+              {
+                "bin": 6,
+                "count": 6,
+                "predicted": 0.6282213905201282,
+                "observed": 0.3333333333333333
+              }
+            ]
+          },
+          "by_competition": {
+            "kr.k1": {
+              "count": 172,
+              "log_loss": 1.0870304216508837,
+              "brier": 0.6586536597165998,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 10,
+                  "predicted": 0.1757455462253239,
+                  "observed": 0.2
+                },
+                {
+                  "bin": 2,
+                  "count": 246,
+                  "predicted": 0.25863311621759005,
+                  "observed": 0.2845528455284553
+                },
+                {
+                  "bin": 3,
+                  "count": 136,
+                  "predicted": 0.3495842719283094,
+                  "observed": 0.3382352941176471
+                },
+                {
+                  "bin": 4,
+                  "count": 84,
+                  "predicted": 0.44453013553539705,
+                  "observed": 0.42857142857142855
+                },
+                {
+                  "bin": 5,
+                  "count": 34,
+                  "predicted": 0.5283963893492762,
+                  "observed": 0.47058823529411764
+                },
+                {
+                  "bin": 6,
+                  "count": 6,
+                  "predicted": 0.6282213905201282,
+                  "observed": 0.3333333333333333
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 194,
+            "log_loss": 1.102907555610101,
+            "brier": 0.6706280801553689,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 1,
+                "predicted": 0.09636830617500071,
+                "observed": 1.0
+              },
+              {
+                "bin": 1,
+                "count": 26,
+                "predicted": 0.15908058666696878,
+                "observed": 0.19230769230769232
+              },
+              {
+                "bin": 2,
+                "count": 235,
+                "predicted": 0.26599083588244155,
+                "observed": 0.3021276595744681
+              },
+              {
+                "bin": 3,
+                "count": 193,
+                "predicted": 0.3425565137686956,
+                "observed": 0.34196891191709844
+              },
+              {
+                "bin": 4,
+                "count": 91,
+                "predicted": 0.4458681656756888,
+                "observed": 0.3956043956043956
+              },
+              {
+                "bin": 5,
+                "count": 25,
+                "predicted": 0.5359278903914851,
+                "observed": 0.36
+              },
+              {
+                "bin": 6,
+                "count": 10,
+                "predicted": 0.6385535733869577,
+                "observed": 0.6
+              },
+              {
+                "bin": 7,
+                "count": 1,
+                "predicted": 0.7885467806073642,
+                "observed": 0.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 194,
+              "log_loss": 1.102907555610101,
+              "brier": 0.6706280801553689,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 1,
+                  "predicted": 0.09636830617500071,
+                  "observed": 1.0
+                },
+                {
+                  "bin": 1,
+                  "count": 26,
+                  "predicted": 0.15908058666696878,
+                  "observed": 0.19230769230769232
+                },
+                {
+                  "bin": 2,
+                  "count": 235,
+                  "predicted": 0.26599083588244155,
+                  "observed": 0.3021276595744681
+                },
+                {
+                  "bin": 3,
+                  "count": 193,
+                  "predicted": 0.3425565137686956,
+                  "observed": 0.34196891191709844
+                },
+                {
+                  "bin": 4,
+                  "count": 91,
+                  "predicted": 0.4458681656756888,
+                  "observed": 0.3956043956043956
+                },
+                {
+                  "bin": 5,
+                  "count": 25,
+                  "predicted": 0.5359278903914851,
+                  "observed": 0.36
+                },
+                {
+                  "bin": 6,
+                  "count": 10,
+                  "predicted": 0.6385535733869577,
+                  "observed": 0.6
+                },
+                {
+                  "bin": 7,
+                  "count": 1,
+                  "predicted": 0.7885467806073642,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 194,
+              "log_loss": 1.8735884051023035,
+              "brier": 0.8290185678784013,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 722,
+                  "predicted": 0.04212276918607707,
+                  "observed": 0.04986149584487535
+                },
+                {
+                  "bin": 1,
+                  "count": 419,
+                  "predicted": 0.15005963341784226,
+                  "observed": 0.15990453460620524
+                },
+                {
+                  "bin": 2,
+                  "count": 410,
+                  "predicted": 0.24484540208017855,
+                  "observed": 0.22195121951219512
+                },
+                {
+                  "bin": 3,
+                  "count": 1,
+                  "predicted": 0.32575939270324084,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hafu": {
+              "count": 194,
+              "log_loss": 1.934165081997932,
+              "brier": 0.843935677789148,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 857,
+                  "predicted": 0.037957292389354864,
+                  "observed": 0.039673278879813305
+                },
+                {
+                  "bin": 1,
+                  "count": 622,
+                  "predicted": 0.15382834901130157,
+                  "observed": 0.17041800643086816
+                },
+                {
+                  "bin": 2,
+                  "count": 240,
+                  "predicted": 0.23342494955697382,
+                  "observed": 0.20833333333333334
+                },
+                {
+                  "bin": 3,
+                  "count": 24,
+                  "predicted": 0.3470600361036314,
+                  "observed": 0.125
+                },
+                {
+                  "bin": 4,
+                  "count": 2,
+                  "predicted": 0.4452381525650696,
+                  "observed": 0.5
+                },
+                {
+                  "bin": 5,
+                  "count": 1,
+                  "predicted": 0.5474622720022673,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "crs": {
+              "count": 194,
+              "log_loss": 2.861693032008483,
+              "brier": 0.9275460586666953,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 5506,
+                  "predicted": 0.023266670429753104,
+                  "observed": 0.022884126407555393
+                },
+                {
+                  "bin": 1,
+                  "count": 507,
+                  "predicted": 0.12956718902202166,
+                  "observed": 0.1341222879684418
+                },
+                {
+                  "bin": 2,
+                  "count": 1,
+                  "predicted": 0.20314777961442604,
+                  "observed": 0.0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 365,
+          "kind": "poisson",
+          "key": "poisson:365",
+          "name": "攻防泊松",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 172,
+            "log_loss": 1.0879323123520848,
+            "brier": 0.6594597944138041,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 9,
+                "predicted": 0.18305943902341537,
+                "observed": 0.3333333333333333
+              },
+              {
+                "bin": 2,
+                "count": 237,
+                "predicted": 0.2608864767839569,
+                "observed": 0.27848101265822783
+              },
+              {
+                "bin": 3,
+                "count": 156,
+                "predicted": 0.3504378696957605,
+                "observed": 0.358974358974359
+              },
+              {
+                "bin": 4,
+                "count": 84,
+                "predicted": 0.44539717942013496,
+                "observed": 0.40476190476190477
+              },
+              {
+                "bin": 5,
+                "count": 27,
+                "predicted": 0.5406565244707608,
+                "observed": 0.4444444444444444
+              },
+              {
+                "bin": 6,
+                "count": 3,
+                "predicted": 0.61432438215031,
+                "observed": 0.3333333333333333
+              }
+            ]
+          },
+          "by_competition": {
+            "kr.k1": {
+              "count": 172,
+              "log_loss": 1.0879323123520848,
+              "brier": 0.6594597944138041,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 9,
+                  "predicted": 0.18305943902341537,
+                  "observed": 0.3333333333333333
+                },
+                {
+                  "bin": 2,
+                  "count": 237,
+                  "predicted": 0.2608864767839569,
+                  "observed": 0.27848101265822783
+                },
+                {
+                  "bin": 3,
+                  "count": 156,
+                  "predicted": 0.3504378696957605,
+                  "observed": 0.358974358974359
+                },
+                {
+                  "bin": 4,
+                  "count": 84,
+                  "predicted": 0.44539717942013496,
+                  "observed": 0.40476190476190477
+                },
+                {
+                  "bin": 5,
+                  "count": 27,
+                  "predicted": 0.5406565244707608,
+                  "observed": 0.4444444444444444
+                },
+                {
+                  "bin": 6,
+                  "count": 3,
+                  "predicted": 0.61432438215031,
+                  "observed": 0.3333333333333333
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 194,
+            "log_loss": 1.1053110912696222,
+            "brier": 0.6719292454222839,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 12,
+                "predicted": 0.17700408409805568,
+                "observed": 0.25
+              },
+              {
+                "bin": 2,
+                "count": 263,
+                "predicted": 0.26735333673005324,
+                "observed": 0.311787072243346
+              },
+              {
+                "bin": 3,
+                "count": 178,
+                "predicted": 0.3470251410783283,
+                "observed": 0.33146067415730335
+              },
+              {
+                "bin": 4,
+                "count": 108,
+                "predicted": 0.44577528220203816,
+                "observed": 0.37962962962962965
+              },
+              {
+                "bin": 5,
+                "count": 19,
+                "predicted": 0.5424440406210195,
+                "observed": 0.47368421052631576
+              },
+              {
+                "bin": 6,
+                "count": 1,
+                "predicted": 0.6175833072648907,
+                "observed": 0.0
+              },
+              {
+                "bin": 7,
+                "count": 1,
+                "predicted": 0.7237977619924658,
+                "observed": 0.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 194,
+              "log_loss": 1.1053110912696222,
+              "brier": 0.6719292454222839,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 12,
+                  "predicted": 0.17700408409805568,
+                  "observed": 0.25
+                },
+                {
+                  "bin": 2,
+                  "count": 263,
+                  "predicted": 0.26735333673005324,
+                  "observed": 0.311787072243346
+                },
+                {
+                  "bin": 3,
+                  "count": 178,
+                  "predicted": 0.3470251410783283,
+                  "observed": 0.33146067415730335
+                },
+                {
+                  "bin": 4,
+                  "count": 108,
+                  "predicted": 0.44577528220203816,
+                  "observed": 0.37962962962962965
+                },
+                {
+                  "bin": 5,
+                  "count": 19,
+                  "predicted": 0.5424440406210195,
+                  "observed": 0.47368421052631576
+                },
+                {
+                  "bin": 6,
+                  "count": 1,
+                  "predicted": 0.6175833072648907,
+                  "observed": 0.0
+                },
+                {
+                  "bin": 7,
+                  "count": 1,
+                  "predicted": 0.7237977619924658,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 194,
+              "log_loss": 1.8736654585442962,
+              "brier": 0.8291803890442111,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 736,
+                  "predicted": 0.04242964505445497,
+                  "observed": 0.057065217391304345
+                },
+                {
+                  "bin": 1,
+                  "count": 354,
+                  "predicted": 0.1471666640751722,
+                  "observed": 0.14689265536723164
+                },
+                {
+                  "bin": 2,
+                  "count": 461,
+                  "predicted": 0.23942019723808294,
+                  "observed": 0.21691973969631237
+                },
+                {
+                  "bin": 3,
+                  "count": 1,
+                  "predicted": 0.30207123055394547,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hafu": {
+              "count": 194,
+              "log_loss": 1.938428734402579,
+              "brier": 0.8443273103825046,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 807,
+                  "predicted": 0.035123966673709595,
+                  "observed": 0.03593556381660471
+                },
+                {
+                  "bin": 1,
+                  "count": 702,
+                  "predicted": 0.1561698499844049,
+                  "observed": 0.16951566951566951
+                },
+                {
+                  "bin": 2,
+                  "count": 223,
+                  "predicted": 0.2302757728047499,
+                  "observed": 0.19730941704035873
+                },
+                {
+                  "bin": 3,
+                  "count": 13,
+                  "predicted": 0.32222443538529616,
+                  "observed": 0.15384615384615385
+                },
+                {
+                  "bin": 4,
+                  "count": 1,
+                  "predicted": 0.48330920979600406,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "crs": {
+              "count": 194,
+              "log_loss": 2.864688462558994,
+              "brier": 0.9274128804930498,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 5490,
+                  "predicted": 0.023387344965326066,
+                  "observed": 0.023679417122040074
+                },
+                {
+                  "bin": 1,
+                  "count": 524,
+                  "predicted": 0.1251974735503052,
+                  "observed": 0.12213740458015267
+                }
+              ]
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 365,
+          "kind": "dc",
+          "key": "dc:365",
+          "name": "两阶段低比分修正",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 172,
+            "log_loss": 1.0892904845365619,
+            "brier": 0.6602574301893721,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 9,
+                "predicted": 0.18464274048935314,
+                "observed": 0.3333333333333333
+              },
+              {
+                "bin": 2,
+                "count": 235,
+                "predicted": 0.2586754590668754,
+                "observed": 0.28085106382978725
+              },
+              {
+                "bin": 3,
+                "count": 155,
+                "predicted": 0.3504006692920606,
+                "observed": 0.34838709677419355
+              },
+              {
+                "bin": 4,
+                "count": 86,
+                "predicted": 0.44486131261880063,
+                "observed": 0.4069767441860465
+              },
+              {
+                "bin": 5,
+                "count": 28,
+                "predicted": 0.5403402098334846,
+                "observed": 0.4642857142857143
+              },
+              {
+                "bin": 6,
+                "count": 3,
+                "predicted": 0.6165933180187517,
+                "observed": 0.3333333333333333
+              }
+            ]
+          },
+          "by_competition": {
+            "kr.k1": {
+              "count": 172,
+              "log_loss": 1.0892904845365619,
+              "brier": 0.6602574301893721,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 9,
+                  "predicted": 0.18464274048935314,
+                  "observed": 0.3333333333333333
+                },
+                {
+                  "bin": 2,
+                  "count": 235,
+                  "predicted": 0.2586754590668754,
+                  "observed": 0.28085106382978725
+                },
+                {
+                  "bin": 3,
+                  "count": 155,
+                  "predicted": 0.3504006692920606,
+                  "observed": 0.34838709677419355
+                },
+                {
+                  "bin": 4,
+                  "count": 86,
+                  "predicted": 0.44486131261880063,
+                  "observed": 0.4069767441860465
+                },
+                {
+                  "bin": 5,
+                  "count": 28,
+                  "predicted": 0.5403402098334846,
+                  "observed": 0.4642857142857143
+                },
+                {
+                  "bin": 6,
+                  "count": 3,
+                  "predicted": 0.6165933180187517,
+                  "observed": 0.3333333333333333
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 194,
+            "log_loss": 1.1023150524478627,
+            "brier": 0.6700288143513724,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 12,
+                "predicted": 0.17263311988265273,
+                "observed": 0.25
+              },
+              {
+                "bin": 2,
+                "count": 248,
+                "predicted": 0.26925413477219995,
+                "observed": 0.3064516129032258
+              },
+              {
+                "bin": 3,
+                "count": 198,
+                "predicted": 0.3430611057686533,
+                "observed": 0.3333333333333333
+              },
+              {
+                "bin": 4,
+                "count": 103,
+                "predicted": 0.44334087893793633,
+                "observed": 0.3883495145631068
+              },
+              {
+                "bin": 5,
+                "count": 19,
+                "predicted": 0.538427236878023,
+                "observed": 0.47368421052631576
+              },
+              {
+                "bin": 6,
+                "count": 1,
+                "predicted": 0.6094255408190233,
+                "observed": 0.0
+              },
+              {
+                "bin": 7,
+                "count": 1,
+                "predicted": 0.7236246236002964,
+                "observed": 0.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 194,
+              "log_loss": 1.1023150524478627,
+              "brier": 0.6700288143513724,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 12,
+                  "predicted": 0.17263311988265273,
+                  "observed": 0.25
+                },
+                {
+                  "bin": 2,
+                  "count": 248,
+                  "predicted": 0.26925413477219995,
+                  "observed": 0.3064516129032258
+                },
+                {
+                  "bin": 3,
+                  "count": 198,
+                  "predicted": 0.3430611057686533,
+                  "observed": 0.3333333333333333
+                },
+                {
+                  "bin": 4,
+                  "count": 103,
+                  "predicted": 0.44334087893793633,
+                  "observed": 0.3883495145631068
+                },
+                {
+                  "bin": 5,
+                  "count": 19,
+                  "predicted": 0.538427236878023,
+                  "observed": 0.47368421052631576
+                },
+                {
+                  "bin": 6,
+                  "count": 1,
+                  "predicted": 0.6094255408190233,
+                  "observed": 0.0
+                },
+                {
+                  "bin": 7,
+                  "count": 1,
+                  "predicted": 0.7236246236002964,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 194,
+              "log_loss": 1.870868389694121,
+              "brier": 0.8283390534079251,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 728,
+                  "predicted": 0.04253752773033522,
+                  "observed": 0.057692307692307696
+                },
+                {
+                  "bin": 1,
+                  "count": 390,
+                  "predicted": 0.14916060323888428,
+                  "observed": 0.14102564102564102
+                },
+                {
+                  "bin": 2,
+                  "count": 433,
+                  "predicted": 0.24146971688489657,
+                  "observed": 0.22401847575057737
+                },
+                {
+                  "bin": 3,
+                  "count": 1,
+                  "predicted": 0.3036571379908699,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hafu": {
+              "count": 194,
+              "log_loss": 1.9352015983423445,
+              "brier": 0.8432996722973152,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 813,
+                  "predicted": 0.03603245632620687,
+                  "observed": 0.03567035670356704
+                },
+                {
+                  "bin": 1,
+                  "count": 689,
+                  "predicted": 0.15564230453757644,
+                  "observed": 0.17561683599419448
+                },
+                {
+                  "bin": 2,
+                  "count": 231,
+                  "predicted": 0.22995131351331052,
+                  "observed": 0.18181818181818182
+                },
+                {
+                  "bin": 3,
+                  "count": 12,
+                  "predicted": 0.32217255519835014,
+                  "observed": 0.16666666666666666
+                },
+                {
+                  "bin": 4,
+                  "count": 1,
+                  "predicted": 0.4832410964486888,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "crs": {
+              "count": 194,
+              "log_loss": 2.8607720605896296,
+              "brier": 0.926605172455072,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 5507,
+                  "predicted": 0.02358352965469192,
+                  "observed": 0.023787906301071363
+                },
+                {
+                  "bin": 1,
+                  "count": 507,
+                  "predicted": 0.12648028045682758,
+                  "observed": 0.1242603550295858
+                }
+              ]
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "joint_dc",
+          "key": "joint_dc:180",
+          "name": "联合 Dixon–Coles",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 172,
+            "log_loss": 1.087421314452479,
+            "brier": 0.6588229223180744,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 10,
+                "predicted": 0.17537567638871154,
+                "observed": 0.2
+              },
+              {
+                "bin": 2,
+                "count": 246,
+                "predicted": 0.25831388220441737,
+                "observed": 0.2845528455284553
+              },
+              {
+                "bin": 3,
+                "count": 135,
+                "predicted": 0.34935787434137994,
+                "observed": 0.34074074074074073
+              },
+              {
+                "bin": 4,
+                "count": 86,
+                "predicted": 0.44505709549619304,
+                "observed": 0.4186046511627907
+              },
+              {
+                "bin": 5,
+                "count": 33,
+                "predicted": 0.5299958967781968,
+                "observed": 0.48484848484848486
+              },
+              {
+                "bin": 6,
+                "count": 6,
+                "predicted": 0.6288233952311323,
+                "observed": 0.3333333333333333
+              }
+            ]
+          },
+          "by_competition": {
+            "kr.k1": {
+              "count": 172,
+              "log_loss": 1.087421314452479,
+              "brier": 0.6588229223180744,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 10,
+                  "predicted": 0.17537567638871154,
+                  "observed": 0.2
+                },
+                {
+                  "bin": 2,
+                  "count": 246,
+                  "predicted": 0.25831388220441737,
+                  "observed": 0.2845528455284553
+                },
+                {
+                  "bin": 3,
+                  "count": 135,
+                  "predicted": 0.34935787434137994,
+                  "observed": 0.34074074074074073
+                },
+                {
+                  "bin": 4,
+                  "count": 86,
+                  "predicted": 0.44505709549619304,
+                  "observed": 0.4186046511627907
+                },
+                {
+                  "bin": 5,
+                  "count": 33,
+                  "predicted": 0.5299958967781968,
+                  "observed": 0.48484848484848486
+                },
+                {
+                  "bin": 6,
+                  "count": 6,
+                  "predicted": 0.6288233952311323,
+                  "observed": 0.3333333333333333
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 194,
+            "log_loss": 1.1028259964191547,
+            "brier": 0.6705197189152227,
+            "calibration": [
+              {
+                "bin": 0,
+                "count": 2,
+                "predicted": 0.09697027911445587,
+                "observed": 0.5
+              },
+              {
+                "bin": 1,
+                "count": 25,
+                "predicted": 0.16100997004647552,
+                "observed": 0.2
+              },
+              {
+                "bin": 2,
+                "count": 233,
+                "predicted": 0.2660214811564258,
+                "observed": 0.30472103004291845
+              },
+              {
+                "bin": 3,
+                "count": 195,
+                "predicted": 0.34213095249262415,
+                "observed": 0.3333333333333333
+              },
+              {
+                "bin": 4,
+                "count": 91,
+                "predicted": 0.4453435862359298,
+                "observed": 0.4065934065934066
+              },
+              {
+                "bin": 5,
+                "count": 25,
+                "predicted": 0.5355240760271868,
+                "observed": 0.36
+              },
+              {
+                "bin": 6,
+                "count": 10,
+                "predicted": 0.6377387755284781,
+                "observed": 0.6
+              },
+              {
+                "bin": 7,
+                "count": 1,
+                "predicted": 0.7905133416661905,
+                "observed": 0.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 194,
+              "log_loss": 1.1028259964191547,
+              "brier": 0.6705197189152227,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 2,
+                  "predicted": 0.09697027911445587,
+                  "observed": 0.5
+                },
+                {
+                  "bin": 1,
+                  "count": 25,
+                  "predicted": 0.16100997004647552,
+                  "observed": 0.2
+                },
+                {
+                  "bin": 2,
+                  "count": 233,
+                  "predicted": 0.2660214811564258,
+                  "observed": 0.30472103004291845
+                },
+                {
+                  "bin": 3,
+                  "count": 195,
+                  "predicted": 0.34213095249262415,
+                  "observed": 0.3333333333333333
+                },
+                {
+                  "bin": 4,
+                  "count": 91,
+                  "predicted": 0.4453435862359298,
+                  "observed": 0.4065934065934066
+                },
+                {
+                  "bin": 5,
+                  "count": 25,
+                  "predicted": 0.5355240760271868,
+                  "observed": 0.36
+                },
+                {
+                  "bin": 6,
+                  "count": 10,
+                  "predicted": 0.6377387755284781,
+                  "observed": 0.6
+                },
+                {
+                  "bin": 7,
+                  "count": 1,
+                  "predicted": 0.7905133416661905,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 194,
+              "log_loss": 1.8730375510952522,
+              "brier": 0.8289613599104992,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 723,
+                  "predicted": 0.042241887101675465,
+                  "observed": 0.04979253112033195
+                },
+                {
+                  "bin": 1,
+                  "count": 421,
+                  "predicted": 0.1503913514400688,
+                  "observed": 0.15914489311163896
+                },
+                {
+                  "bin": 2,
+                  "count": 407,
+                  "predicted": 0.2452534829108079,
+                  "observed": 0.22358722358722358
+                },
+                {
+                  "bin": 3,
+                  "count": 1,
+                  "predicted": 0.32618912452085946,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "hafu": {
+              "count": 194,
+              "log_loss": 1.9335392114979557,
+              "brier": 0.8437517092769223,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 858,
+                  "predicted": 0.03805486976202435,
+                  "observed": 0.04079254079254079
+                },
+                {
+                  "bin": 1,
+                  "count": 619,
+                  "predicted": 0.15364132593118016,
+                  "observed": 0.16962843295638125
+                },
+                {
+                  "bin": 2,
+                  "count": 241,
+                  "predicted": 0.23312221072301947,
+                  "observed": 0.2074688796680498
+                },
+                {
+                  "bin": 3,
+                  "count": 25,
+                  "predicted": 0.3447810299620711,
+                  "observed": 0.12
+                },
+                {
+                  "bin": 4,
+                  "count": 2,
+                  "predicted": 0.4467835756079048,
+                  "observed": 0.5
+                },
+                {
+                  "bin": 5,
+                  "count": 1,
+                  "predicted": 0.5493953082672759,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "crs": {
+              "count": 194,
+              "log_loss": 2.861306873882763,
+              "brier": 0.9274809976768468,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 5509,
+                  "predicted": 0.02328856245664728,
+                  "observed": 0.02323470684334725
+                },
+                {
+                  "bin": 1,
+                  "count": 504,
+                  "predicted": 0.12996057304162043,
+                  "observed": 0.13095238095238096
+                },
+                {
+                  "bin": 2,
+                  "count": 1,
+                  "predicted": 0.20318061335342186,
+                  "observed": 0.0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "elo_logistic",
+          "key": "elo_logistic:180",
+          "name": "Elo 逻辑回归",
+          "supported_markets": [
+            "had"
+          ],
+          "validation": {
+            "count": 172,
+            "log_loss": 1.0820615044201107,
+            "brier": 0.6548959193713736,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 5,
+                "predicted": 0.17878278684986118,
+                "observed": 0.2
+              },
+              {
+                "bin": 2,
+                "count": 256,
+                "predicted": 0.2730283407199943,
+                "observed": 0.2890625
+              },
+              {
+                "bin": 3,
+                "count": 136,
+                "predicted": 0.34921483946354487,
+                "observed": 0.33088235294117646
+              },
+              {
+                "bin": 4,
+                "count": 106,
+                "predicted": 0.44069742372660553,
+                "observed": 0.4056603773584906
+              },
+              {
+                "bin": 5,
+                "count": 12,
+                "predicted": 0.5326905129718975,
+                "observed": 0.6666666666666666
+              },
+              {
+                "bin": 6,
+                "count": 1,
+                "predicted": 0.6113996037070834,
+                "observed": 1.0
+              }
+            ]
+          },
+          "by_competition": {
+            "kr.k1": {
+              "count": 172,
+              "log_loss": 1.0820615044201107,
+              "brier": 0.6548959193713736,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 5,
+                  "predicted": 0.17878278684986118,
+                  "observed": 0.2
+                },
+                {
+                  "bin": 2,
+                  "count": 256,
+                  "predicted": 0.2730283407199943,
+                  "observed": 0.2890625
+                },
+                {
+                  "bin": 3,
+                  "count": 136,
+                  "predicted": 0.34921483946354487,
+                  "observed": 0.33088235294117646
+                },
+                {
+                  "bin": 4,
+                  "count": 106,
+                  "predicted": 0.44069742372660553,
+                  "observed": 0.4056603773584906
+                },
+                {
+                  "bin": 5,
+                  "count": 12,
+                  "predicted": 0.5326905129718975,
+                  "observed": 0.6666666666666666
+                },
+                {
+                  "bin": 6,
+                  "count": 1,
+                  "predicted": 0.6113996037070834,
+                  "observed": 1.0
+                }
+              ]
+            }
+          },
+          "eligible_for_target": false,
+          "test": {
+            "count": 194,
+            "log_loss": 1.102184249790353,
+            "brier": 0.6697296315618031,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 4,
+                "predicted": 0.19117999604674396,
+                "observed": 0.0
+              },
+              {
+                "bin": 2,
+                "count": 249,
+                "predicted": 0.2744083185503358,
+                "observed": 0.3253012048192771
+              },
+              {
+                "bin": 3,
+                "count": 214,
+                "predicted": 0.3428860747444279,
+                "observed": 0.34579439252336447
+              },
+              {
+                "bin": 4,
+                "count": 102,
+                "predicted": 0.43896964074955935,
+                "observed": 0.3137254901960784
+              },
+              {
+                "bin": 5,
+                "count": 13,
+                "predicted": 0.519621949616676,
+                "observed": 0.5384615384615384
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 194,
+              "log_loss": 1.102184249790353,
+              "brier": 0.6697296315618031,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 4,
+                  "predicted": 0.19117999604674396,
+                  "observed": 0.0
+                },
+                {
+                  "bin": 2,
+                  "count": 249,
+                  "predicted": 0.2744083185503358,
+                  "observed": 0.3253012048192771
+                },
+                {
+                  "bin": 3,
+                  "count": 214,
+                  "predicted": 0.3428860747444279,
+                  "observed": 0.34579439252336447
+                },
+                {
+                  "bin": 4,
+                  "count": 102,
+                  "predicted": 0.43896964074955935,
+                  "observed": 0.3137254901960784
+                },
+                {
+                  "bin": 5,
+                  "count": 13,
+                  "predicted": 0.519621949616676,
+                  "observed": 0.5384615384615384
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 0
+            },
+            "hafu": {
+              "count": 0
+            },
+            "crs": {
+              "count": 0
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "catboost",
+          "key": "catboost:180",
+          "name": "CatBoost 胜平负",
+          "supported_markets": [
+            "had"
+          ],
+          "validation": {
+            "count": 172,
+            "log_loss": 1.0856353771108445,
+            "brier": 0.6571992459106528,
+            "calibration": [
+              {
+                "bin": 2,
+                "count": 248,
+                "predicted": 0.2717172441292117,
+                "observed": 0.2903225806451613
+              },
+              {
+                "bin": 3,
+                "count": 169,
+                "predicted": 0.3530875024778746,
+                "observed": 0.3254437869822485
+              },
+              {
+                "bin": 4,
+                "count": 91,
+                "predicted": 0.4491695427061646,
+                "observed": 0.43956043956043955
+              },
+              {
+                "bin": 5,
+                "count": 8,
+                "predicted": 0.5084883938667137,
+                "observed": 0.625
+              }
+            ]
+          },
+          "by_competition": {
+            "kr.k1": {
+              "count": 172,
+              "log_loss": 1.0856353771108445,
+              "brier": 0.6571992459106528,
+              "calibration": [
+                {
+                  "bin": 2,
+                  "count": 248,
+                  "predicted": 0.2717172441292117,
+                  "observed": 0.2903225806451613
+                },
+                {
+                  "bin": 3,
+                  "count": 169,
+                  "predicted": 0.3530875024778746,
+                  "observed": 0.3254437869822485
+                },
+                {
+                  "bin": 4,
+                  "count": 91,
+                  "predicted": 0.4491695427061646,
+                  "observed": 0.43956043956043955
+                },
+                {
+                  "bin": 5,
+                  "count": 8,
+                  "predicted": 0.5084883938667137,
+                  "observed": 0.625
+                }
+              ]
+            }
+          },
+          "eligible_for_target": false,
+          "test": {
+            "count": 194,
+            "log_loss": 1.1056227516076045,
+            "brier": 0.6711557361412853,
+            "calibration": [
+              {
+                "bin": 2,
+                "count": 219,
+                "predicted": 0.2752750311559209,
+                "observed": 0.3105022831050228
+              },
+              {
+                "bin": 3,
+                "count": 264,
+                "predicted": 0.34165581947318746,
+                "observed": 0.3446969696969697
+              },
+              {
+                "bin": 4,
+                "count": 98,
+                "predicted": 0.43883195025150334,
+                "observed": 0.3469387755102041
+              },
+              {
+                "bin": 5,
+                "count": 1,
+                "predicted": 0.5121007112845108,
+                "observed": 1.0
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 194,
+              "log_loss": 1.1056227516076045,
+              "brier": 0.6711557361412853,
+              "calibration": [
+                {
+                  "bin": 2,
+                  "count": 219,
+                  "predicted": 0.2752750311559209,
+                  "observed": 0.3105022831050228
+                },
+                {
+                  "bin": 3,
+                  "count": 264,
+                  "predicted": 0.34165581947318746,
+                  "observed": 0.3446969696969697
+                },
+                {
+                  "bin": 4,
+                  "count": 98,
+                  "predicted": 0.43883195025150334,
+                  "observed": 0.3469387755102041
+                },
+                {
+                  "bin": 5,
+                  "count": 1,
+                  "predicted": 0.5121007112845108,
+                  "observed": 1.0
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 0
+            },
+            "hafu": {
+              "count": 0
+            },
+            "crs": {
+              "count": 0
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "lightgbm_goals",
+          "key": "lightgbm_goals:180",
+          "name": "LightGBM 进球",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 172,
+            "log_loss": 1.0907874486910092,
+            "brier": 0.6610512741590246,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 1,
+                "predicted": 0.19836769997787612,
+                "observed": 1.0
+              },
+              {
+                "bin": 2,
+                "count": 239,
+                "predicted": 0.2602089327311978,
+                "observed": 0.28451882845188287
+              },
+              {
+                "bin": 3,
+                "count": 158,
+                "predicted": 0.3484504851664244,
+                "observed": 0.34810126582278483
+              },
+              {
+                "bin": 4,
+                "count": 87,
+                "predicted": 0.4398322238474559,
+                "observed": 0.39080459770114945
+              },
+              {
+                "bin": 5,
+                "count": 31,
+                "predicted": 0.5255199111690999,
+                "observed": 0.45161290322580644
+              }
+            ]
+          },
+          "by_competition": {
+            "kr.k1": {
+              "count": 172,
+              "log_loss": 1.0907874486910092,
+              "brier": 0.6610512741590246,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 1,
+                  "predicted": 0.19836769997787612,
+                  "observed": 1.0
+                },
+                {
+                  "bin": 2,
+                  "count": 239,
+                  "predicted": 0.2602089327311978,
+                  "observed": 0.28451882845188287
+                },
+                {
+                  "bin": 3,
+                  "count": 158,
+                  "predicted": 0.3484504851664244,
+                  "observed": 0.34810126582278483
+                },
+                {
+                  "bin": 4,
+                  "count": 87,
+                  "predicted": 0.4398322238474559,
+                  "observed": 0.39080459770114945
+                },
+                {
+                  "bin": 5,
+                  "count": 31,
+                  "predicted": 0.5255199111690999,
+                  "observed": 0.45161290322580644
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 194,
+            "log_loss": 1.109473749902292,
+            "brier": 0.6742431077157681,
+            "calibration": [
+              {
+                "bin": 2,
+                "count": 264,
+                "predicted": 0.26753083801877,
+                "observed": 0.32196969696969696
+              },
+              {
+                "bin": 3,
+                "count": 196,
+                "predicted": 0.35179539397493487,
+                "observed": 0.336734693877551
+              },
+              {
+                "bin": 4,
+                "count": 114,
+                "predicted": 0.4398614839589795,
+                "observed": 0.3508771929824561
+              },
+              {
+                "bin": 5,
+                "count": 8,
+                "predicted": 0.5344690465792244,
+                "observed": 0.375
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 194,
+              "log_loss": 1.109473749902292,
+              "brier": 0.6742431077157681,
+              "calibration": [
+                {
+                  "bin": 2,
+                  "count": 264,
+                  "predicted": 0.26753083801877,
+                  "observed": 0.32196969696969696
+                },
+                {
+                  "bin": 3,
+                  "count": 196,
+                  "predicted": 0.35179539397493487,
+                  "observed": 0.336734693877551
+                },
+                {
+                  "bin": 4,
+                  "count": 114,
+                  "predicted": 0.4398614839589795,
+                  "observed": 0.3508771929824561
+                },
+                {
+                  "bin": 5,
+                  "count": 8,
+                  "predicted": 0.5344690465792244,
+                  "observed": 0.375
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 194,
+              "log_loss": 1.8530757348935774,
+              "brier": 0.8225498590905481,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 752,
+                  "predicted": 0.046650826113508015,
+                  "observed": 0.057180851063829786
+                },
+                {
+                  "bin": 1,
+                  "count": 316,
+                  "predicted": 0.14807239009832293,
+                  "observed": 0.13291139240506328
+                },
+                {
+                  "bin": 2,
+                  "count": 484,
+                  "predicted": 0.23166880886688412,
+                  "observed": 0.22520661157024793
+                }
+              ]
+            },
+            "hafu": {
+              "count": 194,
+              "log_loss": 1.9378981495844416,
+              "brier": 0.8436727814477837,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 790,
+                  "predicted": 0.03610532125114591,
+                  "observed": 0.03164556962025317
+                },
+                {
+                  "bin": 1,
+                  "count": 767,
+                  "predicted": 0.15874070266558793,
+                  "observed": 0.1773142112125163
+                },
+                {
+                  "bin": 2,
+                  "count": 182,
+                  "predicted": 0.2282743751292589,
+                  "observed": 0.1813186813186813
+                },
+                {
+                  "bin": 3,
+                  "count": 7,
+                  "predicted": 0.31096299908052055,
+                  "observed": 0.0
+                }
+              ]
+            },
+            "crs": {
+              "count": 194,
+              "log_loss": 2.8453177112815635,
+              "brier": 0.9242298094189332,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 5603,
+                  "predicted": 0.025837187033319723,
+                  "observed": 0.025700517579867927
+                },
+                {
+                  "bin": 1,
+                  "count": 411,
+                  "predicted": 0.11979134075987735,
+                  "observed": 0.12165450121654502
+                }
+              ]
+            }
+          }
+        },
+        {
+          "mode": "separate",
+          "half_life": 180,
+          "kind": "dynamic_gamma",
+          "key": "dynamic_gamma:180",
+          "name": "动态 Gamma–Poisson",
+          "supported_markets": [
+            "had",
+            "hhad",
+            "ttg",
+            "crs",
+            "hafu"
+          ],
+          "validation": {
+            "count": 172,
+            "log_loss": 1.0821375186759183,
+            "brier": 0.6553171192803992,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 7,
+                "predicted": 0.184757601211258,
+                "observed": 0.2857142857142857
+              },
+              {
+                "bin": 2,
+                "count": 239,
+                "predicted": 0.26301719508615173,
+                "observed": 0.27615062761506276
+              },
+              {
+                "bin": 3,
+                "count": 152,
+                "predicted": 0.34918556417174873,
+                "observed": 0.35526315789473684
+              },
+              {
+                "bin": 4,
+                "count": 94,
+                "predicted": 0.4450818834747382,
+                "observed": 0.40425531914893614
+              },
+              {
+                "bin": 5,
+                "count": 22,
+                "predicted": 0.5289504255696198,
+                "observed": 0.5
+              },
+              {
+                "bin": 6,
+                "count": 2,
+                "predicted": 0.6473875013340287,
+                "observed": 0.5
+              }
+            ]
+          },
+          "by_competition": {
+            "kr.k1": {
+              "count": 172,
+              "log_loss": 1.0821375186759183,
+              "brier": 0.6553171192803992,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 7,
+                  "predicted": 0.184757601211258,
+                  "observed": 0.2857142857142857
+                },
+                {
+                  "bin": 2,
+                  "count": 239,
+                  "predicted": 0.26301719508615173,
+                  "observed": 0.27615062761506276
+                },
+                {
+                  "bin": 3,
+                  "count": 152,
+                  "predicted": 0.34918556417174873,
+                  "observed": 0.35526315789473684
+                },
+                {
+                  "bin": 4,
+                  "count": 94,
+                  "predicted": 0.4450818834747382,
+                  "observed": 0.40425531914893614
+                },
+                {
+                  "bin": 5,
+                  "count": 22,
+                  "predicted": 0.5289504255696198,
+                  "observed": 0.5
+                },
+                {
+                  "bin": 6,
+                  "count": 2,
+                  "predicted": 0.6473875013340287,
+                  "observed": 0.5
+                }
+              ]
+            }
+          },
+          "eligible_for_target": true,
+          "test": {
+            "count": 194,
+            "log_loss": 1.0997912485777652,
+            "brier": 0.6677066410083465,
+            "calibration": [
+              {
+                "bin": 1,
+                "count": 12,
+                "predicted": 0.1746875070234072,
+                "observed": 0.16666666666666666
+              },
+              {
+                "bin": 2,
+                "count": 256,
+                "predicted": 0.2654070042416663,
+                "observed": 0.3125
+              },
+              {
+                "bin": 3,
+                "count": 186,
+                "predicted": 0.3467461992724161,
+                "observed": 0.3172043010752688
+              },
+              {
+                "bin": 4,
+                "count": 105,
+                "predicted": 0.44307166013619026,
+                "observed": 0.42857142857142855
+              },
+              {
+                "bin": 5,
+                "count": 19,
+                "predicted": 0.5481361625635238,
+                "observed": 0.2631578947368421
+              },
+              {
+                "bin": 6,
+                "count": 4,
+                "predicted": 0.6319130905440427,
+                "observed": 0.75
+              }
+            ]
+          },
+          "markets": {
+            "had": {
+              "count": 194,
+              "log_loss": 1.0997912485777652,
+              "brier": 0.6677066410083465,
+              "calibration": [
+                {
+                  "bin": 1,
+                  "count": 12,
+                  "predicted": 0.1746875070234072,
+                  "observed": 0.16666666666666666
+                },
+                {
+                  "bin": 2,
+                  "count": 256,
+                  "predicted": 0.2654070042416663,
+                  "observed": 0.3125
+                },
+                {
+                  "bin": 3,
+                  "count": 186,
+                  "predicted": 0.3467461992724161,
+                  "observed": 0.3172043010752688
+                },
+                {
+                  "bin": 4,
+                  "count": 105,
+                  "predicted": 0.44307166013619026,
+                  "observed": 0.42857142857142855
+                },
+                {
+                  "bin": 5,
+                  "count": 19,
+                  "predicted": 0.5481361625635238,
+                  "observed": 0.2631578947368421
+                },
+                {
+                  "bin": 6,
+                  "count": 4,
+                  "predicted": 0.6319130905440427,
+                  "observed": 0.75
+                }
+              ]
+            },
+            "hhad": {
+              "count": 0
+            },
+            "ttg": {
+              "count": 194,
+              "log_loss": 1.8633305750768148,
+              "brier": 0.8276228003445032,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 713,
+                  "predicted": 0.04407900129284008,
+                  "observed": 0.047685834502103785
+                },
+                {
+                  "bin": 1,
+                  "count": 408,
+                  "predicted": 0.14828067805305453,
+                  "observed": 0.1568627450980392
+                },
+                {
+                  "bin": 2,
+                  "count": 431,
+                  "predicted": 0.2368286668968881,
+                  "observed": 0.22273781902552203
+                }
+              ]
+            },
+            "hafu": {
+              "count": 194,
+              "log_loss": 1.9282162669568579,
+              "brier": 0.8417002992552589,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 810,
+                  "predicted": 0.03387629742541214,
+                  "observed": 0.0345679012345679
+                },
+                {
+                  "bin": 1,
+                  "count": 696,
+                  "predicted": 0.15621297702061132,
+                  "observed": 0.17097701149425287
+                },
+                {
+                  "bin": 2,
+                  "count": 218,
+                  "predicted": 0.23062056966143102,
+                  "observed": 0.2018348623853211
+                },
+                {
+                  "bin": 3,
+                  "count": 20,
+                  "predicted": 0.3355828396679375,
+                  "observed": 0.1
+                },
+                {
+                  "bin": 4,
+                  "count": 2,
+                  "predicted": 0.42451304975996346,
+                  "observed": 0.5
+                }
+              ]
+            },
+            "crs": {
+              "count": 194,
+              "log_loss": 2.846634028237509,
+              "brier": 0.9267981194790585,
+              "calibration": [
+                {
+                  "bin": 0,
+                  "count": 5454,
+                  "predicted": 0.02307894351527182,
+                  "observed": 0.023285661899523285
+                },
+                {
+                  "bin": 1,
+                  "count": 560,
+                  "predicted": 0.12165614654947769,
+                  "observed": 0.11964285714285715
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "data_audit": {
+        "rows": 884,
+        "half_rows": 884,
+        "historical_odds_rows": 0,
+        "availability_policy": "historical_7_day_lag_or_observed",
+        "missing_features": [
+          "xG",
+          "伤停",
+          "阵容",
+          "外盘"
+        ]
+      },
+      "limitations": [
+        "已查看的历史测试段仅用于探索；需要独立前瞻验证",
+        "赛果可用时间沿用历史模拟假设；不等同当年采集快照",
+        "未使用 xG、伤停、阵容或外盘；分类器只输出胜平负",
+        "半全场仍为条件二项分配；动态 Gamma 使用近似共轭滤波，非联合 MCMC"
+      ]
+    }
+  }
+}

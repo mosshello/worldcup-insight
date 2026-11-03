@@ -1,0 +1,149 @@
+[
+  {
+    "id": "jp.j1",
+    "name": "日职",
+    "country": "JP",
+    "region": "AFC",
+    "official_url": "https://data.j-league.or.jp/SFTP01/",
+    "rule_source": "https://aboutj.jleague.jp/corporate/terminology/",
+    "providers": {
+      "sporttery": "JD1",
+      "espn": "jpn.1",
+      "odds_api": "soccer_japan_j_league"
+    },
+    "seasons": [
+      {
+        "id": "2026-special",
+        "label": "2026 百年构想",
+        "start": "2026-02-01",
+        "end": "2026-07-01",
+        "format": "special",
+        "stages": [
+          "regional",
+          "playoff"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2026-27",
+        "label": "2026/27",
+        "start": "2026-08-01",
+        "end": "2027-07-01",
+        "format": "league",
+        "stages": [
+          "regular"
+        ],
+        "shootout_separate": true
+      }
+    ],
+    "training_enabled": true,
+    "target_period": "regular_time",
+    "training_scope": "competition_only",
+    "cross_competition_features": false,
+    "training_stage_policy": {
+      "2023": [
+        "regular"
+      ],
+      "2024": [
+        "regular"
+      ],
+      "2025": [
+        "regular"
+      ],
+      "2026-27": [
+        "regular"
+      ],
+      "2026-special": [
+        "special_east",
+        "special_west",
+        "playoff_1_2",
+        "playoff_3_4",
+        "playoff_5_6",
+        "playoff_7_8",
+        "playoff_9_10",
+        "playoff_11_12",
+        "playoff_13_14",
+        "playoff_15_16",
+        "playoff_17_18",
+        "playoff_19_20"
+      ]
+    }
+  },
+  {
+    "id": "kr.k1",
+    "name": "韩职",
+    "country": "KR",
+    "region": "AFC",
+    "official_url": "https://www.kleague.com/",
+    "rule_source": "https://www.kleague.com/about/competition.do",
+    "providers": {
+      "sporttery": "KD1",
+      "odds_api": "soccer_korea_kleague1"
+    },
+    "seasons": [
+      {
+        "id": "2026",
+        "label": "2026",
+        "start": "2026-01-01",
+        "end": "2027-01-01",
+        "format": "split",
+        "stages": [
+          "regular",
+          "final_a",
+          "final_b"
+        ],
+        "shootout_separate": true
+      }
+    ],
+    "training_enabled": true,
+    "target_period": "regular_time",
+    "training_scope": "competition_only",
+    "cross_competition_features": false,
+    "training_stage_policy": {
+      "2023": [
+        "regular",
+        "final_a",
+        "final_b"
+      ],
+      "2024": [
+        "regular",
+        "final_a",
+        "final_b"
+      ],
+      "2025": [
+        "regular",
+        "final_a",
+        "final_b"
+      ],
+      "2026": [
+        "regular",
+        "final_a",
+        "final_b"
+      ]
+    }
+  },
+  {
+    "id": "uefa.ucl",
+    "name": "欧冠",
+    "country": null,
+    "region": "UEFA",
+    "providers": {},
+    "seasons": [],
+    "training_enabled": false,
+    "target_period": "regular_time",
+    "training_scope": "competition_only",
+    "cross_competition_features": false
+  },
+  {
+    "id": "jp.emperors_cup",
+    "name": "天皇杯",
+    "country": "JP",
+    "region": "AFC",
+    "providers": {},
+    "seasons": [],
+    "training_enabled": false,
+    "target_period": "regular_time",
+    "training_scope": "competition_only",
+    "cross_competition_features": false
+  }
+]

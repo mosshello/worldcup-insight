@@ -1,0 +1,28 @@
+{
+  "id": "upset-research-2026-11-02",
+  "status": "research_only",
+  "period": "regular_time",
+  "favorite_min_probability": 0.5,
+  "longshot_max_market_probability": 0.25,
+  "watch_min_probability": 0.25,
+  "watch_min_market_gap": 0.05,
+  "max_odds_age_seconds": 10800,
+  "calibration_methods": ["identity", "temperature", "temperature_bias"],
+  "calibration_fit_fraction": 0.6,
+  "calibration_min_fit": 60,
+  "calibration_min_select": 30,
+  "calibration_ridge": 0.02,
+  "minimum_selection_log_loss_gain": 0.005,
+  "bootstrap_draws": 2000,
+  "bootstrap_seed": 42,
+  "market_training_min_rows": 300,
+  "market_training_min_underdog_wins": 30,
+  "notes": [
+    "市场热门按同一赛前截止的完整胜平负去水概率定义，不按赛后结果或球队名定义",
+    "热门不胜、非热门球队获胜、平局分别评价；三者不能合并为同一个命中率",
+    "历史无赔率只做模型反向结果诊断，不冒充市场冷门验证",
+    "门槛为本次事先固定的实验规则，不代表已验证的盈利策略或通用充分样本量",
+    "不提高冷门样本权重或过采样后直接把输出作为真实概率",
+    "训练、校准、选用分离；当前历史测试段已查看，仅作探索"
+  ]
+}
