@@ -147,10 +147,10 @@ def attach_audit(rows, audit_path):
         r["kickoff_review_required"] = bool(check.get("kickoff_review_required"))
 
 
-def collect(output=STAGING, offline=False, progress=None, specs=SEASONS):
+def collect(output=STAGING, offline=False, progress=None, specs=SEASONS, raw_root=None):
     output = Path(output)
     # Immutable snapshots per UTC day for current seasons; history is reusable.
-    raw_root = output.parent / "history_raw"
+    raw_root = Path(raw_root) if raw_root is not None else output.parent / "history_raw"
     history = Archive(raw_root / "completed_seasons", offline=offline)
     current = Archive(raw_root / datetime.now(timezone.utc).strftime("%Y-%m-%d"), offline=offline)
     all_rows, coverage, sources, fixtures = [], [], [], []

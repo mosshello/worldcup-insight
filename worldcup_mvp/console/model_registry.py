@@ -1,5 +1,6 @@
 """Immutable, competition-owned datasets, candidate runs and observation pointers."""
 from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
 import json
 import os
@@ -12,9 +13,28 @@ from .catalog import catalog
 from .store import ROOT, fingerprint, now_iso
 
 REGISTRY = ROOT / "data" / "training" / "competitions"
+_validated_reads = ContextVar('football_validated_reads', default=None)
+
+
+@contextmanager
+def validated_read_scope():
+    """A read-only page request may reuse its fully validated artifact snapshot.
+
+    Never retained between requests or used by prediction/selection writes.
+    Each distinct registry, competition and run is still independently checked.
+    """
+    token = _validated_reads.set({})
+    try:
+        yield
+    finally:
+        _validated_reads.reset(token)
+
 MANIFEST_FIELDS = ("usage_mode", "local_training_authorized", "authorization_reference",
     "rights_status", "commercial_use_permitted", "training_permitted", "license_reference",
-    "source_url", "availability_policy", "quality_basis")
+    "source_url", "availability_policy", "quality_basis", "source_receipt", "source_receipts",
+    "sample_policy", "continuity_policy", "excluded", "unique_source_events", "prepared_at",
+    "source_digest", "source_version", "source_manifest", "raw_digest", "coverage_denominator",
+    "source_competition", "source_competitions", "qualifying_enabled", "collection_status", "collection_errors")
 
 
 def competition_spec(competition_id):
@@ -52,9 +72,9 @@ def scoped_dataset(data, competition_id):
     return value
 
 
-def validate_scope(data, competition_id):
+def validate_scope(data, competition_id, *, admission=True):
     spec = competition_spec(competition_id)
-    if spec.get("training_enabled", True) is not True:
+    if admission and spec.get("training_enabled", True) is not True:
         raise ValueError("该赛事尚未完成数据与规则接入")
     if data.get("manifest", {}).get("competition_id") != competition_id or data["manifest"].get("training_scope") != "competition_only":
         raise ValueError("训练数据缺少独立赛事范围")
@@ -64,7 +84,7 @@ def validate_scope(data, competition_id):
         raise ValueError("球队映射混入其他赛事")
     rows = training.validate_dataset(data)
     policy = spec.get("training_stage_policy", {})
-    if any(row["stage"] not in policy.get(row["season"], []) for row in rows):
+    if admission and any(row["stage"] not in policy.get(row["season"], []) for row in rows):
         raise ValueError("比赛赛季或阶段未登记到该赛事训练规则")
     return rows
 
@@ -83,7 +103,24 @@ def import_competition(data, competition_id):
     return {"competition_id": competition_id, "dataset_digest": digest, "rows": len(value["matches"])}
 
 
-def dataset(competition_id, digest=None):
+def import_batch(data, competition_id=None):
+    """Explicit legacy batch migration; report every independent admission result."""
+    if not isinstance(data, dict) or not isinstance(data.get("matches"), list):
+        raise ValueError("训练数据格式无效")
+    ids = sorted({str(row.get("competition_id") or "") for row in data['matches'] if isinstance(row, dict)})
+    if competition_id is not None:
+        ids = [competition_id]
+    partitions = []
+    for cid in ids:
+        try:
+            partitions.append({**import_competition(data, cid), "status": "imported"})
+        except (ValueError, KeyError, TypeError, OSError) as exc:
+            partitions.append({"competition_id": cid, "status": "rejected", "rows": 0, "error": str(exc)})
+    return {"partitions": partitions, "imported": sum(p['status'] == 'imported' for p in partitions),
+            "rejected": sum(p['status'] == 'rejected' for p in partitions)}
+
+
+def dataset(competition_id, digest=None, *, admission=True):
     root = directory(competition_id)
     digest = digest or read(root / "dataset.json")["digest"]
     if not re.fullmatch(r"[0-9a-f]{64}", digest):
@@ -91,13 +128,15 @@ def dataset(competition_id, digest=None):
     value = read(root / "datasets" / (digest + ".json"))
     if fingerprint(value) != digest:
         raise ValueError("训练数据版本校验失败")
-    validate_scope(value, competition_id)
+    validate_scope(value, competition_id, admission=admission)
     return value
 
 
 @contextmanager
-def training_lock(competition_id):
-    path = directory(competition_id) / "training.lock"
+def training_lock(competition_id, name="training"):
+    if name not in ("training", "selection"):
+        raise ValueError("操作锁无效")
+    path = directory(competition_id) / (name + ".lock")
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a+b") as handle:
         if path.stat().st_size == 0:
@@ -111,7 +150,7 @@ def training_lock(competition_id):
                 import fcntl
                 fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
-            raise ValueError("该赛事已有训练任务") from None
+            raise ValueError("该赛事已有训练任务" if name == "training" else "模型选择正在更新") from None
         try:
             yield
         finally:
@@ -158,6 +197,16 @@ def train(competition_id, progress=None, target='full_time'):
 
 
 def load_run(competition_id, run_id):
+    cache = _validated_reads.get()
+    if cache is None:
+        return _load_run(competition_id, run_id)
+    key = (str(REGISTRY.resolve()), competition_id, run_id)
+    if key not in cache:
+        cache[key] = _load_run(competition_id, run_id)
+    return cache[key]
+
+
+def _load_run(competition_id, run_id):
     if not isinstance(run_id, str) or not re.fullmatch(r"[0-9a-f]{32}", run_id):
         raise ValueError("模型运行标识无效")
     root = directory(competition_id) / "runs" / run_id
@@ -177,34 +226,103 @@ def load_run(competition_id, run_id):
         or report.get("model_id") != bundle.get("id")
         or bundle.get("digest") != fingerprint({k:v for k,v in bundle.items() if k != "digest"})):
         raise ValueError("模型、评估与独立赛事数据不一致")
-    data = dataset(competition_id, manifest["dataset_digest"])
+    data = dataset(competition_id, manifest["dataset_digest"], admission=False)
+    if bundle.get('cold_start_policy'):
+        from .cold_start import validate_binding
+        validate_binding(bundle, report)
+        policy = bundle['cold_start_policy']
+        report_id = policy['report_id']
+        if not isinstance(report_id,str) or not re.fullmatch(r'[0-9a-f]{32}',report_id):
+            raise ValueError('冷启动报告标识无效')
+        evidence = read(directory(competition_id)/'reports'/(report_id+'.json'))
+        if (evidence.get('id') != report_id or evidence.get('competition_id') != competition_id
+            or evidence.get('digest') != fingerprint({k:v for k,v in evidence.items() if k!='digest'})
+            or evidence['digest'] != policy['report_digest']
+            or evidence.get('dataset_digest') != bundle['dataset_digest']
+            or evidence.get('admission') != {k:v for k,v in policy.items() if k not in ('report_id','report_digest','dataset_digest')}):
+            raise ValueError('冷启动评估证据缺失或已变更')
     return manifest, bundle, report, data
 
 
-def select_observation(competition_id, run_id):
-    if run_id is None:
-        training.atomic_json(directory(competition_id) / "observation.json", {"run_id": None, "selected_at": now_iso()})
-        return {"competition_id": competition_id, "run_id": None}
-    manifest, _, _, _ = load_run(competition_id, run_id)
-    selection = {"run_id": run_id, "competition_id": competition_id, "selected_at": now_iso(), "model_id": manifest["model_id"]}
-    training.atomic_json(directory(competition_id) / "observation.json", selection)
-    return selection
+def select_observation(competition_id, run_id, expected_revision=None):
+    manifest = load_run(competition_id, run_id)[0] if run_id is not None else None
+    root = directory(competition_id)
+    with training_lock(competition_id, "selection"):
+        path = root / "observation.json"
+        prior = read(path) if path.exists() else {}
+        revision = prior.get("revision", 0)
+        if expected_revision is not None and expected_revision != revision:
+            raise ValueError("模型选择已更新，请刷新后重试")
+        selection = {"run_id": run_id, "competition_id": competition_id,
+                     "selected_at": now_iso(), "revision": revision + 1,
+                     "model_id": manifest["model_id"] if manifest else None}
+        training.atomic_json(root / "selections" / (uuid4().hex + ".json"),
+                             {"previous": prior, "selection": selection})
+        training.atomic_json(path, selection)
+        return selection
 
 
-def forecast(match, detail, now=None):
+def selection(competition_id):
+    path = directory(competition_id) / "observation.json"
+    value = read(path) if path.exists() else {"run_id": None, "model_id": None}
+    return {**value, "competition_id": competition_id, "revision": value.get("revision", 0)}
+
+
+def commit_lock(competition_id):
+    return training_lock(competition_id, "selection")
+
+
+def supported_markets(model, competition_id):
+    if model.get("supported_markets") is not None:
+        return model["supported_markets"]
+    if model.get("kind") in ("elo_logistic", "catboost"):
+        return ["had"]
+    return ["had", "hhad", "ttg", "crs"] + (["hafu"] if
+        model.get("half_shares", {}).get(competition_id) or model.get("half_share") else [])
+
+
+def evaluation_reports(competition_id):
+    reports = []
+    for path in (directory(competition_id) / "reports").glob("*.json"):
+        report = read(path)
+        if report.get("competition_id") != competition_id or report.get("digest") != fingerprint({k:v for k,v in report.items() if k != "digest"}):
+            raise ValueError("评估报告归属或版本校验失败")
+        reports.append(report)
+    return sorted(reports, key=lambda r:r["created_at"], reverse=True)
+
+
+def report_summary(report):
+    value = {k:v for k,v in report.items() if k not in ('records','warm_records','models')}
+    if 'candidates' in value:
+        value['candidates'] = [{k:v for k,v in c.items() if k != 'validation_records'} for c in value['candidates']]
+    for key in ('selected',):
+        if isinstance(value.get(key), dict):
+            value[key] = {k:v for k,v in value[key].items() if k != 'validation_records'}
+    if isinstance(value.get('selected_by_competition'), dict):
+        value['selected_by_competition'] = {cid:{k:v for k,v in config.items() if k != 'validation_records'}
+                                          for cid,config in value['selected_by_competition'].items()}
+    value['capabilities_verified'] = report.get('capabilities_verified', False)
+    value['feature_metadata_verified'] = bool(report.get('feature_metadata') or report.get('feature_metadata_by_candidate'))
+    value['artifact_replay_available'] = bool(report.get('records')) and all(r.get('artifact_ref') for r in report['records'])
+    return value
+
+
+def forecast(match, detail, now=None, allow_network=True):
     from .catalog import classify
     cid = classify(match)["id"]
     unavailable = lambda reason: {"status": "unavailable", "reason": reason, "markets": [], "competition_id": cid}
     try:
         if classify(match).get("season") is None:
             return unavailable("该比赛赛季尚未登记")
-        pointer = directory(cid) / "observation.json"
-        if not pointer.exists() or not read(pointer).get("run_id"):
+        pointer = selection(cid)
+        if not pointer.get("run_id"):
             return unavailable("该赛事尚未选用观察模型")
-        run_id = read(pointer)["run_id"]
+        run_id = pointer["run_id"]
         manifest, bundle, report, data = load_run(cid, run_id)
-        result = training.shadow_forecast(match, detail, now, artifacts=(bundle, report, data))
-        result.update(competition_id=cid, run_id=run_id, training_scope="competition_only")
+        result = training.shadow_forecast(match, detail, now, artifacts=(bundle, report, data), allow_network=allow_network)
+        result.update(competition_id=cid, run_id=run_id, training_scope="competition_only",
+                      selection_revision=pointer["revision"], rule_revision=fingerprint(competition_spec(cid)),
+                      supported_markets=supported_markets(bundle["models"][cid], cid))
         return result
     except (ValueError, OSError, KeyError, TypeError):
         return unavailable("该赛事模型或数据版本不可用")
@@ -215,7 +333,8 @@ def status(competition_id):
     root = directory(competition_id)
     value = {"competition_id": competition_id, "dataset_available": (root / "dataset.json").exists(), "ready": False,
         "reason": "尚无本赛事训练数据", "rows": 0, "leagues": [competition_id], "coverage": [],
-        "season_coverage": [], "evaluation": None, "model": None, "candidate": None, "runs": [],
+        "season_coverage": [], "evaluation": None, "current_evaluation": None,
+        "model": None, "candidate": None, "runs": [], "reports": [],
         "training_scope": "competition_only", "blockers": [], "usage_mode": None}
     try:
         if (root / "dataset.json").exists():
@@ -244,20 +363,40 @@ def status(competition_id):
             value[key] = {"id":bundle["id"], "run_id":run_id, "created_at":manifest["created_at"],
                 "dataset_digest":manifest["dataset_digest"], "competitions":[competition_id],
                 "status":"前瞻观察" if key == "model" else "候选模型",
-                "reference_check":training.reference_checks(report)[competition_id]}
+                "reference_check":training.reference_checks(report).get(competition_id),
+                "supported_markets":supported_markets(bundle['models'][competition_id], competition_id),
+                "trained_before":bundle['models'][competition_id]['trained_before'],
+                "kind":bundle['models'][competition_id]['kind'],
+                "selection_revision":selection(competition_id)["revision"] if key == "model" else None}
+            if key == "model":
+                value["current_evaluation"] = (report_summary(report)
+                    if report.get("evaluation_type") == "fixed_model" else None)
+                if report.get("evaluation_type") != "unassessed_artifact":
+                    value["current_strategy_evaluation"] = {**report_summary(report),
+                                                           "evaluation_type": "rolling_strategy"}
             if key == "candidate":
-                value["evaluation"] = {k:v for k,v in report.items() if k not in ("records", "models")}
+                value["evaluation"] = report_summary(report)
                 value["evaluation"]["reference_checks"] = training.reference_checks(report)
         except (ValueError, OSError, KeyError, TypeError) as exc:
             value["blockers"].append(f"{key}：{exc}")
     value["dataset_changed"] = bool(value["model"] and value["model"]["dataset_digest"] != value.get("dataset_digest"))
+    try:
+        reports = evaluation_reports(competition_id)
+        value["reports"] = [report_summary(report) for report in reports]
+        if value["model"]:
+            current = next((report for report in value["reports"] if report.get("run_id") == value["model"]["run_id"]
+                            and report.get("model_id") == value["model"]["id"] and report.get("evaluation_type") == "fixed_model"), None)
+            if current:
+                value["current_evaluation"] = current
+    except (ValueError, OSError, KeyError, TypeError) as exc:
+        value["blockers"].append(str(exc))
     for path in sorted((root / "runs").glob("*/manifest.json"), key=lambda p:p.stat().st_mtime, reverse=True):
         try:
             manifest, bundle, report, _ = load_run(competition_id, path.parent.name)
             value["runs"].append({"id":bundle["id"], "run_id":manifest["run_id"], "created_at":manifest["created_at"],
-                "dataset_digest":manifest["dataset_digest"], "reference_check":training.reference_checks(report)[competition_id],
+                "dataset_digest":manifest["dataset_digest"], "reference_check":training.reference_checks(report).get(competition_id),
                 "kind":bundle['models'][competition_id]['kind'],
-                "supported_markets":bundle['models'][competition_id].get('supported_markets', ['had','hhad','ttg','crs','hafu']),
+                "supported_markets":supported_markets(bundle['models'][competition_id], competition_id),
                 "trained_before":bundle['models'][competition_id]['trained_before'],
                 "evaluation_status":report.get('status'),
                 "limitations":report.get('limitations', report.get('blockers',[]))})

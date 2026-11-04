@@ -6,6 +6,29 @@ export const api = {
   sync: () => request("/api/v1/sync", { method: "POST", body: "{}" }),
   state: () => request("/api/v1/state"),
   capabilities: () => request("/api/v1/capabilities"),
+  workspace: (competition_id) =>
+    request(
+      `/api/v2/workspaces?competition_id=${encodeURIComponent(competition_id)}`,
+    ),
+  ingestHistory: (competition_id, request_key) =>
+    request(
+      `/api/v2/competitions/${encodeURIComponent(competition_id)}/ingestion`,
+      { method: "POST", body: JSON.stringify({ request_key }) },
+    ),
+  createTrainingTask: (competition_id, body) =>
+    request(
+      `/api/v2/competitions/${encodeURIComponent(competition_id)}/tasks`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  runReport: (competition_id, run_id) =>
+    request(
+      `/api/v2/competitions/${encodeURIComponent(competition_id)}/runs/${encodeURIComponent(run_id)}`,
+    ),
+  selectObservation: (competition_id, run_id, expected_revision) =>
+    request(
+      `/api/v2/competitions/${encodeURIComponent(competition_id)}/selection`,
+      { method: "POST", body: JSON.stringify({ run_id, expected_revision }) },
+    ),
   evaluate: (competition_id, target = "full_time") =>
     request("/api/v1/training/evaluate", {
       method: "POST",
@@ -17,10 +40,13 @@ export const api = {
       body: JSON.stringify({ competition_id, run_id }),
     }),
   importDataset: (competition_id, dataset) =>
-    request("/api/v1/datasets/import", {
-      method: "POST",
-      body: JSON.stringify({ competition_id, dataset }),
-    }),
+    request(
+      `/api/v2/competitions/${encodeURIComponent(competition_id)}/datasets/import`,
+      {
+        method: "POST",
+        body: JSON.stringify({ dataset }),
+      },
+    ),
   evidence: (id, body) =>
     request(`/api/v1/matches/${encodeURIComponent(id)}/evidence`, {
       method: "POST",
@@ -33,7 +59,7 @@ export const api = {
   predict: (id, narrative = false) =>
     request(`/api/v1/matches/${encodeURIComponent(id)}/predict`, {
       method: "POST",
-      body: JSON.stringify({ narrative }),
+      body: JSON.stringify({ narrative, expected_schema: 2, request_key: crypto.randomUUID() }),
     }),
   save: (kind, key, value) =>
     request("/api/v1/state", {

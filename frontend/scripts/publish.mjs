@@ -1,30 +1,27 @@
-import { readFileSync, writeFileSync, readdirSync, unlinkSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-const html = readFileSync(
-  new URL("../../web/console/index.html", import.meta.url),
-  "utf8",
-).replace(/\r+\n/g, "\n");
-writeFileSync(new URL("../../web/console/index.html", import.meta.url), html);
-writeFileSync(
-  new URL("../../web/club-preview.html", import.meta.url),
-  html.replaceAll("./assets/", "./console/assets/"),
-);
-const assets = fileURLToPath(
-  new URL("../../web/console/assets/", import.meta.url),
-);
-const keep = new Set(
-  [...html.matchAll(/\.\/assets\/([^"\s]+)/g)].map((m) => m[1]),
-);
-for (const name of keep) {
-  if (!name.endsWith(".js")) continue;
-  const code = readFileSync(path.join(assets, name), "utf8");
-  for (const m of code.matchAll(/["']\.\/([^"']+\.(?:js|css))["']/g))
-    keep.add(m[1]);
+import { readFileSync, writeFileSync, readdirSync, mkdirSync, copyFileSync, renameSync, existsSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root = resolve(fileURLToPath(new URL('../../', import.meta.url)));
+const source = join(root,'.ai/tmp/console-build');
+const target = join(root,'web/console');
+const html = readFileSync(join(source,'index.html'),'utf8').replace(/\r+\n/g,'\n');
+function copyTree(from,to) {
+  mkdirSync(to,{recursive:true});
+  for (const entry of readdirSync(from,{withFileTypes:true})) {
+    const path=join(from,entry.name), output=join(to,entry.name);
+    if(entry.isDirectory()) copyTree(path,output);
+    else copyFileSync(path,output);
+  }
 }
-for (const name of readdirSync(assets)) {
-  const target = path.resolve(assets, name);
-  if (path.dirname(target) !== path.resolve(assets))
-    throw new Error("Invalid asset path");
-  if (/^[\w-]+\.(?:js|css)$/.test(name) && !keep.has(name)) unlinkSync(target);
+copyTree(join(source,'assets'),join(target,'assets'));
+for (const match of html.matchAll(/(?:src|href)="\.\/([^"#]+)"/g)) {
+  if (!existsSync(join(target,match[1]))) throw new Error('Missing published asset: '+match[1]);
 }
+function atomic(path,value) {
+  writeFileSync(path+'.next',value);
+  renameSync(path+'.next',path);
+}
+if(existsSync(join(target,'index.html'))) copyFileSync(join(target,'index.html'),join(target,'index.previous.html'));
+atomic(join(target,'index.html'),html);
+atomic(join(root,'web/club-preview.html'),html.replaceAll('./assets/','./console/assets/'));
+console.log('Published verified assets; prior assets retained.');

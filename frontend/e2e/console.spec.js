@@ -1,5 +1,69 @@
 import { test, expect } from "@playwright/test";
 
+for (const startRoute of ['reviews', 'matches']) {
+  test(`review notification opens its match from ${startRoute} and reopens without losing drafts`, async ({ page }) => {
+    const { match } = await setup(page);
+    const first = { ...match, home: '通知主队', away: '通知客队', date: '2026-11-04',
+      score: '2-1', status: '已分析', prediction: null, versions: [],
+      has_prediction: false, ai_review: { status: 'no_prediction' },
+      postmatch_review: { status: 'confirmed', summary: '通知对应比赛', findings: [], recommendations: [] } };
+    const second = { ...first, id: 'sporttery:second', home: '另一主队', away: '另一客队' };
+    await page.route('**/api/v1/reviews', route => route.fulfill({ json: {
+      success: true, reviews: [first, second], ai_review_config: { configured: false, enabled: true },
+    } }));
+    await page.route('**/api/v1/review-updates*', route => {
+      const after = new URL(route.request().url()).searchParams.get('after');
+      return route.fulfill({ json: { success: true, cursor: after === null ? 0 : 1,
+        updates: after === '0' ? [{ id: 1, match_id: first.id,
+          fixture: '通知主队 vs 通知客队', status: 'confirmed' }] : [] } });
+    });
+    await page.goto(`/club-preview.html#/${startRoute}`);
+    const notice = page.locator('main > [role=status]').getByRole('link', { name: '查看复盘' });
+    await expect(notice).toBeVisible({ timeout: 10000 });
+    await expect(notice).toHaveAttribute('href', `#/reviews/${encodeURIComponent(first.id)}`);
+    await notice.click();
+    const drawer = page.locator('.t-drawer--open');
+    const note = page.getByPlaceholder('记录判断偏差、关键事件与后续改进…');
+    await expect(drawer.getByRole('heading', { name: '通知主队 vs 通知客队' })).toBeVisible();
+    await note.fill('通知比赛的未保存笔记');
+    await drawer.getByRole('button', { name: '关闭', exact: true }).click();
+    await expect(drawer).toHaveCount(0);
+    // Same hash: closing then clicking the same notification must open again.
+    await notice.click();
+    await expect(note).toHaveValue('通知比赛的未保存笔记');
+    await drawer.getByRole('button', { name: '关闭', exact: true }).click();
+    await page.getByRole('row').filter({ hasText: '另一主队' }).getByRole('button', { name: '查看复盘' }).click();
+    await note.fill('另一场的未保存笔记');
+    await drawer.getByRole('button', { name: '关闭', exact: true }).click();
+    await notice.click();
+    await expect(drawer.getByRole('heading', { name: '通知主队 vs 通知客队' })).toBeVisible();
+    await expect(note).toHaveValue('通知比赛的未保存笔记');
+    await drawer.getByRole('button', { name: '关闭', exact: true }).click();
+    await page.getByRole('row').filter({ hasText: '另一主队' }).getByRole('button', { name: '查看复盘' }).click();
+    await expect(note).toHaveValue('另一场的未保存笔记');
+  });
+}
+
+test('validated cold-start predictions show actual samples and parameter uncertainty only', async ({ page }) => {
+  const { match, detail } = await setup(page);
+  const model = { cold_start_policy: { policy: 'gamma_cold_start_v1', passed: true }, team_samples: [3, 9],
+    uncertainty: { level: 0.9, interpretation: 'parameter_uncertainty_not_match_score_interval',
+      goal_rate_intervals: [[0.5, 2.1], [0.8, 2.8]] } };
+  detail.versions = [{ id: 'cold-start-test', version: 1, schema_version: 2, created: new Date().toISOString(),
+    title: '测试预测', probabilities: [40, 30, 30], football_model: model, evidence: [], risks: [] }];
+  await page.goto(`/club-preview.html#/match/${match.id}/analysis`);
+  await expect(page.getByTestId('cold-start-status')).toContainText('主 3 / 客 9 场');
+  await page.getByRole('button', { name: '参数区间', exact: true }).click();
+  const drawer = page.locator('.t-drawer--open').filter({ hasText: '预期进球参数区间' });
+  await expect(drawer).toContainText('90% 参数区间');
+  await expect(drawer).toContainText('0.50 – 2.10');
+  await expect(drawer).not.toContainText('比分区间');
+  model.cold_start_policy.passed = false;
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '测试预测', exact: true })).toBeVisible();
+  await expect(page.getByTestId('cold-start-status')).toHaveCount(0);
+});
+
 test("legacy directions stay distinct and match analysis links to its review", async ({
   page,
 }) => {
@@ -174,7 +238,7 @@ test("full-time analysis updates before official settlement and preserves notes"
         cursor: report.id || 0,
         updates:
           after !== null && Number(after) < (report.id || 0)
-            ? [{ ...report, fixture: "测试主队 vs 测试客队" }]
+            ? [{ ...report, match_id: match.id, fixture: "测试主队 vs 测试客队" }]
             : [],
       }),
     });
@@ -319,96 +383,6 @@ test("AI postmatch review is separate from editable notes and supports retry", a
   await expect(page.getByText('射门（主 / 客）：12 / 5', {exact:false})).toBeVisible();
 });
 
-test("competition selection scopes datasets, training and observation selection", async ({
-  page,
-}) => {
-  const { capabilities } = await setup(page);
-  capabilities.competitions = [
-    { id: "jp.j1", name: "日职", seasons: [] },
-    { id: "kr.k1", name: "韩职", seasons: [] },
-  ];
-  capabilities.competition_workspaces = Object.fromEntries(
-    capabilities.competitions.map((c, i) => [
-      c.id,
-      {
-        competition: c,
-        competitions: [c],
-        sources: [],
-        fundamentals: [],
-        odds: [],
-        training: {
-          ...structuredClone(capabilities.training),
-          ready: true,
-          reason: "可训练与回测",
-          rows: i ? 884 : 1391,
-        },
-        models: [
-          {
-            id: c.id,
-            run_id: c.id + "-candidate",
-            name: c.name + "独立模型",
-            status: "未选用",
-            validation_status: "离线已评估",
-            selected: false,
-          },
-        ],
-      },
-    ]),
-  );
-  const actions = [];
-  for (const route of ["training/evaluate", "models/select", "datasets/import"])
-    await page.route("**/api/v1/" + route, async (r) => {
-      actions.push({ route, ...r.request().postDataJSON() });
-      await r.fulfill({
-        contentType: "application/json",
-        body: JSON.stringify({ success: true }),
-      });
-    });
-  await page.goto("/club-preview.html#/models");
-  await expect(page.locator(".summary-strip")).toContainText("1391");
-  await page.getByText("预测模型", { exact: true }).click();
-  await expect(
-    page.getByRole("cell", { name: "日职独立模型", exact: true }),
-  ).toBeVisible();
-  await page.locator(".competition-selector").click();
-  await page.getByText("韩职", { exact: true }).last().click();
-  await expect(page.locator(".summary-strip")).toContainText("884");
-  await expect(
-    page.getByRole("cell", { name: "日职独立模型", exact: true }),
-  ).toHaveCount(0);
-  await page.getByRole("button", { name: "选用观察" }).click();
-  await expect.poll(() => actions.length).toBe(1);
-  expect(actions[0]).toMatchObject({
-    competition_id: "kr.k1",
-    run_id: "kr.k1-candidate",
-  });
-  await page.getByText("训练与评估", { exact: true }).click();
-  await page.getByRole("button", { name: "训练与回测", exact: true }).click();
-  await expect.poll(() => actions.length).toBe(2);
-  expect(actions[1]).toMatchObject({
-    competition_id: "kr.k1",
-    target: "full_time",
-  });
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "history.json",
-    mimeType: "application/json",
-    buffer: Buffer.from(JSON.stringify({ manifest: {}, matches: [] })),
-  });
-  await expect.poll(() => actions.length).toBe(3);
-  expect(actions[2]).toMatchObject({
-    competition_id: "kr.k1",
-    dataset: { matches: [] },
-  });
-  await page.reload();
-  await expect(page.locator(".summary-strip")).toContainText("884");
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-});
-
 // Test-only fixtures. Production has no demo mode or fixture import.
 async function setup(page) {
   const start = new Date(Date.now() + 86400000 * 2).toISOString();
@@ -456,6 +430,7 @@ async function setup(page) {
     versions: {},
   };
   const detail = {
+    quality: { can_predict: true, reasons: [] },
     markets: match.markets,
     history: {
       had: [
@@ -767,6 +742,25 @@ test("no demo mode; single eligibility follows selected market", async ({
     ),
   ).toBeVisible();
 });
+test("missing fundamentals blocks prediction and explains why beside the button", async ({ page }) => {
+  const { detail, state } = await setup(page);
+  detail.quality = { can_predict: false, reasons: ["双方伤停与本赛事参赛资格未完整核查"] };
+  await page.locator(".desktop-matches").getByRole("button", { name: "查看", exact: true }).click();
+  await page.getByText("预测分析", { exact: true }).click();
+  await expect(page.getByRole("button", { name: "生成预测", exact: true })).toBeDisabled();
+  await expect(page.getByRole("alert").filter({ hasText: "双方伤停与本赛事参赛资格未完整核查" })).toBeVisible();
+  expect(state.versions).toEqual({});
+});
+
+test("failed detail request never enables prediction", async ({ page }) => {
+  const { state } = await setup(page);
+  await page.route('**/api/v1/matches/sporttery%3Atest-1*', route => route.fulfill({status:503, contentType:'application/json', body:JSON.stringify({success:false,error:'数据源不可用'})}));
+  await page.locator('.desktop-matches').getByRole('button', {name:'查看',exact:true}).click();
+  await page.getByText('预测分析', {exact:true}).click();
+  await expect(page.getByRole('button', {name:'生成预测',exact:true})).toBeDisabled();
+  expect(state.versions).toEqual({});
+});
+
 test("favorites, source details, predictions and persisted notes", async ({
   page,
 }) => {
@@ -849,148 +843,6 @@ test("source failure cannot fabricate matches", async ({ page }) => {
   await expect(page.locator(".fixture-link")).toHaveCount(0);
   await expect(page.getByText("示例数据", { exact: true })).toHaveCount(0);
 });
-test("model coverage and responsive pages", async ({ page }) => {
-  await setup(page);
-  await page.getByRole("link", { name: "数据与模型", exact: true }).click();
-  await page.getByText("预测模型", { exact: true }).click();
-  await page.getByRole("button", { name: "详情", exact: true }).first().click();
-  await expect(
-    page.getByText("market-baseline-v1", { exact: true }),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
-  await page.getByText("训练与评估", { exact: true }).click();
-  await expect(page.getByText("等待授权历史数据")).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "历史训练数据", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("cell", { name: "306 / 306", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("cell", { name: "待验收", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "训练与回测", exact: true }),
-  ).toBeDisabled();
-  await page.getByText("赛事覆盖", { exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "赛事与赛季", exact: true }),
-  ).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
-  for (const path of [
-    "/matches",
-    "/match/sporttery:test-1/basic",
-    "/match/sporttery:test-1/analysis",
-    "/reviews",
-    "/models",
-  ]) {
-    await page.goto(`/club-preview.html#${path}`);
-    await expect(page.locator("h1")).toBeVisible();
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
-  }
-});
-
-test("model workspace keeps rows single-line and details accessible", async ({
-  page,
-}) => {
-  const { capabilities } = await setup(page);
-  capabilities.models.push(
-    {
-      id: "club-goals-v2:" + "a".repeat(64),
-      name: "足球进球模型",
-      status: "待训练",
-      validation_status: "未评估",
-      method: "攻防泊松 / 低比分校正 / 条件半全场",
-      validation: "历史数据待验收",
-    },
-    {
-      id: "retired-v1",
-      name: "停用模型",
-      status: "已停用",
-      validation: "未经回测的固定权重已退出新预测",
-    },
-  );
-  capabilities.sources = [
-    {
-      id: "live-scores",
-      name: "实时比分",
-      status: "partial",
-      reason: "36 场未匹配",
-    },
-  ];
-  capabilities.provider_configuration = [
-    {
-      id: "paid",
-      name: "付费数据源",
-      configured: false,
-      status: "not_configured",
-    },
-  ];
-  capabilities.training.reason = "历史数据待验收";
-  capabilities.training.blockers = [
-    "来源使用依据待确认",
-    "日职 2023：1 场时间差异待核查",
-  ];
-  await page.setViewportSize({ width: 1200, height: 900 });
-  await page.goto("/club-preview.html#/models");
-  await expect(
-    page.getByRole("cell", { name: "实时比分", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("cell", { name: "500 历史赛果", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("cell", { name: "付费数据源", exact: true }),
-  ).toHaveCount(0);
-  await page.getByText("显示未配置", { exact: true }).click();
-  await expect(
-    page.getByRole("cell", { name: "付费数据源", exact: true }),
-  ).toBeVisible();
-  await page.getByText("预测模型", { exact: true }).click();
-  await expect(page.locator("tbody tr")).toHaveCount(2);
-  expect(
-    await page
-      .locator(".t-table__content")
-      .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
-  ).toBe(true);
-  expect(
-    await page
-      .locator("tbody tr")
-      .evaluateAll((rows) =>
-        rows.every((r) => r.getBoundingClientRect().height <= 60),
-      ),
-  ).toBe(true);
-  await page
-    .getByRole("row")
-    .filter({ hasText: "足球进球模型" })
-    .getByRole("button", { name: "详情" })
-    .click();
-  await expect(
-    page
-      .locator(".t-drawer")
-      .getByText("攻防泊松 / 低比分校正 / 条件半全场", { exact: true }),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
-  await page.getByText("显示停用模型", { exact: true }).click();
-  await expect(page.locator("tbody tr")).toHaveCount(3);
-  await page.getByText("训练与评估", { exact: true }).click();
-  await page.getByRole("button", { name: "查看原因" }).click();
-  await expect(
-    page.locator(".t-drawer").getByText(/来源使用依据待确认/),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-});
-
 test("five markets expose archived probabilities without an LLM action", async ({
   page,
 }) => {

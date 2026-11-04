@@ -39,6 +39,13 @@ const state = ref({
 });
 const capabilities = ref({ ai_configured: false });
 const reviewNotice = ref(null);
+const reviewOpenRequest = ref(0);
+function openNoticeReview() {
+  const path = `/reviews/${encodeURIComponent(reviewNotice.value.match_id)}`;
+  hash.value = path;
+  location.hash = path;
+  reviewOpenRequest.value += 1;
+}
 const reviewNoticeError = ref("");
 let reviewCursor = null,
   reviewPolling = false,
@@ -304,7 +311,12 @@ onBeforeUnmount(() => {
           }}</span
         >
         <div class="actions">
-          <a href="#/reviews" class="score-page-link">查看复盘</a>
+          <a
+            :href="`#/reviews/${encodeURIComponent(reviewNotice.match_id)}`"
+            class="score-page-link"
+            @click.prevent="openNoticeReview"
+            >查看复盘</a
+          >
           <t-button variant="text" @click="reviewNotice = null">收起</t-button>
         </div>
       </template>
@@ -614,6 +626,8 @@ onBeforeUnmount(() => {
     <ReviewWorkspace
       v-else-if="route === 'reviews'"
       :state="state"
+      :match-id="decodeURIComponent(hash.split('/')[2] || '')"
+      :open-request="reviewOpenRequest"
       @saved="loadState"
       @download="download"
     />

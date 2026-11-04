@@ -110,7 +110,8 @@ def parse_page(match, identity, text, captured):
                         value = player(cell)
                         if value: data['injuries'].append({**value, 'side':side, 'status':'伤病' if j==0 else '停赛',
                             'source':'500', 'source_url':url, 'captured_at':captured, 'scope':'本场来源名单'})
-            if len(roster['players']) == 11: data['estimated_lineups'].append(roster)
+            if len(roster['players']) == len({(p['name'], p['number']) for p in roster['players']}) == 11:
+                data['estimated_lineups'].append(roster)
     for box in root.find('div'):
         titles = box.find('h4')
         if box.attrs.get('class','').startswith('M_box') and titles and titles[0].text == '未来赛事':
@@ -155,15 +156,38 @@ def parse_page(match, identity, text, captured):
 
 
 def fetch(match):
-    index, _ = page(INDEX)
-    try:
-        identity = fixture_identity(match,index)
-    except SourceError:
-        if parse_date(match['kickoff']) >= datetime.now(timezone.utc): raise
-        finished, _ = page('https://live.500.com/wanchang.php')
-        identity = fixture_identity(match,finished)
+    from .readiness import fixture_key
+    saved = match.get('_source_identity') or {}
+    identity = saved.get('identity') if saved.get('fixture') == fixture_key(match) else None
+    if identity and (len(identity.get('team_ids', [])) != 2 or
+                     not all(re.fullmatch(r'\d+', str(x)) for x in [identity.get('id'), *identity.get('team_ids', [])])):
+        raise SourceError('已保存的比赛来源身份无效')
+    if identity is None and match.get('league_code') in ('JD1', 'KD1'):
+        from .league_data import load_history, match_fixture
+        from .catalog import classify
+        try:
+            fixture = match_fixture(match, load_history(competition_id=classify(match)['id']))
+            identity = {'id': fixture['id'].removeprefix('500:'),
+                        'team_ids': [fixture[s+'_id'].removeprefix('500:') for s in ('home', 'away')]}
+            if not all(re.fullmatch(r'\d+', x) for x in [identity['id'], *identity['team_ids']]):
+                raise SourceError('历史来源身份无效')
+        except SourceError:
+            identity = None
+    if identity is None:
+        index, _ = page(INDEX)
+        try:
+            identity = fixture_identity(match,index)
+        except SourceError:
+            if parse_date(match['kickoff']) >= datetime.now(timezone.utc): raise
+            finished, _ = page('https://live.500.com/wanchang.php')
+            identity = fixture_identity(match,finished)
     text, captured = page(f"https://odds.500.com/fenxi/shuju-{identity['id']}.shtml")
     result = parse_page(match, identity, text, captured)
+    result['source_identity'] = {'fixture': fixture_key(match), 'identity': identity}
+    for roster in result['estimated_lineups']:
+        roster['observed_before_kickoff'] = parse_date(captured) < parse_date(match['kickoff'])
+        roster['notice'] = ('来源预计阵容，非正式首发；赛前采集' if roster['observed_before_kickoff']
+                            else '来源预计阵容；赛后补采，不能作为当时赛前已知名单')
     try:
         odds_text, odds_captured = page(f"https://odds.500.com/fenxi/ouzhi-{identity['id']}.shtml")
         result['external_odds'] = european_odds(match, identity, odds_text, odds_captured)

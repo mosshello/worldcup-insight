@@ -105,10 +105,11 @@ class ReviewEngine:
         for group,key in (("market","market_results"),("football","model_results")):
             for item in row.get(key,[]):
                 result=dict(item)
-                markets=prediction.get("market_assessments",[]) if group=="market" else prediction.get("football_model",{}).get("markets",[])
+                market_prediction = (prediction.get('market_reference') or {}) if prediction.get('schema_version')==2 else prediction
+                markets=market_prediction.get("market_assessments",[]) if group=="market" else prediction.get("football_model",{}).get("markets",[])
                 options=next((m.get("options",[]) for m in markets if m.get("code")==item["code"]),[])
                 if not options and group=="market" and item["code"]=="had":
-                    options=[{"key":k,"probability":p} for k,p in zip("hda",prediction.get("probabilities",[]))]
+                    options=[{"key":k,"probability":p} for k,p in zip("hda",market_prediction.get("probabilities",[]))]
                 actual_option=next((o for o in options if o.get("key")==item.get("actual_key")),{})
                 p=actual_option.get("probability")
                 if isinstance(p,(int,float)) and math.isfinite(p) and 0<=p<=100:

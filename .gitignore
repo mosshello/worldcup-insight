@@ -11,6 +11,11 @@ data/cache/
 data/console/
 data/snapshots/
 .ai/tmp/
+.ai/backups/
+/test-results/
+config/football_competitions.lock
+web/console/index.previous.html
+.design/football-data-model-refactor/mobile.png
 frontend/node_modules/
 frontend/test-results/
 frontend/playwright-report/

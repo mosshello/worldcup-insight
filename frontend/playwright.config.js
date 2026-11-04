@@ -11,7 +11,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "python -m http.server 8893 --bind 127.0.0.1 --directory ../web",
+    command: "node scripts/serve-check.mjs ../web 8893",
     url: "http://127.0.0.1:8893/club-preview.html",
     reuseExistingServer: true,
   },

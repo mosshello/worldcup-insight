@@ -13,7 +13,7 @@ from pathlib import Path
 from .store import ROOT, fingerprint, now_iso
 from .sources import parse_date
 from .football_markets import score_grid, market_probabilities, outcome, score_key
-from .catalog import COMPETITIONS as COMPETITION_CATALOG
+from .catalog import COMPETITIONS as COMPETITION_CATALOG, catalog
 
 DATASET = ROOT / "data" / "training" / "club_history.json"
 REPORT = ROOT / "data" / "training" / "club_evaluation.json"
@@ -43,6 +43,7 @@ def validate_dataset(data):
     rows = data.get("matches", [])
     if not isinstance(rows, list) or not rows:
         raise ValueError("缺少历史比赛")
+    known_competitions = {c["id"] for c in catalog()}
     seen = set()
     fixtures = set()
     for row in rows:
@@ -65,7 +66,7 @@ def validate_dataset(data):
         if any(not isinstance(row[k], str) for k in ("id", "competition_id", "home_id", "away_id", "season", "stage")):
             raise ValueError("比赛、赛季和球队标识须为字符串")
         if (
-            row["competition_id"] not in COMPETITIONS
+            row["competition_id"] not in known_competitions
             or row["home_id"] == row["away_id"]
         ):
             raise ValueError("赛事或球队身份无效")
@@ -257,7 +258,9 @@ class GoalModel:
         return [values[k] for k in "hda"]
 
     def to_dict(self):
-        return {"schema": MODEL_SCHEMA, **{k: getattr(self, k) for k in
+        return {"schema": MODEL_SCHEMA,
+                "supported_markets": ["had", "hhad", "ttg", "crs"] + (["hafu"] if self.half_shares else []),
+                **{k: getattr(self, k) for k in
                 ("mode", "half_life", "kind", "params", "rhos", "half_shares", "half_counts", "team_counts", "trained_before", "sample_count")}}
 
     @classmethod
@@ -560,6 +563,9 @@ def fit_bundle(data, report, now=None):
         raise ValueError("回测报告与历史数据不匹配")
     rows = validate_dataset(data)
     at = now or datetime.now(timezone.utc)
+    fit_range = report.get("training_range", {})
+    if fit_range.get("date_from"):
+        rows = [r for r in rows if parse_date(r["kickoff"]) >= parse_date(fit_range["date_from"])]
     models = {}
     for league, config in report["selected_by_competition"].items():
         if config['kind'] in ('poisson', 'dc'):
@@ -584,7 +590,7 @@ def read_bundle():
     return bundle
 
 
-def shadow_forecast(match, detail, now=None, artifacts=None):
+def shadow_forecast(match, detail, now=None, artifacts=None, allow_network=True):
     """Prospective candidate only. Never silently replaces the market baseline."""
     from .catalog import classify
     from .football_markets import assessment
@@ -617,8 +623,34 @@ def shadow_forecast(match, detail, now=None, artifacts=None):
         mapping = {r["provider_id"]: r["team_id"] for r in bundle["team_mappings"]
                    if r["competition_id"] == league and r["provider"] == "sporttery"}
         identity_source = "training_manifest"
+        identity_evidence = None
+        if any(str(match.get(s)) not in mapping for s in ("home_id", "away_id")):
+            from .readiness import fixture_key
+            evidence = detail.get("context", {}).get("espn_identity") or {}
+            spec = next((item for item in catalog() if item['id'] == league), {})
+            if (evidence.get('fixture') == fixture_key(match) and evidence.get('provider') == 'espn'
+                and evidence.get('competition_slug') == spec.get('providers', {}).get('espn')
+                and evidence.get('event_id') and evidence.get('source_url')
+                and evidence.get('kickoff') and parse_date(evidence['kickoff']) == parse_date(match['kickoff'])
+                and evidence.get('captured_at') and parse_date(evidence['captured_at']) <= now):
+                espn = {str(r['provider_id']): r['team_id'] for r in bundle['team_mappings']
+                        if r['competition_id'] == league and r['provider'] == 'espn'}
+                teams = evidence.get('team_ids', {})
+                if bundle.get('cold_start_policy',{}).get('identity_policy') == 'exact-espn-id-v1':
+                    for team in teams.values():
+                        if isinstance(team,str) and team.isdigit():
+                            espn.setdefault(team,'espn:'+team)
+                if all(str(teams.get(side)) in espn for side in ('home', 'away')):
+                    for side in ('home', 'away'):
+                        key, team = str(match[side+'_id']), espn[str(teams[side])]
+                        if key in mapping and mapping[key] != team:
+                            return unavailable('球队标识映射冲突')
+                        mapping[key] = team
+                    identity_source, identity_evidence = evidence['source_url'], evidence
         if any(str(match.get(s)) not in mapping for s in ("home_id", "away_id")):
             # A new Sporttery listing does not require retraining model parameters.
+            if not allow_network:
+                return unavailable("球队标识尚未映射")
             from .league_data import load_history, match_fixture
             from .sources import SourceError
             try:
@@ -632,20 +664,32 @@ def shadow_forecast(match, detail, now=None, artifacts=None):
             except SourceError:
                 return unavailable("球队标识尚未映射")
         row = {"competition_id": league, **{s: mapping[str(match[s])] for s in ("home_id", "away_id")}}
-        if any(model.team_counts.get(league+":"+row[s], 0) < 5 for s in ("home_id", "away_id")):
-            return unavailable("球队历史样本不足5场")
+        counts = [model.team_counts.get(league+":"+row[s], 0) for s in ("home_id", "away_id")]
+        cold_policy = bundle.get('cold_start_policy')
+        is_cold = any(n < 5 for n in counts)
+        cold_metadata = {}
+        if is_cold:
+            from .cold_start import allowed, validate_binding, uncertainty
+            validate_binding(bundle, report)
+            if not allowed(cold_policy, counts):
+                return unavailable("球队历史样本不足5场，冷启动策略未通过本组评估")
+            cold_metadata = {'cold_start_policy':cold_policy,'uncertainty':uncertainty(model,row)}
         pools = detail.get("markets", {})
         eligible = detail.get("quality", {}).get("eligible_markets", list(pools))
         line = pools.get("hhad", {}).get("line") if "hhad" in eligible else None
         forecast = model.forecast(row, line)
-        views = [assessment(code, p, pools.get(code), "model", code in eligible) for code, p in forecast["markets"].items()]
+        views = [assessment(code, p, pools.get(code) if code in eligible else None, "model", True)
+                 for code, p in forecast["markets"].items()]
         views.sort(key=lambda v: ("had", "hhad", "ttg", "crs", "hafu").index(v["code"]))
         return {"status": "shadow", "reason": "前瞻观察", "model_id": bundle["id"],
                 "dataset_digest": bundle["dataset_digest"], "trained_before": model.trained_before,
                 "kind": model.kind, "mode": model.mode, "sample_count": model.sample_count,
-                "team_samples": [model.team_counts.get(league+":"+row[s], 0) for s in ("home_id", "away_id")],
+                "team_samples": counts,
+                **cold_metadata,
                 "usage_mode": bundle.get("usage_mode", "licensed"),
-                "team_identity": {**row, "source": identity_source},
+                "team_identity": {**row, "source": identity_source,
+                                  "evidence": identity_evidence,
+                                  "evidence_digest": fingerprint(identity_evidence) if identity_evidence else None},
                 "reference_check": reference_checks(report).get(league),
                 "expected_goals": forecast["expected_goals"], "half_samples": forecast["half_samples"],
                 "half_method": forecast["half_method"], "markets": views,

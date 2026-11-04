@@ -1,0 +1,112 @@
+{
+  "revision": "3a3e3da33ebd2a58f5451baf2ddf317a1bddb28ee8aac906377c99055db04c7d",
+  "previous_revision": null,
+  "created_at": "2026-11-04T10:24:57.522043+00:00",
+  "rules": {
+    "id": "eng.championship",
+    "name": "英冠",
+    "country": "GB",
+    "region": "UEFA",
+    "official_url": "https://www.efl.com/governance/regulations/",
+    "rule_source": "https://www.efl.com/governance/regulations/",
+    "providers": {
+      "sporttery": "ED1",
+      "espn": "eng.2",
+      "espn_id": "3914"
+    },
+    "training_enabled": true,
+    "target_period": "regular_time",
+    "training_scope": "competition_only",
+    "cross_competition_features": false,
+    "history_years": [
+      2024,
+      2025,
+      2026
+    ],
+    "training_stage_policy": {
+      "2023": [
+        "regular-season"
+      ],
+      "2024": [
+        "regular-season"
+      ],
+      "2025": [
+        "regular-season"
+      ],
+      "2026": [
+        "regular-season"
+      ]
+    },
+    "prediction_stage_policy": {
+      "2026": [
+        "regular-season"
+      ]
+    },
+    "research_policy": {
+      "sample_policy": "espn-competition-regular-home-away-research-v1",
+      "usage_mode": "local_research",
+      "continuity_policy": "Same Championship regular season only; promotion playoffs and other divisions excluded",
+      "limitations": [
+        "仅确认90分钟且非中立场样本",
+        "半场与历史盘口按实际覆盖",
+        "样本不足的球队保持阻断"
+      ],
+      "rules_verified_at": "2026-11-04",
+      "rules_scope": "regular-season 90-minute only; current playoff format not verified or enabled"
+    },
+    "seasons": [
+      {
+        "id": "2023",
+        "label": "2023/24",
+        "start": "2023-06-01",
+        "end": "2024-06-01",
+        "format": "league",
+        "stages": [
+          "regular-season"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2024",
+        "label": "2024/25",
+        "start": "2024-06-01",
+        "end": "2025-06-01",
+        "format": "league",
+        "stages": [
+          "regular-season"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2025",
+        "label": "2025/26",
+        "start": "2025-06-01",
+        "end": "2026-06-01",
+        "format": "league",
+        "stages": [
+          "regular-season"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2026",
+        "label": "2026/27",
+        "start": "2026-06-01",
+        "end": "2027-06-01",
+        "format": "league",
+        "stages": [
+          "regular-season"
+        ],
+        "shootout_separate": true
+      }
+    ],
+    "rule_evidence": {
+      "duration": "https://www.theifab.com/laws/latest/the-duration-of-the-match/",
+      "efl_published_edition": "2025/26",
+      "efl_published_rules": "https://images.gc.eflservices.co.uk/6a32d710-5b0b-11f0-ad0f-97502a343283.pdf",
+      "latest_handbook_status": "2026/27 full handbook not retrieved; no playoff rule inferred",
+      "source_stage": "regular-season",
+      "source_league_id": "3914"
+    }
+  }
+}

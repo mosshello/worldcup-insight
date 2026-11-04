@@ -20,7 +20,7 @@ def official_bulletins(match):
 
 
 def annotate(context, match):
-    official = official_bulletins(match)
+    official = official_bulletins(match) + context.get('official_personnel', [])
     context['injuries'] = [r for r in context.get('injuries',[]) if not r.get('official')] + official
     context['injury_coverage'] = 'partial' if context['injuries'] else 'unavailable'
     # A few verified absences never prove the entire squad has been checked.
@@ -30,7 +30,7 @@ def annotate(context, match):
         for p in lineup.get('players',[]):
             reports = [r for r in official if r['side']==lineup['side'] and p['name'] in [r['name'],*r.get('aliases',[])]]
             p['availability'] = reports[0]['status'] if reports else '待核实'
-            p['conflict'] = bool(reports and reports[0]['status']=='官方确认缺阵')
+            p['conflict'] = bool(reports and reports[0]['status'] in ('官方确认缺阵', '官方确认停赛'))
             if p['conflict']: conflicts.append(p['name'])
         lineup['conflicts'] = conflicts
     return context

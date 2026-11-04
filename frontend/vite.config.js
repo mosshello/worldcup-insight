@@ -5,7 +5,7 @@ export default defineConfig({
   base: "./",
   server: { proxy: { "/api": "http://127.0.0.1:8891" } },
   build: {
-    outDir: "../web/console",
+    outDir: "../.ai/tmp/console-build",
     emptyOutDir: true,
     rollupOptions: {
       output: {

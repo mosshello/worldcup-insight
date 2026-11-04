@@ -37,6 +37,28 @@ class ConsoleService:
         self.training_jobs = TrainingJobs(self.store)
         from .ai_reviews import ReviewEngine
         self.ai_reviews = ReviewEngine(self)
+        from .identity import IdentityRepository
+        self.identities = IdentityRepository(self.store)
+        from .model_tasks import ModelTasks
+        self.model_tasks = ModelTasks(self.store)
+        from .data_tasks import DataTasks
+        self.data_tasks = DataTasks(self.store)
+        if store is None:
+            self.reconcile_identity()
+            self.model_tasks.reconcile()
+            for spec in catalog():
+                if spec['id'] in self.data_tasks.supported:
+                    self.data_tasks.list(spec['id'],reconcile=True)
+
+    def reconcile_identity(self):
+        from . import model_registry
+        self.identities.index_matches(self.store.list_matches())
+        for spec in catalog():
+            try:
+                data = model_registry.dataset(spec['id'])
+                self.identities.index_dataset(spec['id'],data)
+            except (ValueError,OSError,KeyError):
+                continue
 
     def start_training(self, competition_id, target='full_time'):
         return self.training_jobs.start(competition_id, target)
@@ -164,6 +186,10 @@ class ConsoleService:
             self.reviews()
 
     def scores(self):
+        with self.store.connection_scope():
+            return self._scores()
+
+    def _scores(self):
         scores = {
             mid: live.display(value) for mid, value in self.store.live_scores().items()
         }
@@ -203,6 +229,7 @@ class ConsoleService:
                 matches = sources.fetch_matches()
                 captured = now_iso()
                 self.store.upsert_matches(matches, captured)
+                self.identities.index_matches([{**m,'captured_at':captured} for m in matches])
                 self.current_ids = {m["id"] for m in matches}
                 self.last_error = None
                 self.store.status(
@@ -220,6 +247,10 @@ class ConsoleService:
 
     def list_matches(self, date=None):
         self.sync()
+        with self.store.connection_scope():
+            return self._list_matches(date)
+
+    def _list_matches(self, date=None):
         rows = self.store.list_matches(date)
         state = self.store.state()
         scores = self.scores()
@@ -294,9 +325,10 @@ class ConsoleService:
                 if checked and (now - checked).total_seconds() < 900:
                     return
                 try:
-                    context = sources.fetch_context(m)
-                    if context.get("available"):
-                        data["context"] = context
+                    from .context_merge import merge
+                    previous = data.get('context') or {}
+                    context = sources.fetch_context({**m, '_source_identity': previous.get('source_identity')})
+                    data['context'] = merge(m, context, previous)
                 except sources.SourceError:
                     pass
                 data["postmatch_context_checked_at"] = now_iso()
@@ -311,16 +343,24 @@ class ConsoleService:
     def refresh_upcoming_context(self, now=None, limit=6):
         """Bounded fair sweep; independent of result/score collectors and page visits."""
         now = now or datetime.now(timezone.utc)
+        from .model_registry import selection
+        selected = set()
+        for spec in catalog():
+            try:
+                if selection(spec['id']).get('run_id'):
+                    selected.add(spec['id'])
+            except (ValueError,OSError,KeyError):
+                pass
         pending = []
         for match in self.store.list_matches():
             start = intelligence.valid_time(match.get('kickoff'))
             if not start or not 0 < (start - now).total_seconds() < 7*86400: continue
             cached = (self.store.detail(match['id']) or {}).get('data', {})
             checked = intelligence.valid_time(cached.get('context_checked_at'))
-            interval = 180 if (start - now).total_seconds() < 7200 else 900
+            interval = 60 if classify(match)['id'] in selected else 180 if (start - now).total_seconds() < 7200 else 900
             if checked and 0 <= (now-checked).total_seconds() < interval: continue
             pending.append(match)
-        pending.sort(key=lambda m: (self.context_check_times.get(m['id'], 0), m['kickoff']))
+        pending.sort(key=lambda m: (classify(m)['id'] not in selected,self.context_check_times.get(m['id'], 0), m['kickoff']))
         def collect(match):
             try:
                 self.detail(match['id'], force=True)
@@ -342,7 +382,8 @@ class ConsoleService:
         data["intelligence"] = intelligence.build(match, data)
         data["legacy_prediction"] = legacy_predictions.for_match(match, self.legacy_entries())
         from .model_registry import forecast
-        model = forecast(match, data) if sources.parse_date(match['kickoff']) > datetime.now(timezone.utc) else None
+        model = forecast(match, data) if sources.parse_date(match['kickoff']) > datetime.now(timezone.utc) else {'status':'unavailable','reason':'比赛已开赛'}
+        data['quality'] = assess(match,data,football=model)
         data['briefing'] = briefing.build(match, data, model=model)
         return data
 
@@ -378,7 +419,8 @@ class ConsoleService:
             errors = []
             with ThreadPoolExecutor(max_workers=2) as pool:
                 odds_task = pool.submit(sources.fetch_odds, m)
-                context_task = pool.submit(sources.fetch_context, m)
+                previous = (cached or {}).get('data', {}).get('context', {})
+                context_task = pool.submit(sources.fetch_context, {**m, '_source_identity': previous.get('source_identity')})
                 try:
                     odds = odds_task.result()
                 except sources.SourceError as exc:
@@ -396,11 +438,11 @@ class ConsoleService:
                         "recent": [[], []],
                         "lineups": [],
                     }
-            if not context.get('available') and cached and cached['data'].get('context', {}).get('available'):
-                context = {**cached['data']['context'], 'stale': True,
-                           'refresh_error': context.get('reason') or '本轮基本面获取失败',
-                           'attempted_at': now_iso()}
-                errors.append('基本面更新失败，展示上次资料及原采集时间')
+            from .context_merge import merge
+            context = merge(m, context, previous)
+            self.identities.index_context(m,context)
+            if context.get('stale_fields'):
+                errors.append('部分资料更新失败，保留上次资料及原采集时间')
             markets, market_issues = select_markets(
                 m["markets"], odds.get("history", {})
             )
@@ -440,8 +482,11 @@ class ConsoleService:
             )
             return data
 
-    def prediction(self, match_id, with_narrative=False):
+    def prediction(self, match_id, with_narrative=False, request_key=None):
         with self.lock("predict:" + match_id):
+            previous = self.store.saved_request(request_key,match_id)
+            if previous:
+                return {'prediction':previous,'detail':(self.store.detail(match_id) or {}).get('data',{})}
             self.sync(force=True)
             if self.last_error:
                 raise ValueError(
@@ -461,20 +506,19 @@ class ConsoleService:
                 raise ValueError("比分源显示比赛已开始、暂停、延期或取消，不能生成赛前预测。")
             if detail.get("cancelled"):
                 raise ValueError("该比赛已取消，不能生成预测。")
-            if not detail["odds_fresh"]:
-                raise ValueError("无法确认最新 SP，暂不生成新预测。请稍后重试。")
-            quality = assess(m, detail)
+            from . import model_registry
+            from .forecast_result import build
+            football = model_registry.forecast(m,detail)
+            quality = assess(m, detail, football=football)
+            detail['quality'] = quality
             if not quality["can_predict"]:
                 raise ValueError("；".join(quality["reasons"]))
-            result = predict(m, detail)
+            result = build(m, detail, football)
             result["intelligence"] = intelligence.build(m, detail)
             result['briefing'] = detail.get('briefing')
             for item in result["intelligence"]["lineups"]:
                 result["evidence"].append({"title": "阵容与赛程", "text": item["summary"], "tab": "lineups"})
             result["risks"].extend(result["intelligence"]["checks"])
-            from .model_registry import forecast as shadow_forecast
-            result["football_model"] = shadow_forecast(m, detail)
-            football = result["football_model"]
             if football.get("status") == "shadow":
                 goals = football.get('expected_goals')
                 result["evidence"].append({"title": "足球模型", "tab": "analysis",
@@ -490,6 +534,12 @@ class ConsoleService:
                 result["narrative"] = narrate(m, detail, result)
             if sources.parse_date(m["kickoff"]) <= datetime.now(timezone.utc):
                 raise ValueError("处理期间比赛已开赛，本次结果不写入赛前预测版本。")
+            from .readiness import fixture_key
+            if fixture_key(self.store.match(match_id) or {}) != fixture_key(m):
+                raise ValueError('处理期间比赛身份或开球时间已变更，请重新核查。')
+            quality = assess(m, detail, football=football)
+            if not quality['can_predict']:
+                raise ValueError('归档前核查未通过：' + '；'.join(quality['reasons']))
             inputs = {
                 "match": {k: v for k, v in m.items() if k != "captured_at"},
                 "markets": detail["markets"],
@@ -503,16 +553,35 @@ class ConsoleService:
                 "data_receipt": {
                     "fixtures_verified_at": m.get("captured_at"),
                     "odds_verified_at": detail.get("captured_at"),
+                    "fundamentals_captured_at": detail['context'].get('captured_at'),
                     "quality": quality,
                 },
             }
-            saved = self.store.save_analysis(match_id, result, inputs)
+            from .store import fingerprint
+            receipt = {'policy':'model-inputs-v2','competition_id':football['competition_id'],
+                'run_id':football['run_id'],'selection_revision':football['selection_revision'],
+                'rule_revision':football['rule_revision'],'fixture_revision':fingerprint(fixture_key(m)),
+                'team_identity':football['team_identity'],'input_digest':fingerprint(inputs)}
+            result['input_receipt'] = receipt
+            inputs['input_receipt'] = receipt
+            # Long computation/network work finished; short file lock precedes the SQLite write transaction.
+            with model_registry.commit_lock(football['competition_id']):
+                current = model_registry.selection(football['competition_id'])
+                if current.get('run_id') != football['run_id'] or current['revision'] != football['selection_revision']:
+                    raise ValueError('处理期间模型选用已变更，请重新预测')
+                if fingerprint(model_registry.competition_spec(football['competition_id'])) != football['rule_revision']:
+                    raise ValueError('处理期间赛事规则已变更，请重新预测')
+                saved = self.store.save_analysis(match_id, result, inputs,expected_fixture=fixture_key(m),request_key=request_key)
             return {
                 "prediction": saved,
                 "detail": {**detail, "versions": self.store.versions(match_id)},
             }
 
     def reviews(self, refresh=False):
+        with self.store.connection_scope():
+            return self._reviews(refresh)
+
+    def _reviews(self, refresh=False):
         from .football_markets import settle_markets
         from .postmatch import analyze
         if refresh:
@@ -549,7 +618,11 @@ class ConsoleService:
         rows = []
         scores = self.scores()
         legacy_entries = self.legacy_entries()
-        for m in self.store.list_matches():
+        for m in sorted(
+            self.store.list_matches(),
+            key=lambda match: sources.parse_date(match["kickoff"]),
+            reverse=True,
+        ):
             versions = self.store.versions(m["id"])
             cached = self.store.detail(m["id"])
             detail = (cached or {}).get("data", {})
@@ -565,6 +638,8 @@ class ConsoleService:
                 else None
             )
             latest = versions[0] if versions else {}
+            from .forecast_result import read_archived
+            archived_parts = read_archived(latest)
             legacy = legacy_predictions.for_match(m, legacy_entries)
             detail["evidence"] = self.store.evidence(m["id"])
             consistent = None
@@ -601,7 +676,7 @@ class ConsoleService:
                     "postmatch_review": analyze(self.store, m, latest or None, detail, scores.get(m["id"])),
                     "consistent": consistent,
                     "direction_observed": latest.get("direction_key") is None,
-                    "market_results": settle_markets(latest, detail.get("results", []), detail.get("cancelled", False)) if latest else [],
+                    "market_results": settle_markets(archived_parts['market_reference'], detail.get("results", []), detail.get("cancelled", False)) if archived_parts['market_reference'] else [],
                     "model_results": settle_markets({"market_assessments": latest.get("football_model", {}).get("markets", [])}, detail.get("results", []), detail.get("cancelled", False)) if latest.get("football_model", {}).get("status") == "shadow" else [],
                     "status": (
                         "已取消"
@@ -627,6 +702,19 @@ class ConsoleService:
                 for item in row["market_results"] + row["model_results"]:
                     item.update(hit=None, status="赛果冲突", unit_return=None, unit_profit=None)
             row["ai_review"] = self.ai_reviews.view(row)
+            settlement_match = self.store.match(row['id'])
+            settlement_detail = (self.store.detail(row['id']) or {}).get('data',{})
+            if row.get('prediction') and (settlement_detail.get('official_score') or settlement_detail.get('results') or settlement_detail.get('cancelled')):
+                relevant = [p for p in row['versions'] if p.get('football_model',{}).get('status')=='shadow'
+                    and sources.parse_date(p['created']) < sources.parse_date(settlement_match['kickoff'])]
+                first = min(relevant,key=lambda p:(p['created'],p['version'])) if relevant else None
+                from .store import fingerprint
+                row['settlement'] = self.store.save_settlement(row['prediction']['id'],{
+                    'result_digest':fingerprint({'results':settlement_detail.get('results',[]),'score':settlement_detail.get('official_score'),'cancelled':settlement_detail.get('cancelled',False)}),
+                    'market_results':row['market_results'],'model_results':row['model_results'],
+                    'status':row['status'],'policy':'first-football-forecast-per-fixture-v1',
+                    'evaluation_eligible':bool(first and first['id']==row['prediction']['id']),
+                    'evaluation_prediction_id':first['id'] if first else None})
         return rows
 
     def capabilities(self):

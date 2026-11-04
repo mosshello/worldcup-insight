@@ -8,7 +8,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from urllib import request
 
-from .sources import ESPN, LEAGUES, SourceError, get_json, match_event, parse_date
+from .sources import ESPN, league_for, verify_board_identity, SourceError, get_json, match_event, parse_date
 
 KOREA = timezone(timedelta(hours=9))
 K_CODES = {
@@ -45,9 +45,10 @@ def group_key(match):
             "kleague",
             parse_date(match["kickoff"]).astimezone(KOREA).strftime("%Y-%m"),
         )
-    if code in LEAGUES:
+    league = league_for(code)
+    if league:
         return (
-            LEAGUES[code],
+            league,
             parse_date(match["kickoff"]).astimezone(timezone.utc).strftime("%Y%m%d"),
         )
     return None
@@ -59,6 +60,9 @@ def fetch_group(key):
         data = get_json(ESPN + provider + "/scoreboard?dates=" + date)
         if not isinstance(data.get("events"), list):
             raise SourceError("比分接口结构无效")
+        source = verify_board_identity(data, provider)
+        if any(e.get('uid') != f"s:600~l:{source['id']}~e:{e.get('id')}" for e in data['events']):
+            raise SourceError('比分比赛来源赛事身份不一致')
         return data["events"]
     year, month = date.split("-")
     body = {

@@ -1,0 +1,5 @@
+[
+  {"match_id":"sporttery:2042387","codes":["KAH","URA"],"kickoff":"2026-10-31T15:00:00+08:00","season":"2026/27","teams":["柏レイソル","浦和レッズ"],"source_url":"https://www.football-lab.jp/kasw/report?date=31&month=10&year=2026"},
+  {"match_id":"sporttery:2042413","codes":["NGV","TOK"],"kickoff":"2026-11-01T13:00:00+08:00","season":"2026/27","teams":["Ｖ・ファーレン長崎","東京ヴェルディ"],"source_url":"https://www.football-lab.jp/ngsk/report?date=01&month=11&year=2026"},
+  {"match_id":"sporttery:2042415","codes":["MCZ","GAB"],"kickoff":"2026-11-01T15:00:00+08:00","season":"2026/27","teams":["ＦＣ町田ゼルビア","ガンバ大阪"],"source_url":"https://www.football-lab.jp/mcd/report?date=01&month=11&year=2026"}
+]

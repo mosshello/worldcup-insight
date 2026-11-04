@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "slug": "football-data-model-refactor",
+  "title": "足球数据与模型改造方案",
+  "source": {
+    "type": "adhoc",
+    "ref": "用户要求先整理方案和任务，核对后执行"
+  },
+  "status": "approved",
+  "fidelity": "partial",
+  "createdAt": "2026-11-04",
+  "updatedAt": "2026-11-04",
+  "tags": [
+    "football",
+    "data-model",
+    "migration",
+    "planning"
+  ],
+  "direction": {
+    "source": "product-tokens",
+    "note": "沿用 Vue/TDesign 蓝色、直角、单行表格；用户批准 v2 后实施六页"
+  },
+  "asIs": {
+    "verified": "source-diff",
+    "selfChecked": true,
+    "component": "frontend/src/ModelWorkspace.vue",
+    "snapshot": "as-is.vue",
+    "html": "as-is.html",
+    "limits": "截图复现，数据来自用户附图，非实时接口"
+  },
+  "versions": [
+    {
+      "version": 1,
+      "file": "v1.html",
+      "createdAt": "2026-11-04",
+      "note": "六入口、空状态、独立任务类型；无伪造实时数字"
+    }
+  ],
+  "decisions": [],
+  "dataModel": [
+    {
+      "field": "training.model",
+      "means": "当前已选用的赛事观察模型；不同于最新候选。",
+      "source": "worldcup_mvp/console/model_registry.py:status"
+    },
+    {
+      "field": "training.evaluation",
+      "means": "现有接口返回候选运行报告，不能当作当前选用模型报告。",
+      "source": "worldcup_mvp/console/model_registry.py:status"
+    },
+    {
+      "field": "training.rows",
+      "means": "当前赛事固定数据集总样本数；并非回测初始训练样本数。",
+      "source": "worldcup_mvp/console/model_registry.py:status"
+    },
+    {
+      "field": "workspace.overview",
+      "means": "当前选择赛事及执行日已收录比赛资格；可预测、阻断与未知分别统计",
+      "source": "worldcup_mvp/console/workspace_v2.py:read"
+    },
+    {
+      "field": "workspace.datasets",
+      "means": "不可变数据版本、赛季采集纳入隔离对账",
+      "source": "worldcup_mvp/console/workspace_v2.py:read"
+    },
+    {
+      "field": "workspace.teams",
+      "means": "按赛事赛季参赛记录，显示来源映射并保留证据",
+      "source": "worldcup_mvp/console/identity.py:teams"
+    },
+    {
+      "field": "tasks",
+      "means": "拟合、固定模型评估、显式滚动实验各自任务；采集独立，不自动入库或选用",
+      "source": "worldcup_mvp/console/model_tasks.py"
+    }
+  ],
+  "build": {
+    "entryPoints": [
+      "frontend/src/ModelWorkspace.vue",
+      "worldcup_mvp/console/model_registry.py",
+      "worldcup_mvp/console/service.py"
+    ],
+    "verify": [
+      ".venv/Scripts/python.exe -m unittest discover -s tests",
+      "npm test (frontend)",
+      "npm run test:e2e (frontend)",
+      "npm run build:check (frontend)",
+      "npx playwright test --config playwright.workspace.config.js (frontend)"
+    ],
+    "status": "verified-isolated",
+    "results": {
+      "unit": "8 passed",
+      "browser": "5 scenarios passed",
+      "build": "build:check passed; web assets not published",
+      "visual": "mobile.png inspected; no viewport overflow; test fixture only"
+    }
+  },
+  "planRevision": "v2",
+  "revisionNotes": [
+    "重新审查16项设计问题，补20项场景验收；仅方案修订，实施未开始。"
+  ]
+}

@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import sqlite3
+import threading
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -28,6 +29,7 @@ def fingerprint(value):
 
 class Store:
     def __init__(self, path=None):
+        self._connections = threading.local()
         self.path = Path(
             path
             or os.environ.get("FOOTBALL_DB_PATH")
@@ -86,13 +88,60 @@ class Store:
                 CREATE INDEX IF NOT EXISTS match_report_subject ON match_reports(match_id,prediction_id,id);
                 INSERT OR IGNORE INTO match_reports SELECT * FROM postmatch_reports;
                 INSERT OR IGNORE INTO schema_versions VALUES(5);
+                CREATE TABLE IF NOT EXISTS prediction_requests(
+                    request_key TEXT PRIMARY KEY, match_id TEXT NOT NULL,
+                    input_digest TEXT NOT NULL, analysis_id TEXT NOT NULL REFERENCES analyses(id));
+                INSERT OR IGNORE INTO schema_versions VALUES(6);
+                CREATE TABLE IF NOT EXISTS settlement_versions(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    analysis_id TEXT NOT NULL REFERENCES analyses(id),
+                    digest TEXT NOT NULL, created_at TEXT NOT NULL, payload TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS settlement_analysis ON settlement_versions(analysis_id,id);
+                INSERT OR IGNORE INTO schema_versions VALUES(7);
             """)
 
-    @contextmanager
-    def connect(self):
+    def _open_connection(self):
         db = sqlite3.connect(self.path, timeout=15)
         db.row_factory = sqlite3.Row
         db.execute("PRAGMA foreign_keys=ON")
+        return db
+
+    @contextmanager
+    def connection_scope(self):
+        """Reuse a handle within one operation, never across request/worker threads.
+
+        This is not a transaction: each outer connect() still commits or rolls
+        back separately, so no write lock is held during source HTTP requests.
+        """
+        if getattr(self._connections, 'db', None) is not None:
+            yield
+            return
+        db = self._open_connection()
+        self._connections.db = db
+        self._connections.depth = 0
+        try:
+            yield
+        finally:
+            del self._connections.db
+            del self._connections.depth
+            db.close()
+
+    @contextmanager
+    def connect(self):
+        shared = getattr(self._connections, 'db', None)
+        if shared is not None:
+            depth = self._connections.depth
+            self._connections.depth += 1
+            try:
+                if depth:
+                    yield shared
+                else:
+                    with shared:
+                        yield shared
+            finally:
+                self._connections.depth -= 1
+            return
+        db = self._open_connection()
         try:
             with db:
                 yield db
@@ -242,10 +291,58 @@ class Store:
             ).fetchall()
         return [json.loads(r[0]) for r in rows]
 
-    def save_analysis(self, match_id, result, inputs):
+    def saved_request(self, request_key, match_id):
+        if request_key is None:
+            return None
+        if not isinstance(request_key,str) or not 1 <= len(request_key) <= 150:
+            raise ValueError('预测请求标识无效')
+        with self.connect() as db:
+            row = db.execute('SELECT r.match_id,a.payload FROM prediction_requests r JOIN analyses a ON a.id=r.analysis_id WHERE r.request_key=?', (request_key,)).fetchone()
+        if row and row['match_id'] != match_id:
+            raise ValueError('预测请求标识已用于其他比赛')
+        return json.loads(row['payload']) if row else None
+
+    def save_settlement(self, analysis_id, value):
+        digest = fingerprint(value)
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            latest = db.execute('SELECT id,digest,payload FROM settlement_versions WHERE analysis_id=? ORDER BY id DESC LIMIT 1',(analysis_id,)).fetchone()
+            if latest and latest['digest']==digest:
+                return json.loads(latest['payload'])
+            result = {**value,'analysis_id':analysis_id,'digest':digest,'created_at':now_iso(),
+                      'previous_id':latest['id'] if latest else None}
+            cursor = db.execute('INSERT INTO settlement_versions(analysis_id,digest,created_at,payload) VALUES(?,?,?,?)',
+                                (analysis_id,digest,result['created_at'],encode(result)))
+            result['id'] = cursor.lastrowid
+            db.execute('UPDATE settlement_versions SET payload=? WHERE id=?',(encode(result),result['id']))
+        return result
+
+    def save_analysis(self, match_id, result, inputs, *, expected_fixture=None, request_key=None):
         digest = fingerprint({"data": inputs, "model": result["model_version"]})
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
+            if expected_fixture is not None:
+                from .readiness import fixture_key
+                from .sources import parse_date
+                from .quality import age_seconds
+                current = db.execute('SELECT payload,updated_at FROM matches WHERE id=?',(match_id,)).fetchone()
+                if not current or fixture_key(json.loads(current['payload'])) != expected_fixture:
+                    raise ValueError('处理期间比赛身份或开球时间已变更')
+                if parse_date(expected_fixture['kickoff']) <= datetime.now(timezone.utc) or not -30 <= age_seconds(current['updated_at']) <= 180:
+                    raise ValueError('归档时比赛已开赛或状态核验过期')
+                latest_detail = db.execute('SELECT payload FROM detail_cache WHERE match_id=?',(match_id,)).fetchone()
+                latest_live = db.execute('SELECT payload FROM live_scores WHERE match_id=?',(match_id,)).fetchone()
+                current_detail = json.loads(latest_detail[0]) if latest_detail else {}
+                current_live = json.loads(latest_live[0]) if latest_live else {}
+                blocked_states = ('live','completed','cancelled','postponed','suspended')
+                if current_detail.get('cancelled') or current_detail.get('official_score') or current_detail.get('context',{}).get('state') in blocked_states or current_live.get('state') in blocked_states:
+                    raise ValueError('归档时比赛状态已变更')
+            if request_key is not None:
+                old = db.execute('SELECT * FROM prediction_requests WHERE request_key=?',(request_key,)).fetchone()
+                if old:
+                    if old['match_id'] != match_id or old['input_digest'] != digest:
+                        raise ValueError('相同预测请求标识对应不同输入')
+                    return json.loads(db.execute('SELECT payload FROM analyses WHERE id=?',(old['analysis_id'],)).fetchone()[0])
             latest = db.execute(
                 "SELECT version,input_digest,payload FROM analyses WHERE match_id=? ORDER BY version DESC LIMIT 1",
                 (match_id,),
@@ -255,6 +352,9 @@ class Store:
                 and latest["input_digest"] == digest
                 and not result.get("narrative")
             ):
+                if request_key is not None:
+                    saved = json.loads(latest['payload'])
+                    db.execute('INSERT INTO prediction_requests VALUES(?,?,?,?)',(request_key,match_id,digest,saved['id']))
                 return json.loads(latest["payload"])
             result = {
                 **result,
@@ -277,6 +377,8 @@ class Store:
                     encode(result),
                 ),
             )
+            if request_key is not None:
+                db.execute('INSERT INTO prediction_requests VALUES(?,?,?,?)',(request_key,match_id,digest,result['id']))
         return result
 
     def set_state(self, kind, key, value, workspace="local"):

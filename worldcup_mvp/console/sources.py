@@ -56,10 +56,13 @@ LEAGUES = {
     "UCL": "uefa.champions",
     "ACL": "afc.champions",
     "UEL": "uefa.europa",
+    "UEC": "uefa.europa",
     "WC": "fifa.world",
 }
 # Explicit aliases scoped by competition; never match clubs solely by a kickoff or one team.
 ALIASES = {
+    "eng.2": {"BRT": "BRC", "WLV": "WOL"},
+    "uefa.europa": {"OLP": "OLY"},
     "afc.champions": {"NCJ":"NEW", "SSP":"SHP", "KAH":"KRE", "DJC":"DHC", "PTF":"PORT", "FBJ":"BEI", "PHS":"POH", "GAB":"GAM", "BUU":"BUR", "KAS":"KAN"},
     # Verified against both teams and kickoff in the provider feeds, 2026-11-03.
     "ita.1": {"SSL": "SAS"},
@@ -87,6 +90,23 @@ ALIASES = {
 
 class SourceError(RuntimeError):
     pass
+
+
+def league_for(code):
+    """Registered provider mappings take precedence over transport-only aliases."""
+    from .catalog import catalog
+    spec = next((c for c in catalog() if code and c.get('providers', {}).get('sporttery') == code), None)
+    return spec.get('providers', {}).get('espn') if spec else LEAGUES.get(code)
+
+
+def verify_board_identity(board, league):
+    from .catalog import catalog
+    expected = {str(c['providers']['espn_id']) for c in catalog()
+                if c.get('providers', {}).get('espn') == league and c['providers'].get('espn_id')}
+    matches = [row for row in board.get('leagues', []) if row.get('slug') == league]
+    if len(matches) != 1 or (expected and str(matches[0].get('id')) not in expected):
+        raise SourceError('比分来源赛事身份不一致')
+    return matches[0]
 
 
 def get_json(url, timeout=12):
@@ -397,7 +417,7 @@ def fetch_espn_context(match):
             "source": "K League",
             "injuries_verified": False,
         }
-    league = LEAGUES.get(match["league_code"])
+    league = league_for(match["league_code"])
     if not league:
         return {
             "available": False,
@@ -418,8 +438,7 @@ def fetch_espn_context(match):
             "source": "ESPN",
         }
     summary = get_json(ESPN + league + "/summary?event=" + event["id"])
-    if str(summary.get("header", {}).get("id")) != str(event["id"]):
-        raise SourceError("基本面详情比赛 ID 不一致")
+    verify_summary_identity(match, board, event, summary, league)
     competitors = {p["homeAway"]: p for p in event["competitions"][0]["competitors"]}
     lineups = []
     for side in ("home", "away"):
@@ -468,24 +487,79 @@ def fetch_espn_context(match):
     ].get("venue", {})
     from .match_facts import extract, head_to_head
     captured = now_iso()
+    from .readiness import fixture_key
+    espn_identity = {'provider': 'espn', 'fixture': fixture_key(match), 'competition_slug': league,
+        'event_id': str(event['id']), 'team_ids': {s: str(competitors[s]['id']) for s in ('home', 'away')},
+        'kickoff': event.get('date'), 'season': (event.get('season') or {}).get('year'),
+        'stage': (event.get('season') or {}).get('slug'),
+        'neutral': (summary.get('header',{}).get('competitions') or [{}])[0].get('neutralSite',event['competitions'][0].get('neutralSite')),
+        'source_url': f"https://www.espn.com/soccer/match/_/gameId/{event['id']}", 'captured_at': captured}
     return {
         "available": True,
+        "espn_identity": espn_identity,
         "event_id": event["id"],
         "provider_ids": {side: competitors[side]["id"] for side in ("home", "away")},
         "recent": recent,
         "head_to_head": head_to_head(summary, match, competitors),
+        "h2h_checked": any(s.get('type') == 'head-to-head' for s in summary.get('seasonseries', [])),
         "match_facts": extract(summary, match, competitors, captured),
         "lineups": lineups,
         "venue": venue.get("fullName"),
         "injuries": [],
         "injuries_verified": False,
-        "state": (
-            "completed"
-            if status.get("completed")
-            else "live" if status.get("state") == "in" else "upcoming"
-        ),
+        "state": espn_state(status),
         "score": score,
         "source": "ESPN",
         "source_url": f"https://www.espn.com/soccer/match/_/gameId/{event['id']}",
         "captured_at": captured,
     }
+
+
+def espn_state(status):
+    name = status.get('name', '')
+    states = {'STATUS_CANCELED':'cancelled', 'STATUS_CANCELLED':'cancelled',
+              'STATUS_POSTPONED':'postponed', 'STATUS_SUSPENDED':'suspended',
+              'STATUS_ABANDONED':'suspended', 'STATUS_SCHEDULED':'upcoming'}
+    if name in states:
+        return states[name]
+    if status.get('completed') is True:
+        return 'completed'
+    if status.get('state') == 'in':
+        return 'live'
+    return 'unknown'
+
+
+def verify_summary_identity(match, board, event, summary, league):
+    """Bind summary venue facts to both teams, source competition, season and time."""
+    try:
+        source = verify_board_identity(board, league)
+        eid = str(event['id'])
+        header = summary['header']
+        comp, detail = event['competitions'][0], header['competitions'][0]
+        if (len(event['competitions']) != 1 or len(header['competitions']) != 1
+                or event['uid'] != f"s:600~l:{source['id']}~e:{eid}"
+                or header['uid'] != event['uid'] or str(header['id']) != eid
+                or str(comp['id']) != eid or str(detail['id']) != eid
+                or event['season']['year'] != header['season']['year']
+                or parse_date(event['date']) != parse_date(match['kickoff'])
+                or parse_date(comp['date']) != parse_date(event['date'])
+                or parse_date(detail['date']) != parse_date(event['date'])):
+            raise ValueError('identity')
+        def teams(c):
+            values = c['competitors']
+            if len(values) != 2 or {v['homeAway'] for v in values} != {'home','away'}:
+                raise ValueError('teams')
+            result = {v['homeAway']:str(v['team']['id']) for v in values}
+            if len(set(result.values())) != 2:
+                raise ValueError('teams')
+            return result
+        if teams(comp) != teams(detail):
+            raise ValueError('teams')
+        # A cancellation in either endpoint must not be erased by the other.
+        upstream = espn_state(detail.get('status', {}).get('type', {}))
+        current = espn_state((event.get('status') or comp.get('status',{})).get('type',{}))
+        priority={'upcoming':0,'unknown':1,'live':2,'completed':3,'suspended':4,'postponed':5,'cancelled':6}
+        if priority[upstream] > priority[current]:
+            event['status'] = detail['status']
+    except (KeyError, TypeError, ValueError, StopIteration, IndexError):
+        raise SourceError('基本面详情赛事、球队、赛季或开球时间不一致') from None

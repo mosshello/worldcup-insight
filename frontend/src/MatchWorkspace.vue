@@ -17,6 +17,7 @@ import IntelligencePanel from "./IntelligencePanel.vue";
 import LegacyPrediction from "./LegacyPrediction.vue";
 import MatchBriefing from './MatchBriefing.vue';
 import MatchFacts from './MatchFacts.vue';
+import ColdStartStatus from './ColdStartStatus.vue';
 const props = defineProps({
   match: Object,
   tab: String,
@@ -286,7 +287,7 @@ const predictionBlocked = computed(
   () =>
     Date.parse(props.match.kickoff) <= Date.now() ||
     props.match.stale ||
-    detail.value?.quality?.can_predict === false ||
+    detail.value?.quality?.can_predict !== true ||
     detail.value?.cancelled ||
     ["live", "completed", "cancelled", "suspended", "postponed"].includes(
       liveScore.value?.state,
@@ -639,6 +640,7 @@ onBeforeUnmount(() => clearInterval(timer));
             >{{ lineupFor(i).source }}来源</a
           >
           · 获取于 {{ timeLabel(lineupFor(i).captured_at) }}
+          <span v-if="lineupFor(i).observed_before_kickoff === false"> · 赛后补采</span>
         </p>
         <div class="section-note">
           {{
@@ -656,6 +658,8 @@ onBeforeUnmount(() => clearInterval(timer));
       </div>
       <t-table
         row-key="recordKey"
+        class="personnel-table"
+        table-layout="fixed"
         :data="
           (context.injuries || []).map((r) => ({
             ...r,
@@ -663,9 +667,9 @@ onBeforeUnmount(() => clearInterval(timer));
           }))
         "
         :columns="[
-          { colKey: 'side', title: '球队', width: 110 },
-          { colKey: 'name', title: '球员', width: 150 },
-          { colKey: 'status', title: '状态', width: 180 },
+          { colKey: 'side', title: '球队', width: 110, ellipsis: true },
+          { colKey: 'name', title: '球员', width: 150, ellipsis: true },
+          { colKey: 'status', title: '状态', width: 230, ellipsis: true },
           { colKey: 'reason', title: '说明', minWidth: 230, ellipsis: true },
           { colKey: 'source', title: '来源 / 时间', width: 360, ellipsis: true },
         ]"
@@ -934,8 +938,8 @@ onBeforeUnmount(() => clearInterval(timer));
       :message="analysisError"
       class="mb16"
     />
-    <div v-if="predictionBlocked" class="inline-notice">
-      无法生成赛前预测，可查看历史版本。
+    <div v-if="predictionBlocked" class="inline-notice" role="alert">
+      {{ detail?.quality?.reasons?.length ? detail.quality.reasons.join("；") : "无法生成赛前预测，可查看历史版本。" }}
     </div>
     <LegacyPrediction :record="detail?.legacy_prediction" />
     <IntelligencePanel
@@ -950,6 +954,7 @@ onBeforeUnmount(() => clearInterval(timer));
           预测结论 / v{{ analysis.version }} · {{ timeLabel(analysis.created) }}
         </div>
         <h2>{{ analysis.title }}</h2>
+        <ColdStartStatus :model="analysis.football_model || analysis.football_prediction" :home="match.home" :away="match.away" />
         <div class="prediction-grid">
           <div>
             <span class="label-caption">{{ analysis.probLabel }}</span>
@@ -983,11 +988,15 @@ onBeforeUnmount(() => clearInterval(timer));
       <section v-if="analysis.market_assessments?.length" class="panel mt16">
         <div class="panel-heading">
           <h2>玩法分析</h2>
-          <span class="small muted">市场参考</span>
+          <span class="small muted">{{ analysis.schema_version === 2 ? '足球模型' : '市场参考' }}</span>
         </div>
         <MarketForecast :rows="analysis.market_assessments" />
       </section>
-      <section v-if="analysis.football_model" class="panel mt16">
+      <section v-if="analysis.schema_version === 2 && analysis.market_reference?.market_assessments?.length" class="panel mt16">
+        <div class="panel-heading"><h2>市场参考</h2></div>
+        <MarketForecast :rows="analysis.market_reference.market_assessments" />
+      </section>
+      <section v-if="analysis.football_model && analysis.schema_version !== 2" class="panel mt16">
         <div class="panel-heading">
           <h2>足球模型</h2>
           <t-tag
@@ -1186,3 +1195,6 @@ onBeforeUnmount(() => clearInterval(timer));
     </t-form>
   </t-dialog>
 </template>
+<style scoped>
+.personnel-table :deep(td) { white-space: nowrap; }
+</style>

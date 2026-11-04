@@ -78,7 +78,7 @@ def select_markets(current, history, now=None):
     return selected, issues
 
 
-def assess(match, detail, now=None):
+def assess(match, detail, now=None, football=None):
     now = now or datetime.now(timezone.utc)
     reasons = []
     if not detail.get("odds_fresh"):
@@ -107,10 +107,16 @@ def assess(match, detail, now=None):
     if not {"had", "hafu"}.intersection(eligible):
         reasons.append("胜平负及半全场均缺少完整在售报价")
     context = detail.get("context", {})
-    return {
+    from .readiness import check
+    fundamentals = check(match, context, now)
+    quote_reasons = list(reasons)
+    reasons.extend(fundamentals['reasons'])
+    result = {
         "can_predict": not reasons,
+        "quotes_ready": not quote_reasons,
+        "fundamentals": fundamentals,
         "reasons": reasons,
-        "eligible_markets": eligible,
+        "eligible_markets": eligible if not quote_reasons else [],
         "verified_at": detail.get("captured_at"),
         "max_age_seconds": MAX_AGE_SECONDS,
         "upstream_latency_verified": False,
@@ -123,3 +129,9 @@ def assess(match, detail, now=None):
             "historical_training": False,
         },
     }
+    if football is not None:
+        from .model_readiness import check as model_check
+        result['model_inputs'] = model_check(match,detail,football,now)
+        result['can_predict'] = result['model_inputs']['can_predict']
+        result['reasons'] = result['model_inputs']['reasons']
+    return result

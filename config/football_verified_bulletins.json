@@ -11,13 +11,94 @@
     "verified_at": "2026-11-03T03:45:09+00:00",
     "mode": "人工核验官方公告，仅适用于本场；不是实时伤停接口",
     "players": [
-      {"name":"穆西亚拉","aliases":["Jamal Musiala","贾马尔·穆西亚拉"],"status":"官方确认缺阵","reason":"仍在单独训练，本场不可用"},
-      {"name":"路易斯·迪亚斯","aliases":["Luis Díaz","路易斯·迪亚斯"],"status":"官方确认缺阵","reason":"仍在单独训练，本场不可用"},
-      {"name":"格纳布里","aliases":["Serge Gnabry","泽格·格纳布里"],"status":"官方确认缺阵","reason":"肌肉受伤"},
-      {"name":"赛巴里","aliases":["Ismael Saibari","伊斯梅尔·赛巴里"],"status":"官方确认缺阵","reason":"韧带受伤"},
-      {"name":"巴拉·恩迪亚耶","aliases":["Bara Ndiaye"],"status":"官方确认缺阵","reason":"术后恢复"},
-      {"name":"诺伊尔","aliases":["Manuel Neuer","曼努埃尔·诺伊尔"],"status":"随队出征，出场待定","reason":"已恢复合练；是否出场仍待确认"},
-      {"name":"奥利塞","aliases":["Michael Olise","迈克尔·奥利塞"],"status":"随队出征，出场待定","reason":"已进入出征名单；是否出场仍待确认"}
+      {
+        "name": "穆西亚拉",
+        "aliases": [
+          "Jamal Musiala",
+          "贾马尔·穆西亚拉"
+        ],
+        "status": "官方确认缺阵",
+        "reason": "仍在单独训练，本场不可用"
+      },
+      {
+        "name": "路易斯·迪亚斯",
+        "aliases": [
+          "Luis Díaz",
+          "路易斯·迪亚斯"
+        ],
+        "status": "官方确认缺阵",
+        "reason": "仍在单独训练，本场不可用"
+      },
+      {
+        "name": "格纳布里",
+        "aliases": [
+          "Serge Gnabry",
+          "泽格·格纳布里"
+        ],
+        "status": "官方确认缺阵",
+        "reason": "肌肉受伤"
+      },
+      {
+        "name": "赛巴里",
+        "aliases": [
+          "Ismael Saibari",
+          "伊斯梅尔·赛巴里"
+        ],
+        "status": "官方确认缺阵",
+        "reason": "韧带受伤"
+      },
+      {
+        "name": "巴拉·恩迪亚耶",
+        "aliases": [
+          "Bara Ndiaye"
+        ],
+        "status": "官方确认缺阵",
+        "reason": "术后恢复"
+      },
+      {
+        "name": "诺伊尔",
+        "aliases": [
+          "Manuel Neuer",
+          "曼努埃尔·诺伊尔"
+        ],
+        "status": "随队出征，出场待定",
+        "reason": "已恢复合练；是否出场仍待确认"
+      },
+      {
+        "name": "奥利塞",
+        "aliases": [
+          "Michael Olise",
+          "迈克尔·奥利塞"
+        ],
+        "status": "随队出征，出场待定",
+        "reason": "已进入出征名单；是否出场仍待确认"
+      }
+    ]
+  },
+  {
+    "provider_match_id": "2042507",
+    "home": "布里兰",
+    "away": "鹿岛鹿角",
+    "kickoff": "2026-11-04T20:15:00+08:00",
+    "side": "away",
+    "source": "鹿岛鹿角俱乐部官方",
+    "source_url": "https://www.antlers.co.jp/blogs/news/261029hb37vq",
+    "published_at": "2026-10-29T23:59:59+09:00",
+    "verified_at": "2026-11-04T10:33:28.135996+00:00",
+    "mode": "人工核验官方伤情公告；本场出场资格未确认",
+    "players": [
+      {
+        "name": "金太铉",
+        "aliases": [
+          "Tae-hyeon Kim",
+          "キム テヒョン"
+        ],
+        "kind": "injury",
+        "status": "官方公布伤情，本场待核实",
+        "reason": "右胫骨近端骨折；俱乐部未公布治疗期限",
+        "training_eligible": false,
+        "eligibility_verified": false
+      }
     ]
   }
 ]

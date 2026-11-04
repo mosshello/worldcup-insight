@@ -18,6 +18,8 @@ def score_pair(value):
 
 
 def had_probabilities(prediction, model=False):
+    if prediction.get('schema_version') == 2 and not model:
+        prediction = prediction.get('market_reference') or {}
     assessments = (prediction.get("football_model", {}).get("markets", [])
                    if model else prediction.get("market_assessments", []))
     had = next((m for m in assessments if m.get("code") == "had"), {})
@@ -135,7 +137,7 @@ def analyze(store, match, prediction, detail, live_score):
             continue
         probs, had = had_probabilities(prediction, is_model)
         selected = had.get("selected_keys")
-        if selected is None and not is_model:
+        if selected is None and not is_model and prediction.get('schema_version') != 2:
             selected = [prediction["direction_key"]] if prediction.get("direction_key") in LABELS else []
         comparison = {"label": label, "selection": " / ".join(LABELS[k] for k in selected or [] if k in LABELS) or "观望 / 未归档",
                       "alignment": None if not selected else actual in selected}

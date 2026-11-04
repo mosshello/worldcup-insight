@@ -26,6 +26,9 @@ class CompletenessTests(unittest.TestCase):
         self.detail['quality'] = assess(self.match, self.detail, self.now)
 
     def test_preview_is_readonly_and_explains_unavailable_model(self):
+        from tests.test_prediction_readiness import ready_context
+        self.detail['context'] = ready_context(self.match, self.now)
+        self.detail['quality'] = assess(self.match, self.detail, self.now)
         before = copy.deepcopy(self.detail)
         result = briefing.build(self.match, self.detail, {'status':'unavailable','reason':'本赛事未训练'}, self.now)
         self.assertIsNotNone(result['preview'])

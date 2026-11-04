@@ -1,0 +1,12 @@
+[
+  {
+    "match_id": "sporttery:2042415",
+    "league_code": "JD1",
+    "codes": ["MCZ", "GAB"],
+    "teams": ["machida", "gosaka"],
+    "kickoff": "2026-11-01T15:00:00+08:00",
+    "source_url": "https://www.jleague.jp/match/j1/2026/110109/",
+    "verified_at": "2026-11-03",
+    "reason": "官方日本时间16时与体彩北京时间15时一致；ESPN事件401877581的时间存在一小时冲突"
+  }
+]

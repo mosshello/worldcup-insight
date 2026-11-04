@@ -1,20 +1,20 @@
 """New workbench routes must not alter the old dashboard entry or start training."""
 
 import json
+import socket
 import threading
 import unittest
 import urllib.request
 import urllib.error
-from http.server import ThreadingHTTPServer
 from unittest.mock import patch
 
-from dashboard import DashboardHandler
+from dashboard import DashboardHandler, DashboardHTTPServer
 
 
 class ConsoleRoutesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), DashboardHandler)
+        cls.server = DashboardHTTPServer(("127.0.0.1", 0), DashboardHandler)
         cls.worker = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.worker.start()
         cls.base = f"http://127.0.0.1:{cls.server.server_port}"
@@ -24,6 +24,19 @@ class ConsoleRoutesTest(unittest.TestCase):
         cls.server.shutdown()
         cls.server.server_close()
         cls.worker.join(timeout=2)
+
+    def test_navigation_connection_burst_waits_for_accept_without_refusal(self):
+        # Hold accept while one navigation's CSS/modules/APIs connect together.
+        # The old five-connection queue cannot accommodate this burst.
+        with DashboardHTTPServer(('127.0.0.1', 0), DashboardHandler) as server:
+            connections = []
+            try:
+                for _ in range(16):
+                    connections.append(socket.create_connection(server.server_address, timeout=1))
+                self.assertEqual(len(connections), 16)
+            finally:
+                for connection in connections:
+                    connection.close()
 
     def test_console_redirect_serves_built_app(self):
         with urllib.request.urlopen(self.base + "/console") as response:

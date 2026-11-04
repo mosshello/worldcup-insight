@@ -17,30 +17,42 @@ if len(COMPETITIONS) != sum(bool(c["providers"].get("sporttery")) for c in REGIS
 
 
 def classify(match):
-    spec = COMPETITIONS.get(match.get("league_code"))
+    spec = next((c for c in catalog() if c.get('providers', {}).get('sporttery') == match.get('league_code') and match.get('league_code')), None)
     if not spec:
         return {
-            "id": "sporttery.league:" + str(match.get("league_id")),
+            "id": "unregistered:" + str(match.get('provider') or 'sporttery') + ':' + str(match.get('league_code') or ('fixture:' + str(match.get('id')))),
             "season": None,
             "stage": None,
-            "period": "regular_time",
+            "period": None,
         }
     date = match["kickoff"][:10]
     season = next((s for s in spec["seasons"] if s["start"] <= date < s["end"]), None)
     return {
         "id": spec["id"],
-        "country": spec["country"],
-        "region": spec["region"],
+        "country": spec.get("country"),
+        "region": spec.get("region"),
         "season": season["id"] if season else None,
         # Group membership is not guessed from a date or current ranking.
         "stage": "regular" if season and season["stages"] == ["regular"] else None,
         "period": "regular_time",
-        "rule_source": spec["rule_source"],
+        "rule_source": spec.get("rule_source"),
+        "rule_revision": rule_revision(spec),
     }
 
 
 def catalog():
-    return deepcopy(REGISTERED)
+    values = json.loads(REGISTRY_PATH.read_text(encoding='utf-8'))
+    if not isinstance(values, list) or len({c['id'] for c in values}) != len(values):
+        raise ValueError('赛事登记标识重复或格式无效')
+    codes = [c.get('providers', {}).get('sporttery') for c in values if c.get('providers', {}).get('sporttery')]
+    if len(codes) != len(set(codes)):
+        raise ValueError('体彩赛事映射重复')
+    return deepcopy(values)
+
+
+def rule_revision(spec):
+    from .store import fingerprint
+    return fingerprint(spec)
 
 
 def provider_configuration():

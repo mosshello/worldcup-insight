@@ -8,7 +8,8 @@
     "build": "vite build && node scripts/publish.mjs",
     "test": "node --test tests/*.test.js",
     "test:e2e": "playwright test",
-    "format": "prettier --write src scripts tests e2e *.js *.json *.html README.md"
+    "format": "prettier --write src scripts tests e2e *.js *.json *.html README.md",
+    "build:check": "vite build --outDir ../.ai/tmp/console-build --emptyOutDir"
   },
   "dependencies": {
     "tdesign-icons-vue-next": "^0.4.0",

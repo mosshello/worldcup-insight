@@ -123,18 +123,6 @@
     }
   },
   {
-    "id": "uefa.ucl",
-    "name": "欧冠",
-    "country": null,
-    "region": "UEFA",
-    "providers": {},
-    "seasons": [],
-    "training_enabled": false,
-    "target_period": "regular_time",
-    "training_scope": "competition_only",
-    "cross_competition_features": false
-  },
-  {
     "id": "jp.emperors_cup",
     "name": "天皇杯",
     "country": "JP",
@@ -145,5 +133,467 @@
     "target_period": "regular_time",
     "training_scope": "competition_only",
     "cross_competition_features": false
+  },
+  {
+    "id": "afc.champions",
+    "name": "亚冠精英",
+    "country": null,
+    "region": "AFC",
+    "official_url": "https://www.the-afc.com/en/club/afc_champions_league_elite.html",
+    "rule_source": "https://www.jleague.jp/en/outline/acle/",
+    "providers": {
+      "sporttery": "ACL",
+      "espn": "afc.champions"
+    },
+    "training_enabled": true,
+    "target_period": "regular_time",
+    "training_scope": "competition_only",
+    "cross_competition_features": false,
+    "history_years": [
+      2015,
+      2016,
+      2017,
+      2019,
+      2023,
+      2024,
+      2025,
+      2026
+    ],
+    "training_stage_policy": {
+      "2016": [
+        "group-stage"
+      ],
+      "2017": [
+        "group-stage"
+      ],
+      "2019": [
+        "group-stage"
+      ],
+      "2023": [
+        "group-stage"
+      ],
+      "2024": [
+        "league-stage"
+      ],
+      "2025": [
+        "league-stage"
+      ],
+      "2026": [
+        "league-stage"
+      ]
+    },
+    "prediction_stage_policy": {
+      "2026": [
+        "league-stage"
+      ]
+    },
+    "research_policy": {
+      "sample_policy": "acl-group-league-regular-home-away-research-v1",
+      "continuity_policy": "ACL and ACL Elite group/league stages only; era retained for separate evaluation; no ACL2",
+      "excluded_seasons": [
+        "2020",
+        "2021",
+        "2022"
+      ],
+      "limitations": [
+        "部分球队近期样本少",
+        "不同赛制时期分组评估",
+        "无半场与历史盘口"
+      ],
+      "usage_mode": "local_research"
+    },
+    "seasons": [
+      {
+        "id": "2026",
+        "label": "2026/27",
+        "start": "2026-07-01",
+        "end": "2027-07-01",
+        "format": "continental_league_stage",
+        "stages": [
+          "league-stage"
+        ],
+        "shootout_separate": true
+      }
+    ]
+  },
+  {
+    "id": "uefa.uel",
+    "name": "欧联",
+    "country": null,
+    "region": "UEFA",
+    "official_url": "https://documents.uefa.com/r/Regulations-of-the-UEFA-Europa-League-2026/27/Article-17-Match-system-league-phase-Online",
+    "rule_source": "https://documents.uefa.com/r/Regulations-of-the-UEFA-Europa-League-2026/27/Article-17-Match-system-league-phase-Online",
+    "providers": {
+      "sporttery": "UEC",
+      "espn": "uefa.europa",
+      "espn_id": "776"
+    },
+    "training_enabled": true,
+    "target_period": "regular_time",
+    "training_scope": "competition_only",
+    "cross_competition_features": false,
+    "history_years": [
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ],
+    "training_stage_policy": {
+      "2021": [
+        "group-stage"
+      ],
+      "2022": [
+        "group-stage"
+      ],
+      "2023": [
+        "group-stage"
+      ],
+      "2024": [
+        "league-phase"
+      ],
+      "2025": [
+        "league-phase"
+      ],
+      "2026": [
+        "league-phase"
+      ]
+    },
+    "prediction_stage_policy": {
+      "2026": [
+        "league-phase"
+      ]
+    },
+    "research_policy": {
+      "sample_policy": "espn-competition-regular-home-away-research-v1",
+      "usage_mode": "local_research",
+      "continuity_policy": "Same competition main group/league phases; keep group and league format eras for separate evaluation; qualifying and knockout excluded",
+      "limitations": [
+        "仅确认90分钟且非中立场样本",
+        "半场与历史盘口按实际覆盖",
+        "样本不足的球队保持阻断"
+      ],
+      "rules_verified_at": "2026-11-04",
+      "rules_scope": "main league phase; no qualifying or knockout"
+    },
+    "seasons": [
+      {
+        "id": "2021",
+        "label": "2021/22",
+        "start": "2021-07-01",
+        "end": "2022-07-01",
+        "format": "continental_group",
+        "stages": [
+          "group-stage"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2022",
+        "label": "2022/23",
+        "start": "2022-07-01",
+        "end": "2023-07-01",
+        "format": "continental_group",
+        "stages": [
+          "group-stage"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2023",
+        "label": "2023/24",
+        "start": "2023-07-01",
+        "end": "2024-07-01",
+        "format": "continental_group",
+        "stages": [
+          "group-stage"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2024",
+        "label": "2024/25",
+        "start": "2024-07-01",
+        "end": "2025-07-01",
+        "format": "continental_league_phase",
+        "stages": [
+          "league-phase"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2025",
+        "label": "2025/26",
+        "start": "2025-07-01",
+        "end": "2026-07-01",
+        "format": "continental_league_phase",
+        "stages": [
+          "league-phase"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2026",
+        "label": "2026/27",
+        "start": "2026-07-01",
+        "end": "2027-07-01",
+        "format": "continental_league_phase",
+        "stages": [
+          "league-phase"
+        ],
+        "shootout_separate": true
+      }
+    ]
+  },
+  {
+    "id": "eng.championship",
+    "name": "英冠",
+    "country": "GB",
+    "region": "UEFA",
+    "official_url": "https://www.efl.com/governance/regulations/",
+    "rule_source": "https://www.efl.com/governance/regulations/",
+    "providers": {
+      "sporttery": "ED1",
+      "espn": "eng.2",
+      "espn_id": "3914"
+    },
+    "training_enabled": true,
+    "target_period": "regular_time",
+    "training_scope": "competition_only",
+    "cross_competition_features": false,
+    "history_years": [
+      2024,
+      2025,
+      2026
+    ],
+    "training_stage_policy": {
+      "2023": [
+        "regular-season"
+      ],
+      "2024": [
+        "regular-season"
+      ],
+      "2025": [
+        "regular-season"
+      ],
+      "2026": [
+        "regular-season"
+      ]
+    },
+    "prediction_stage_policy": {
+      "2026": [
+        "regular-season"
+      ]
+    },
+    "research_policy": {
+      "sample_policy": "espn-competition-regular-home-away-research-v1",
+      "usage_mode": "local_research",
+      "continuity_policy": "Same Championship regular season only; promotion playoffs and other divisions excluded",
+      "limitations": [
+        "仅确认90分钟且非中立场样本",
+        "半场与历史盘口按实际覆盖",
+        "样本不足的球队保持阻断"
+      ],
+      "rules_verified_at": "2026-11-04",
+      "rules_scope": "regular-season 90-minute only; current playoff format not verified or enabled"
+    },
+    "seasons": [
+      {
+        "id": "2023",
+        "label": "2023/24",
+        "start": "2023-06-01",
+        "end": "2024-06-01",
+        "format": "league",
+        "stages": [
+          "regular-season"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2024",
+        "label": "2024/25",
+        "start": "2024-06-01",
+        "end": "2025-06-01",
+        "format": "league",
+        "stages": [
+          "regular-season"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2025",
+        "label": "2025/26",
+        "start": "2025-06-01",
+        "end": "2026-06-01",
+        "format": "league",
+        "stages": [
+          "regular-season"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2026",
+        "label": "2026/27",
+        "start": "2026-06-01",
+        "end": "2027-06-01",
+        "format": "league",
+        "stages": [
+          "regular-season"
+        ],
+        "shootout_separate": true
+      }
+    ],
+    "rule_evidence": {
+      "duration": "https://www.theifab.com/laws/latest/the-duration-of-the-match/",
+      "efl_published_edition": "2025/26",
+      "efl_published_rules": "https://images.gc.eflservices.co.uk/6a32d710-5b0b-11f0-ad0f-97502a343283.pdf",
+      "latest_handbook_status": "2026/27 full handbook not retrieved; no playoff rule inferred",
+      "source_stage": "regular-season",
+      "source_league_id": "3914"
+    }
+  },
+  {
+    "id": "uefa.ucl",
+    "name": "欧冠",
+    "country": null,
+    "region": "UEFA",
+    "official_url": "https://documents.uefa.com/r/Regulations-of-the-UEFA-Champions-League-2026/27/Article-17-Match-system-league-phase-Online",
+    "rule_source": "https://documents.uefa.com/r/Regulations-of-the-UEFA-Champions-League-2026/27/Article-17-Match-system-league-phase-Online",
+    "providers": {
+      "sporttery": "UCL",
+      "espn": "uefa.champions",
+      "espn_id": "775"
+    },
+    "training_enabled": true,
+    "target_period": "regular_time",
+    "training_scope": "competition_only",
+    "cross_competition_features": false,
+    "history_years": [
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ],
+    "training_stage_policy": {
+      "2021": [
+        "group-stage"
+      ],
+      "2022": [
+        "group-stage"
+      ],
+      "2023": [
+        "group-stage"
+      ],
+      "2024": [
+        "league-phase"
+      ],
+      "2025": [
+        "league-phase"
+      ],
+      "2026": [
+        "league-phase",
+        "qualifying:first-round",
+        "qualifying:second-round",
+        "qualifying:third-round",
+        "qualifying:playoff-round"
+      ]
+    },
+    "prediction_stage_policy": {
+      "2026": [
+        "league-phase"
+      ]
+    },
+    "research_policy": {
+      "sample_policy": "espn-competition-regular-home-away-research-v1",
+      "usage_mode": "local_research",
+      "continuity_policy": "Same UCL group/league main stages plus explicitly verified 2026 qualifying legs; retain phase and rules era for separate evaluation; no other competition or knockout results",
+      "limitations": [
+        "仅确认90分钟且非中立场样本",
+        "半场与历史盘口按实际覆盖",
+        "样本不足的球队保持阻断"
+      ],
+      "rules_verified_at": "2026-11-04",
+      "rules_scope": "Prediction league-phase only; qualifying legs admitted solely to training with explicit verified 90-minute result",
+      "qualifying_years": [
+        2026
+      ],
+      "qualifying_source": {
+        "slug": "uefa.champions_qual",
+        "league_id": "19874"
+      },
+      "qualifying_rule_source": "https://documents.uefa.com/r/Regulations-of-the-UEFA-Champions-League-2026/27/Article-15-Match-system-qualifying-phase-and-play-offs-Online",
+      "qualifying_admission": "2026 only; each leg exact ESPN summary identity; completed period 2; nonneutral; no extra time or penalties; qualification outcome never training label"
+    },
+    "seasons": [
+      {
+        "id": "2021",
+        "label": "2021/22",
+        "start": "2021-07-01",
+        "end": "2022-07-01",
+        "format": "continental_group",
+        "stages": [
+          "group-stage"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2022",
+        "label": "2022/23",
+        "start": "2022-07-01",
+        "end": "2023-07-01",
+        "format": "continental_group",
+        "stages": [
+          "group-stage"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2023",
+        "label": "2023/24",
+        "start": "2023-07-01",
+        "end": "2024-07-01",
+        "format": "continental_group",
+        "stages": [
+          "group-stage"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2024",
+        "label": "2024/25",
+        "start": "2024-07-01",
+        "end": "2025-07-01",
+        "format": "continental_league_phase",
+        "stages": [
+          "league-phase"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2025",
+        "label": "2025/26",
+        "start": "2025-07-01",
+        "end": "2026-07-01",
+        "format": "continental_league_phase",
+        "stages": [
+          "league-phase"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2026",
+        "label": "2026/27",
+        "start": "2026-07-01",
+        "end": "2027-07-01",
+        "format": "continental_league_phase",
+        "stages": [
+          "league-phase"
+        ],
+        "shootout_separate": true
+      }
+    ]
   }
 ]

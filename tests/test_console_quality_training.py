@@ -55,7 +55,9 @@ class QuotesTests(unittest.TestCase):
 
     def test_old_unchanged_quote_with_fresh_heartbeat_is_valid(self):
         self.detail["markets"]["had"]["updated_at"] = "2098-01-01T00:00:00Z"
-        self.assertTrue(assess(self.match, self.detail, self.now)["can_predict"])
+        quality = assess(self.match, self.detail, self.now)
+        self.assertTrue(quality["quotes_ready"])
+        self.assertFalse(quality["can_predict"])  # Fresh quotes cannot bypass missing fundamentals.
         self.detail["captured_at"] = (self.now - timedelta(seconds=181)).isoformat()
         self.assertFalse(assess(self.match, self.detail, self.now)["can_predict"])
 

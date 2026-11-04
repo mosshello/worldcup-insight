@@ -1,0 +1,135 @@
+{
+  "revision": "368fd1cc2b7a57237560f7c9f229f8f5b0fc5ed0f3e0cd0f1772bd0290d32068",
+  "previous_revision": "6244d422851a4181fad769056ecaae54174f14c90494028714127d625df4f3d8",
+  "created_at": "2026-11-04T10:24:57.481554+00:00",
+  "rules": {
+    "id": "uefa.ucl",
+    "name": "欧冠",
+    "country": null,
+    "region": "UEFA",
+    "official_url": "https://documents.uefa.com/r/Regulations-of-the-UEFA-Champions-League-2026/27/Article-17-Match-system-league-phase-Online",
+    "rule_source": "https://documents.uefa.com/r/Regulations-of-the-UEFA-Champions-League-2026/27/Article-17-Match-system-league-phase-Online",
+    "providers": {
+      "sporttery": "UCL",
+      "espn": "uefa.champions",
+      "espn_id": "775"
+    },
+    "training_enabled": true,
+    "target_period": "regular_time",
+    "training_scope": "competition_only",
+    "cross_competition_features": false,
+    "history_years": [
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ],
+    "training_stage_policy": {
+      "2021": [
+        "group-stage"
+      ],
+      "2022": [
+        "group-stage"
+      ],
+      "2023": [
+        "group-stage"
+      ],
+      "2024": [
+        "league-phase"
+      ],
+      "2025": [
+        "league-phase"
+      ],
+      "2026": [
+        "league-phase"
+      ]
+    },
+    "prediction_stage_policy": {
+      "2026": [
+        "league-phase"
+      ]
+    },
+    "research_policy": {
+      "sample_policy": "espn-competition-regular-home-away-research-v1",
+      "usage_mode": "local_research",
+      "continuity_policy": "Same competition main group/league phases; keep group and league format eras for separate evaluation; qualifying and knockout excluded",
+      "limitations": [
+        "仅确认90分钟且非中立场样本",
+        "半场与历史盘口按实际覆盖",
+        "样本不足的球队保持阻断"
+      ],
+      "rules_verified_at": "2026-11-04",
+      "rules_scope": "main league phase; no qualifying or knockout"
+    },
+    "seasons": [
+      {
+        "id": "2021",
+        "label": "2021/22",
+        "start": "2021-07-01",
+        "end": "2022-07-01",
+        "format": "continental_group",
+        "stages": [
+          "group-stage"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2022",
+        "label": "2022/23",
+        "start": "2022-07-01",
+        "end": "2023-07-01",
+        "format": "continental_group",
+        "stages": [
+          "group-stage"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2023",
+        "label": "2023/24",
+        "start": "2023-07-01",
+        "end": "2024-07-01",
+        "format": "continental_group",
+        "stages": [
+          "group-stage"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2024",
+        "label": "2024/25",
+        "start": "2024-07-01",
+        "end": "2025-07-01",
+        "format": "continental_league_phase",
+        "stages": [
+          "league-phase"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2025",
+        "label": "2025/26",
+        "start": "2025-07-01",
+        "end": "2026-07-01",
+        "format": "continental_league_phase",
+        "stages": [
+          "league-phase"
+        ],
+        "shootout_separate": true
+      },
+      {
+        "id": "2026",
+        "label": "2026/27",
+        "start": "2026-07-01",
+        "end": "2027-07-01",
+        "format": "continental_league_phase",
+        "stages": [
+          "league-phase"
+        ],
+        "shootout_separate": true
+      }
+    ]
+  }
+}

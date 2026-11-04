@@ -72,7 +72,9 @@ def summarize(rows):
 
 
 def historical_context(match, data=None, now=None):
-    data = load_history(competition_id=classify(match)["id"]) if data is None else data
+    if data is None:
+        from .context_history import display_history
+        data = display_history(match)
     fixture = match_fixture(match, data)
     now = now or datetime.now(timezone.utc)
     cutoff = min(now, parse_date(match["kickoff"]))
@@ -95,7 +97,7 @@ def historical_context(match, data=None, now=None):
            if {r["home_id"], r["away_id"]} == {fixture["home_id"], fixture["away_id"]}][:5]
     return dict(available=all(recent), source="500 历史赛果", recent_source="500",
                 source_url=fixture["source_url"], captured_at=fixture["collected_at"], built_at=now_iso(),
-                recent=recent, venue_recent=venues, season_stats=season_stats, h2h=h2h,
+                recent=recent, venue_recent=venues, season_stats=season_stats, h2h=h2h, h2h_checked=True,
                 competition={k: fixture[k] for k in ("competition_id", "season", "stage")},
                 provider_ids={s: fixture[s+"_id"] for s in ("home", "away")},
                 event_id=fixture["id"], injuries=[], injuries_verified=False,

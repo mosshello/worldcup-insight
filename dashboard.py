@@ -44,6 +44,12 @@ WEB_ROOT = PROJECT_ROOT / "web"
 _CLIENT_GONE_ERRORS = (ConnectionAbortedError, ConnectionResetError, BrokenPipeError)
 
 
+class DashboardHTTPServer(ThreadingHTTPServer):
+    # A navigation bursts module preloads, CSS and API requests together.
+    # The stdlib backlog of five drops connections on Windows during that burst.
+    request_queue_size = 64
+
+
 class DashboardHandler(BaseHTTPRequestHandler):
     server_version = "WorldcupInsightDashboard/1.2"
     console_only = False
@@ -125,7 +131,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         query = self._parse_query()
 
         try:
-            if route.startswith("/api/v1/"):
+            if route.startswith(("/api/v1/", "/api/v2/")):
                 from worldcup_mvp.console import api
                 from worldcup_mvp.console.sources import SourceError
                 try:
@@ -286,10 +292,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
         route = parsed.path
 
         try:
-            if route.startswith("/api/v1/"):
+            if route.startswith(("/api/v1/", "/api/v2/")):
                 from worldcup_mvp.console import api
                 from worldcup_mvp.console.sources import SourceError
-                limit = 16 * 1024 * 1024 if route == "/api/v1/datasets/import" else 65536
+                limit = 16 * 1024 * 1024 if route.endswith('/datasets/import') else 65536
                 if int(self.headers.get("Content-Length", 0)) > limit:
                     self._send_json({"success": False, "error": "请求内容过大"}, status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
                     return
@@ -382,7 +388,7 @@ def main() -> int:
         stop_event = service().start_collector()
         service().ai_reviews.start()
 
-    server = ThreadingHTTPServer((args.host, args.port), DashboardHandler)
+    server = DashboardHTTPServer((args.host, args.port), DashboardHandler)
     DashboardHandler.console_only = args.console_only
     url = f"http://{args.host}:{args.port}"
     print("世界杯盘口可视化仪表盘")

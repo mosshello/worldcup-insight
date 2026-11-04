@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import LiveScore from "./LiveScore.vue";
 import IntelligencePanel from "./IntelligencePanel.vue";
 import LegacyPrediction from "./LegacyPrediction.vue";
@@ -8,7 +8,7 @@ import { MessagePlugin } from "tdesign-vue-next";
 import { RefreshIcon, SearchIcon } from "tdesign-icons-vue-next";
 import { api, timeLabel } from "./api";
 import { toCsv } from "./domain";
-const props = defineProps({ state: Object });
+const props = defineProps({ state: Object, matchId: String, openRequest: Number });
 const emit = defineEmits(["saved", "download"]);
 const aiConfig = ref(null),
   generating = ref(false);
@@ -33,6 +33,8 @@ const rows = ref([]),
   open = ref(false),
   page = ref(1),
   saving = ref(false);
+const noteDrafts = new Map();
+let pendingMatchId = "";
 const list = computed(() =>
   rows.value
     .map((r) => ({
@@ -64,11 +66,7 @@ async function load(refresh = false) {
     const d = await (refresh ? api.refreshReviews() : api.reviews());
     rows.value = d.reviews;
     aiConfig.value = d.ai_review_config;
-    if (!selected.value && location.hash.startsWith("#/reviews/")) {
-      const id = decodeURIComponent(location.hash.split("/")[2]);
-      const row = rows.value.find((r) => r.id === id);
-      if (row) inspect(row);
-    }
+    openPendingReview();
     if (selected.value)
       selected.value =
         rows.value.find((r) => r.id === selected.value.id) || selected.value;
@@ -79,10 +77,26 @@ async function load(refresh = false) {
   }
 }
 function inspect(row) {
+  if (selected.value) noteDrafts.set(selected.value.id, draft.value);
   selected.value = row;
-  draft.value = props.state.reviewNotes[row.id] || "";
+  draft.value = noteDrafts.get(row.id) ?? props.state.reviewNotes[row.id] ?? "";
   open.value = true;
 }
+function openPendingReview() {
+  if (!pendingMatchId) return;
+  const row = rows.value.find((r) => r.id === pendingMatchId);
+  if (!row) return;
+  pendingMatchId = "";
+  inspect(row);
+}
+watch(
+  () => [props.matchId, props.openRequest],
+  ([id]) => {
+    pendingMatchId = id || "";
+    openPendingReview();
+  },
+  { immediate: true },
+);
 const marketNames = {
   had: "胜平负",
   hhad: "让球胜平负",
