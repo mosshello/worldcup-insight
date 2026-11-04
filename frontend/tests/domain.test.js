@@ -1,7 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { adaptMatch } from "../src/api.js";
+import { adaptMatch, beijingDateTime } from "../src/api.js";
 import { price, toCsv } from "../src/domain.js";
+
+test('kickoff display and date filter share Beijing time across UTC midnight and source offsets', () => {
+  const utc = adaptMatch({ kickoff: '2026-11-04T16:30:00Z', sale_date: '2026-11-04', markets: {} });
+  assert.equal(utc.kickoffLabel, '2026-11-05 00:30');
+  assert.equal(utc.kickoffDate, '2026-11-05');
+  assert.equal(utc.date, '2026-11-04');
+  assert.equal(beijingDateTime('2026-11-05T01:30:00+09:00'), utc.kickoffLabel);
+  assert.equal(beijingDateTime('2026-11-04T16:00:00Z'), '2026-11-05 00:00');
+  assert.equal(beijingDateTime(null), '待定');
+});
 test("missing market odds remain missing instead of becoming sample prices", () => {
   const m = adaptMatch({
     id: "sporttery:1",

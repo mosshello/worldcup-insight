@@ -3,10 +3,11 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import LiveScore from "./LiveScore.vue";
 import IntelligencePanel from "./IntelligencePanel.vue";
 import LegacyPrediction from "./LegacyPrediction.vue";
+import PredictionArchive from './PredictionArchive.vue';
 import MatchFacts from './MatchFacts.vue';
 import { MessagePlugin } from "tdesign-vue-next";
 import { RefreshIcon, SearchIcon } from "tdesign-icons-vue-next";
-import { api, timeLabel } from "./api";
+import { api, timeLabel, beijingDateTime } from "./api";
 import { toCsv } from "./domain";
 const props = defineProps({ state: Object, matchId: String, openRequest: Number });
 const emit = defineEmits(["saved", "download"]);
@@ -34,6 +35,13 @@ const rows = ref([]),
   page = ref(1),
   saving = ref(false);
 const noteDrafts = new Map();
+const predictionPreview = ref(null), predictionPreviewOpen = ref(false);
+const previewVersion = ref('');
+function previewPrediction(row, version = null) {
+  predictionPreview.value = row;
+  previewVersion.value = version ? String(version.id ?? version.version) : '';
+  predictionPreviewOpen.value = true;
+}
 let pendingMatchId = "";
 const list = computed(() =>
   rows.value
@@ -298,10 +306,10 @@ onBeforeUnmount(() => clearInterval(timer));
       ><template #score="{ row }"
         ><strong class="mono">{{ row.score }}</strong></template
       ><template #pick="{ row }">
-        <span v-if="row.prediction">{{ row.pick }}</span>
-        <span v-else-if="row.legacy_prediction"
+        <button v-if="row.prediction" class="prediction-link" :aria-label="`查看当时预测：${row.pick}`" @click="previewPrediction(row)">{{ row.pick }}</button>
+        <button v-else-if="row.legacy_prediction" class="prediction-link" :aria-label="`查看旧版预测：${row.legacy_prediction.direction}`" @click="previewPrediction(row)"
           >{{ row.legacy_prediction.direction }}
-          <small class="muted">· 旧版</small></span
+          <small class="muted">· 旧版</small></button
         >
         <span v-else class="muted">未归档</span></template
       ><template #result="{ row }"
@@ -353,11 +361,21 @@ onBeforeUnmount(() => clearInterval(timer));
       />
     </div>
   </section>
+  <t-dialog v-model:visible="predictionPreviewOpen" header="当时预测" placement="center"
+    width="min(720px, calc(100vw - 32px))" :footer="false" :destroy-on-close="true"
+    :close-on-esc-keydown="true" class="prediction-preview">
+    <div v-if="predictionPreview" class="prediction-preview-content" role="dialog" aria-label="当时预测" aria-modal="true">
+      <h3>{{ predictionPreview.home }} <span class="versus">vs</span> {{ predictionPreview.away }}</h3>
+      <p class="small muted">{{ predictionPreview.league }} · {{ predictionPreview.kickoff ? beijingDateTime(predictionPreview.kickoff) + '（北京）' : predictionPreview.date }}</p>
+      <PredictionArchive compact :match-id="predictionPreview.id" :initial-version="previewVersion" :versions="predictionPreview.versions?.length ? predictionPreview.versions : predictionPreview.prediction ? [predictionPreview.prediction] : []" />
+      <LegacyPrediction :record="predictionPreview.legacy_prediction" />
+    </div>
+  </t-dialog>
   <t-drawer
     v-model:visible="open"
     header="比赛复盘"
     size="min(820px, 100vw)"
-    :close-on-esc-keydown="true"
+    :close-on-esc-keydown="!predictionPreviewOpen"
     :close-on-overlay-click="false"
     :confirm-btn="{
       content: '保存笔记',
@@ -372,9 +390,9 @@ onBeforeUnmount(() => clearInterval(timer));
       ><h2>
         {{ selected.home }} <span class="versus">vs</span> {{ selected.away }}
       </h2>
-      <p class="muted">{{ selected.date }} · {{ selected.league }}</p>
+      <p class="muted">{{ selected.kickoff ? beijingDateTime(selected.kickoff) + '（北京）' : selected.date }} · {{ selected.league }}</p>
       <a :href="`#/match/${encodeURIComponent(selected.id)}/analysis`"
-        >查看本场预测分析与阵容情报</a
+        >查看当前比赛资料</a
       >
       <div class="review-comparison">
         <div>
@@ -385,17 +403,18 @@ onBeforeUnmount(() => clearInterval(timer));
                 ? "旧版方向 · 参考"
                 : "赛前方向 · 未归档"
           }}</span
-          ><strong>{{
+          ><button v-if="selected.prediction || selected.legacy_prediction" class="prediction-link prediction-direction" :aria-label="`查看当时预测：${selected.pick}`" @click="previewPrediction(selected)">{{
             selected.prediction
               ? selected.pick
               : selected.legacy_prediction?.direction || selected.pick
-          }}</strong>
+          }}</button><strong v-else>{{ selected.pick }}</strong>
         </div>
         <div>
           <span class="label-caption">正式比分</span
           ><strong>{{ selected.score }}</strong>
         </div>
       </div>
+      <PredictionArchive :match-id="selected.id" :versions="selected.versions?.length ? selected.versions : selected.prediction ? [selected.prediction] : []" />
       <LegacyPrediction :record="selected.legacy_prediction" />
       <MatchFacts :data="selected.match_facts" />
       <section
@@ -478,20 +497,8 @@ onBeforeUnmount(() => clearInterval(timer));
             : '赛后阵容与盘口核查'
         "
       />
-      <template v-if="selected.prediction">
-        <h3>赛前判断 · 只读</h3>
-        <p class="review-text">
-          {{ selected.prediction.title }}<br />{{
-            (selected.prediction.evidence || []).map((e) => e.text).join("\n")
-          }}
-        </p>
-        <p class="small muted">
-          生成于 {{ timeLabel(selected.prediction.created) }} ·
-          {{ selected.prediction.model_version }}
-        </p>
-      </template>
       <t-alert
-        v-else
+        v-if="!selected.prediction && !selected.legacy_prediction"
         class="mt16"
         theme="info"
         message="本场未归档赛前预测，仍可查看赛果和事实分析；不补算预测命中。"
@@ -539,7 +546,7 @@ onBeforeUnmount(() => clearInterval(timer));
           ]"
           ><template #created="{ row }">{{
             timeLabel(row.created)
-          }}</template></t-table
+          }}</template><template #direction="{row}"><button class="prediction-link" :aria-label="`查看 v${row.version} 预测：${row.direction || '未记录'}`" @click="previewPrediction(selected, row)">{{ row.direction || '查看预测' }}</button></template></t-table
         >
       </template>
       <section v-if="selected.ai_review || aiConfig" class="ai-review mt16">
@@ -635,6 +642,14 @@ onBeforeUnmount(() => clearInterval(timer));
 </template>
 
 <style scoped>
+.prediction-link {
+  border: 0; background: transparent; color: var(--td-brand-color);
+  padding: 6px 0; font: inherit; cursor: pointer; white-space: nowrap;
+}
+.prediction-link:hover { text-decoration: underline; }
+.prediction-link:focus-visible { outline: 2px solid var(--td-brand-color); outline-offset: 3px; }
+.prediction-direction { display: block; font-size: 24px; font-weight: 700; }
+.prediction-preview-content { max-height: min(68dvh, 600px); overflow: auto; }
 .review-summary {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }

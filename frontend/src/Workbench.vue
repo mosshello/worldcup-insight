@@ -83,13 +83,13 @@ const filtered = computed(() =>
   matches.value.filter(
     (m) =>
       (!filter.date ||
-        (route.value === "scores" ? m.kickoff.slice(0, 10) : m.date) ===
+        (route.value === "scores" ? m.kickoffDate : m.date) ===
           filter.date) &&
       (!filter.league.length || filter.league.includes(m.league)) &&
       (!filter.prediction ||
         (!stateError.value &&
           (filter.prediction === "predicted") ===
-            Boolean(state.value.versions[m.id]?.length))) &&
+            hasArchive(m))) &&
       (!filter.market || m.markets.includes(filter.market)) &&
       (!filter.query ||
         `${m.home}${m.away}${m.num}`
@@ -100,8 +100,18 @@ const filtered = computed(() =>
       (!filter.followed || state.value.favorites.includes(m.id)) &&
       (!filter.sale || m.sale === filter.sale) &&
       (!filter.phase || m.lifecycle === filter.phase),
-  ),
+  ).sort((a, b) => route.value === 'scores'
+    ? (Date.parse(b.kickoff) || 0) - (Date.parse(a.kickoff) || 0) || a.id.localeCompare(b.id)
+    : 0),
 );
+function hasArchive(match) {
+  return Boolean(state.value.versions[match.id]?.length || match.prediction_archive?.legacy);
+}
+function archiveLabel(match) {
+  if (stateError.value) return '读取失败';
+  if (state.value.versions[match.id]?.length) return '查看预测';
+  return match.prediction_archive?.legacy ? '旧版记录' : '未归档';
+}
 const pageRows = computed(() =>
   filtered.value.slice(
     (currentPage.value - 1) * pageSize.value,
@@ -222,6 +232,7 @@ function exportList() {
         ...m,
         fixture: `${m.home} vs ${m.away}`,
         odds: m.odds.map(price).join(" / "),
+        kickoff: m.kickoffLabel,
       })),
       [
         { key: "num", title: "编号" },
@@ -242,11 +253,12 @@ const allColumns = [
   { colKey: "league", title: "赛事", width: 82 },
   { colKey: "fixture", title: "比赛", minWidth: 240 },
   { colKey: "liveScore", title: "比分 / 进程", width: 200 },
-  { colKey: "kickoff", title: "北京时间", width: 140 },
+  { colKey: "kickoff", title: "开赛时间（北京）", width: 180 },
   { colKey: "sp", title: "胜 / 平 / 负 SP", width: 250 },
   { colKey: "eligibility", title: "销售", width: 88 },
   { colKey: "analysisState", title: "分析", width: 88 },
   { colKey: "coverage", title: "资料核查", width: 100 },
+  { colKey: "archive", title: "当时预测", width: 110 },
   { colKey: "action", title: "操作", width: 86, fixed: "right" },
 ];
 const columns = computed(() =>
@@ -254,7 +266,7 @@ const columns = computed(() =>
     ? allColumns.filter(
         (c) => !["sp", "eligibility", "analysisState"].includes(c.colKey),
       )
-    : allColumns,
+    : allColumns.filter(c => c.colKey !== 'archive'),
 );
 let timer;
 onMounted(async () => {
@@ -498,7 +510,7 @@ onBeforeUnmount(() => {
           ><template #kickoff="{ row }"
             ><div class="fixture-schedule">
               <span class="mono"
-                >{{ row.kickoff.slice(5, 10) }} {{ row.time }}</span
+                >{{ row.kickoffLabel }}</span
               >
             </div></template
           ><template #liveScore="{ row }"
@@ -526,6 +538,9 @@ onBeforeUnmount(() => {
               >{{ state.versions[row.id]?.length ? "已归档" : row.data_coverage?.total ? "自动研判" : "待采集" }}</span
             ></template
           ><template #coverage="{ row }"><a :href="`#/match/${row.id}/analysis`">{{ row.data_coverage?.total ? `${row.data_coverage.available}/${row.data_coverage.total}项` : '待采集' }}</a></template
+          ><template #archive="{ row }">
+            <a v-if="!stateError && hasArchive(row)" :href="`#/reviews/${encodeURIComponent(row.id)}`">{{ archiveLabel(row) }}</a>
+            <span v-else class="muted">{{ archiveLabel(row) }}</span></template
           ><template #action="{ row }"
             ><t-button
               theme="primary"
@@ -538,7 +553,7 @@ onBeforeUnmount(() => {
             <div class="mobile-match-meta">
               <span>{{ row.league }} · {{ row.num }}</span
               ><span class="fixture-schedule"
-                >{{ row.kickoff.slice(5, 10) }} {{ row.time }}</span
+                >{{ row.kickoffLabel }}</span
               >
             </div>
             <div class="mobile-match-heading">
@@ -563,6 +578,10 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <div class="mobile-match-bottom">
+              <template v-if="route === 'scores'">
+                <a v-if="!stateError && hasArchive(row)" :href="`#/reviews/${encodeURIComponent(row.id)}`">{{ archiveLabel(row) }}</a>
+                <span v-else class="muted">{{ archiveLabel(row) }}</span>
+              </template>
               <div v-if="route !== 'scores'" class="market-price">
                 <div class="odds-triplet">
                   <span v-for="(v, i) in row.odds" :key="i"

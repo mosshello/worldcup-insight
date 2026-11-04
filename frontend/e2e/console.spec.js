@@ -1,5 +1,105 @@
 import { test, expect } from "@playwright/test";
 
+test('prediction directions open compact archived previews without navigation or changing review drafts', async ({ page }) => {
+  const { match, state } = await setup(page);
+  const saved = {id:'popup-saved',version:1,created:'2026-10-31T06:58:00Z',model_version:'saved-model',
+    title:'归档完整预测',direction:'主胜',probabilities:[50,30,20],scores:'2-1',goals:'3球',
+    evidence:[{text:'当时的判断依据'}],risks:['当时的风险'],
+    market_assessments:['胜平负','让球胜平负','总进球','比分','半全场'].map((label,i)=>({
+      code:String(i),label,selection:'归档选择',coverage:50,options:[{key:'h',label:'归档选项',probability:50,odds:2}]}))};
+  const first = {...saved,id:'popup-first',version:0,title:'初版预测内容',direction:'客胜'};
+  const row = {...match,date:'2026-10-31',pick:'主胜',score:'4-0',prediction:saved,versions:[saved,first]};
+  const legacy = {...row,id:'legacy-popup',home:'旧版主队',prediction:null,versions:[],pick:'未归档',legacy_prediction:{direction:'客胜',score:'1-2',recorded_at:saved.created,recorded_before_kickoff:true}};
+  const missing = {...row,id:'missing-popup',home:'无归档主队',prediction:null,versions:[],pick:'未归档'};
+  await page.route('**/api/v1/reviews', r=>r.fulfill({json:{success:true,reviews:[row,legacy,missing]}}));
+  const writes=[];
+  page.on('request',r=>{if(r.url().includes('/api/')&&r.method()!=='GET')writes.push(r.url());});
+  await page.goto('/club-preview.html#/reviews');
+  const direction=page.getByRole('button',{name:'查看当时预测：主胜',exact:true});
+  await direction.focus();
+  await page.keyboard.press('Enter');
+  const popup=page.getByRole('dialog',{name:'当时预测',exact:true});
+  await expect(popup).toBeVisible();
+  await expect(page.locator('.t-drawer--open')).toHaveCount(0);
+  await expect(page).toHaveURL(/#\/reviews$/);
+  for(const label of ['归档完整预测','saved-model','2026-10-31 14:58','50.0%','半全场']) await expect(popup).toContainText(label);
+  await popup.locator('summary').filter({hasText:'预测依据与风险'}).click();
+  await expect(popup).toContainText('当时的风险');
+  await page.keyboard.press('Escape');
+  await expect(popup).toHaveCount(0);
+  await page.getByRole('button',{name:'查看旧版预测：客胜',exact:true}).click();
+  await expect(popup.getByLabel('旧版预测记录')).toContainText('1-2');
+  await expect(popup.getByRole('region',{name:'当时预测',exact:true})).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('row').filter({hasText:'无归档主队'}).getByRole('button',{name:/查看当时预测/})).toHaveCount(0);
+  await page.getByRole('row').filter({hasText:'测试主队vs测试客队'}).getByRole('button',{name:'查看复盘',exact:true}).click();
+  const note=page.getByPlaceholder('记录判断偏差、关键事件与后续改进…');
+  await note.fill('保留的复盘草稿');
+  await page.locator('.t-drawer--open').getByRole('button',{name:'查看当时预测：主胜',exact:true}).click();
+  await page.setViewportSize({width:390,height:844});
+  await expect(popup).toBeVisible();
+  const bounds=await popup.boundingBox();
+  expect(bounds.width).toBeLessThanOrEqual(390);
+  await page.keyboard.press('Escape');
+  await expect(note).toHaveValue('保留的复盘草稿');
+  await page.locator('.t-drawer--open').getByRole('button',{name:'查看 v0 预测：客胜',exact:true}).click();
+  await expect(popup).toContainText('初版预测内容');
+  await expect(popup).not.toContainText('归档完整预测');
+  await page.keyboard.press('Escape');
+  await expect(note).toHaveValue('保留的复盘草稿');
+  expect(writes).toEqual([]);
+  expect(state.reviewNotes).toEqual({});
+});
+
+test('scores sort by kickoff, show Beijing dates and open immutable prediction versions', async ({ page }) => {
+  const { match, state, detail } = await setup(page);
+  match.kickoff = '2026-11-04T16:30:00Z';
+  match.sale_date = '2026-11-04';
+  match.lifecycle = 'completed';
+  const earlier = { ...match, id:'sporttery:earlier', home:'早场主队', kickoff:'2026-11-04T23:30:00+08:00', prediction_archive:{legacy:true} };
+  const later = { ...match, id:'sporttery:later', home:'晚场主队', kickoff:'2026-11-05T02:30:00+09:00' };
+  const v1 = {id:'archive-v1',version:1,created:'2026-11-04T12:00:00Z',title:'首次保存：主胜',direction:'主胜',
+    model_version:'original-model',probabilities:[50,30,20], scores:'2-1',goals:'3球', evidence:[],
+    market_assessments:[{code:'hhad',label:'让球胜平负',options:[{key:'a',label:'旧版让负',probability:56.65,odds:1.55}]}]};
+  const v2 = {...v1,id:'archive-v2',version:2,created:'2026-11-04T13:00:00Z',title:'末次保存：客胜',direction:'客胜',probabilities:[20,30,50]};
+  detail.versions = [v2,v1];
+  state.versions[match.id] = [v2,v1];
+  const frozen = JSON.stringify(state.versions);
+  const writes = [];
+  page.on('request', r => { if(r.url().includes('/api/') && r.method()!=='GET') writes.push(r.url()); });
+  await page.route('**/api/v1/matches', r => r.fulfill({json:{success:true,matches:[earlier,match,later],server_time:new Date().toISOString()}}));
+  await page.goto('/club-preview.html#/scores');
+  await page.reload();
+  const table = page.locator('.desktop-matches');
+  await expect(table.locator('tbody tr').first()).toContainText('晚场主队');
+  await expect(table.locator('tbody tr').nth(1)).toContainText('2026-11-05 00:30');
+  await expect(table.locator('tbody tr').last()).toContainText('2026-11-04 23:30');
+  await expect(table.getByRole('row').filter({hasText:'晚场主队'})).toContainText('未归档');
+  await expect(table.getByRole('link',{name:'旧版记录',exact:true})).toHaveAttribute('href','#/reviews/sporttery%3Aearlier');
+  await table.getByRole('link',{name:'查看预测',exact:true}).click();
+  const archive = page.getByRole('region',{name:'当时预测',exact:true});
+  await expect(archive).toContainText('末次保存：客胜');
+  await expect(archive).toContainText('2026-11-04 21:00');
+  await archive.locator('.t-select input').click();
+  await page.locator('.t-select-option').filter({hasText:'v1 · 2026-11-04 20:00'}).click();
+  await expect(archive).toContainText('首次保存：主胜');
+  await expect(archive).not.toContainText('末次保存：客胜');
+  await expect(archive).toContainText('original-model');
+  await expect(archive.locator('.archive-probabilities strong').first()).toHaveText('50.0%');
+  await archive.locator('summary').filter({hasText:'让球胜平负'}).click();
+  await expect(archive).toContainText('旧版让负');
+  await expect(archive).toContainText('56.6%');
+  await expect(archive).not.toContainText('未记录');
+  await page.setViewportSize({width:390,height:844});
+  await expect(archive).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('button',{name:'关闭',exact:true}).click();
+  await page.getByRole('navigation',{name:'主导航'}).getByRole('link',{name:'实时比分'}).click();
+  await expect(page.locator('.mobile-matches').getByRole('link',{name:'查看预测',exact:true})).toBeVisible();
+  expect(writes).toEqual([]);
+  expect(JSON.stringify(state.versions)).toBe(frozen);
+});
+
 for (const startRoute of ['reviews', 'matches']) {
   test(`review notification opens its match from ${startRoute} and reopens without losing drafts`, async ({ page }) => {
     const { match } = await setup(page);

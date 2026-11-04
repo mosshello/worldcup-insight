@@ -36,6 +36,24 @@ class PostmatchTests(unittest.TestCase):
     def row(self):
         return self.app.reviews()[0]
 
+    def test_review_date_is_beijing_kickoff_not_source_calendar_date(self):
+        self.match['kickoff'] = '2026-10-30T16:30:00+00:00'
+        self.store.upsert_matches([self.match], datetime.now(timezone.utc).isoformat())
+        before = self.store.versions(self.match['id'])
+        row = self.row()
+        self.assertEqual(row['date'], '2026-10-31')
+        self.assertEqual(row['kickoff'], self.match['kickoff'])
+        self.assertEqual(before, self.store.versions(self.match['id']))
+
+    def test_match_list_exposes_legacy_archive_without_creating_new_prediction(self):
+        before = self.store.versions(self.match['id'])
+        with patch.object(self.app, 'scores', return_value={}), patch(
+                'worldcup_mvp.console.service.legacy_predictions.for_match', return_value={'direction':'客胜'}):
+            row = self.app._list_matches()['matches'][0]
+        self.assertEqual(row['prediction_archive'], {'legacy':True})
+        self.assertEqual(row['analysis_count'], len(before))
+        self.assertEqual(before, self.store.versions(self.match['id']))
+
     def test_finished_match_without_prediction_is_included_with_factual_analysis(self):
         with self.store.connect() as db:
             db.execute("DELETE FROM analyses")

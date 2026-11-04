@@ -81,11 +81,14 @@ export const api = {
 };
 export function adaptMatch(m) {
   const had = m.markets?.had;
+  const kickoff = beijingDateTime(m.kickoff);
   return {
     ...m,
     num: m.number,
     date: m.sale_date,
-    time: m.kickoff.slice(11, 16),
+    time: kickoff.slice(11),
+    kickoffDate: kickoff.slice(0, 10),
+    kickoffLabel: kickoff,
     sale: m.sale_status,
     odds: ["h", "d", "a"].map(
       (k) => had?.options.find((o) => o.key === k)?.odds,
@@ -97,6 +100,14 @@ export function adaptMatch(m) {
     single: Object.values(m.markets || {}).some((p) => p.single),
     analysisState: m.analysis_count ? "已分析" : "未分析",
   };
+}
+export function beijingDateTime(value) {
+  if (!value || !Number.isFinite(Date.parse(value))) return "待定";
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date(value)).map(p => [p.type, p.value]));
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 export function timeLabel(v) {
   return v

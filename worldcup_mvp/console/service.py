@@ -6,7 +6,7 @@ import threading
 import time
 import re
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from .store import Store, now_iso
 from . import sources, live
@@ -254,6 +254,7 @@ class ConsoleService:
         rows = self.store.list_matches(date)
         state = self.store.state()
         scores = self.scores()
+        legacy_entries = self.legacy_entries()
         for m in rows:
             m["competition"] = classify(m)
             start = sources.parse_date(m["kickoff"])
@@ -274,6 +275,7 @@ class ConsoleService:
             if m["stale"] and m["sale_status"] == "selling":
                 m["sale_status"] = "unknown"
             m["analysis_count"] = len(state["versions"].get(m["id"], []))
+            m["prediction_archive"] = {"legacy": bool(legacy_predictions.for_match(m, legacy_entries))}
             cached = self.store.detail(m["id"])
             if cached:
                 context = cached["data"].get("context", {})
@@ -662,7 +664,8 @@ class ConsoleService:
             rows.append(
                 {
                     "id": m["id"],
-                    "date": m["kickoff"][:10],
+                    "date": sources.parse_date(m["kickoff"]).astimezone(timezone(timedelta(hours=8))).date().isoformat(),
+                    "kickoff": m["kickoff"],
                     "league": m["league"],
                     "home": m["home"],
                     "away": m["away"],
