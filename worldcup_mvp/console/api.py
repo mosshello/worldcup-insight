@@ -6,6 +6,8 @@ from .service import service
 
 def get(route, query):
     app = service()
+    if route == '/api/v1/daily-sweep':
+        return {'success': True, **app.daily_sweep.read((query.get('date') or [None])[0], (query.get('source') or ['auto'])[0])}
     if route == '/api/v2/workspaces':
         from .workspace_v2 import read
         return {'success':True, **read(app,(query.get('competition_id') or [None])[0],(query.get('date') or [None])[0])}
@@ -43,6 +45,9 @@ def get(route, query):
         return {"success": True, **app.store.review_updates(int(raw) if raw is not None else None)}
     if route.startswith("/api/v1/matches/"):
         match_id = unquote(route.removeprefix("/api/v1/matches/"))
+        if match_id.endswith('/odds'):
+            from .official_quotes import refresh
+            return {'success': True, 'odds': refresh(app, match_id[:-5])}
         return {
             "success": True,
             "detail": app.detail(

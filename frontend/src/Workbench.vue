@@ -20,6 +20,7 @@ import { api, adaptMatch, timeLabel, lifecycleNames, saleNames } from "./api";
 import { marketNames, price, toCsv } from "./domain";
 import MatchWorkspace from "./MatchWorkspace.vue";
 import ReviewWorkspace from "./ReviewWorkspace.vue";
+import DailySweepWorkspace from "./DailySweepWorkspace.vue";
 import ModelWorkspace from "./ModelWorkspace.vue";
 import LiveScore from "./LiveScore.vue";
 const hash = ref(location.hash.slice(1) || "/matches");
@@ -288,7 +289,7 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <header class="app-header">
+  <header class="app-header" :class="{ 'daily-header': route === 'daily-sweep' }">
     <a href="#/matches" class="brand"
       ><span class="brand-mark">F</span><span>足球分析</span></a
     >
@@ -299,6 +300,7 @@ onBeforeUnmount(() => {
         >比赛中心</a
       ><a href="#/scores" :class="{ active: route === 'scores' }">实时比分</a
       ><a href="#/reviews" :class="{ active: route === 'reviews' }">复盘记录</a
+      ><a href="#/daily-sweep" :class="{ active: route === 'daily-sweep' }">每日扫盘命中</a
       ><a href="#/models" :class="{ active: route === 'models' }">数据与模型</a>
     </nav>
   </header>
@@ -651,6 +653,7 @@ onBeforeUnmount(() => {
       @download="download"
     />
     <ModelWorkspace v-else-if="route === 'models'" />
+    <DailySweepWorkspace v-else-if="route === 'daily-sweep'" />
     <div v-else class="panel empty-state">
       <h2>页面不存在</h2>
       <t-button @click="navigate('/matches')">返回比赛中心</t-button>

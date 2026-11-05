@@ -237,9 +237,11 @@ class DatasetTests(unittest.TestCase):
                 service.collector_thread.join(timeout=2)
                 service.score_thread.join(timeout=2)
                 service.context_thread.join(timeout=2)
+                service.daily_thread.join(timeout=2)
                 self.assertTrue(sync.called)
                 self.assertFalse(service.collector_thread.is_alive())
                 self.assertFalse(service.context_thread.is_alive())
+                self.assertFalse(service.daily_thread.is_alive())
 
 
 if __name__ == "__main__":

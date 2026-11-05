@@ -33,6 +33,8 @@ class ConsoleService:
         self.context_check_times = {}
         self.last_score_sync = 0
         self.result_check_times = {}
+        from .daily_sweep import DailySweep
+        self.daily_sweep = DailySweep(self)
         from .training_jobs import TrainingJobs
         self.training_jobs = TrainingJobs(self.store)
         from .ai_reviews import ReviewEngine
@@ -126,6 +128,15 @@ class ConsoleService:
                 self.collector_stop.wait(60)
         self.context_thread = threading.Thread(target=collect_context, name='football-fundamentals', daemon=True)
         self.context_thread.start()
+        def collect_daily():
+            while not self.collector_stop.is_set():
+                try:
+                    self.daily_sweep.tick()
+                except Exception:
+                    self.store.status('daily-sweep', {'status': 'error', 'error': '每日扫盘暂未更新，下一轮自动重试'})
+                self.collector_stop.wait(60)
+        self.daily_thread = threading.Thread(target=collect_daily, name='football-daily-sweep', daemon=True)
+        self.daily_thread.start()
         return self.collector_stop
 
     def sync_scores(self):
@@ -587,12 +598,13 @@ class ConsoleService:
         from .football_markets import settle_markets
         from .postmatch import analyze
         if refresh:
+            daily_pending = self.daily_sweep.unresolved_matches()
             pending = [
                 m
                 for m in self.store.list_matches()
                 if sources.parse_date(m["kickoff"]) < datetime.now(timezone.utc)
                 and ((datetime.now(timezone.utc) - sources.parse_date(m["kickoff"])).total_seconds() <= 7*86400
-                     or self.store.versions(m["id"]))
+                     or m['id'] in daily_pending or self.store.versions(m["id"]))
             ]
 
             def refresh_one(m):

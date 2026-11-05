@@ -636,6 +636,7 @@ async function setup(page) {
       } else state[b.kind][b.key] = b.value;
       out = {};
     } else if (p === "/api/v1/capabilities") out = capabilities;
+    else if (p === "/api/v1/matches/sporttery:test-1/odds") out = {odds:{markets:detail.markets,history:detail.history,checked_at:new Date().toISOString(),history_checked_at:new Date().toISOString(),sale_status:'selling'}};
     else if (p === "/api/v1/matches/sporttery:test-1") out = { detail };
     else if (p.endsWith("/predict")) {
       const prediction = {
@@ -881,9 +882,8 @@ test("favorites, source details, predictions and persisted notes", async ({
   await page.getByText("阵容情报", { exact: true }).click();
   await expect(page.getByText("首发待确认", { exact: true })).toHaveCount(2);
   await page.getByText("赔率", { exact: true }).click();
-  await page.getByRole("button", { name: "历史明细" }).click();
-  await expect(page.getByText("SP 历史明细", { exact: true })).toBeVisible();
-  await page.keyboard.press("Escape");
+  await expect(page.getByRole('heading',{name:'调价记录 最新在前 · 北京时间'})).toBeVisible();
+  await expect(page.getByRole('img',{name:/胜平负赔率走势/})).toBeVisible();
   await page.getByText("预测分析", { exact: true }).click();
   await page.getByRole("button", { name: "生成预测", exact: true }).click();
   await expect(
@@ -1030,4 +1030,83 @@ test("live page includes closed matches, isolates delayed scores and blocks preg
   await expect(
     page.getByRole("button", { name: "生成预测", exact: true }),
   ).toBeDisabled();
+});
+
+
+test('official odds refresh independently, switch all markets and retain responsive history',async({page})=>{
+  const {match}=await setup(page);
+  const before=new Date(Date.now()-3600000).toISOString(), after=new Date(Date.now()-60000).toISOString();
+  const groups={had:['主胜','平局','客胜'],hhad:['让胜','让平','让负'],ttg:['2球','3球','4球'],crs:['1-0','2-0','3-1'],hafu:['胜胜','平胜','负胜']};
+  const keys={had:['h','d','a'],hhad:['h','d','a'],ttg:['s2','s3','s4'],crs:['s01s00','s02s00','s03s01'],hafu:['hh','dh','ah']};
+  let latest=1.9, calls=0;
+  const make=(code,time,first)=>({code,line:code==='hhad'?-1:null,updated_at:time,options:groups[code].map((label,i)=>({key:keys[code][i],label,odds:i===0?first:3+i}))});
+  await page.route('**/api/v1/matches/*/odds',route=>{calls++;return route.fulfill({json:{success:true,odds:{fixture:{kickoff:match.kickoff},checked_at:after,history_checked_at:after,sale_status:'selling',markets:Object.fromEntries(Object.keys(groups).map(c=>[c,make(c,after,latest)])),history:Object.fromEntries(Object.keys(groups).map(c=>[c,[make(c,before,2),make(c,after,latest)]]))}}});});
+  await page.goto('/club-preview.html#/match/'+encodeURIComponent(match.id)+'/odds');
+  const board=page.getByRole('region',{name:'官方赔率走势'});
+  await expect(board.locator('.quote-options')).toContainText('1.90');
+  await expect(board.locator('.quote-history')).toContainText('↓ -0.10');
+  const comparison=board.getByRole('region',{name:'时段涨跌对比'});
+  await expect(comparison).toContainText('最近一次变化');
+  await expect(comparison).toContainText('-5.00%');
+  await expect(comparison.locator('.price-transition').first()).toHaveText('2.00→1.90');
+  await expect(board.locator('.quote-history article').first()).toContainText('上次 2.00');
+  await board.locator('.quote-chart circle').first().hover();
+  await expect(comparison).toContainText('最早取得');
+  await expect(comparison).toContainText('无可比记录');
+  await expect(board.locator('.quote-history article').last()).toHaveClass(/active-row/);
+  await comparison.getByRole('button',{name:'回到最新'}).click();
+  await expect(comparison).toContainText('-5.00%');
+  await board.locator('.quote-history article').last().getByRole('button').click();
+  await expect(comparison).toContainText('最早取得报价');
+  await comparison.getByRole('button',{name:'回到最新'}).click();
+  latest=2.2;await board.getByRole('button',{name:'刷新赔率',exact:true}).click();
+  await expect(board.locator('.quote-options')).toContainText('2.20');
+  await expect(board.locator('.quote-history')).toContainText('↑ +0.20');
+  await expect(comparison).toContainText('+10.00%');
+  for(const label of ['让球胜平负','总进球','比分','半全场','胜平负']){
+    await board.locator('.quote-tabs').getByRole('button',{name:label,exact:true}).click();
+    await expect(board.getByRole('img')).toHaveAttribute('aria-label',new RegExp(label+'赔率走势'));
+  }
+  await board.getByRole('button',{name:'隐含概率',exact:true}).click();
+  await expect(board).toContainText('不是模型预测');
+  await expect(board.getByRole('img')).toHaveAttribute('aria-label',/隐含概率走势/);
+  for(const width of [1440,768,390,360]){
+    await page.setViewportSize({width,height:900});
+    const overflow=await board.evaluate(e=>[e,...e.querySelectorAll('*')].filter(n=>n instanceof HTMLElement && getComputedStyle(n).pointerEvents!=='none' && n.clientWidth>0&&n.scrollWidth>n.clientWidth+2&&getComputedStyle(n).display!=='inline').map(n=>({tag:n.tagName,cls:String(n.className),width:n.clientWidth,scroll:n.scrollWidth,html:n.outerHTML.slice(0,350),pointer:getComputedStyle(n).pointerEvents})));
+    expect(overflow).toEqual([]);
+  }
+  expect(calls).toBeGreaterThanOrEqual(2);
+});
+
+test('odds time windows preserve earlier comparison and automatic refresh appends a new time',async({page})=>{
+  const now=Date.now();
+  await page.clock.install({time:now});
+  const {match}=await setup(page);
+  const make=(time,odds)=>({code:'had',updated_at:new Date(time).toISOString(),options:[{key:'h',label:'主胜',odds},{key:'d',label:'平局',odds:4},{key:'a',label:'客胜',odds:5}]});
+  const history=[make(now-48*3600000,2),make(now-2*3600000,2.4),make(now-60000,2.1)];
+  let calls=0;
+  await page.route('**/api/v1/matches/*/odds',route=>{calls++;return route.fulfill({json:{success:true,odds:{fixture:{kickoff:match.kickoff},checked_at:new Date(now).toISOString(),sale_status:'selling',markets:{had:history.at(-1)},history:{had:history}}}});});
+  await page.goto('/club-preview.html#/match/'+encodeURIComponent(match.id)+'/odds');
+  const board=page.getByRole('region',{name:'官方赔率走势'}),comparison=board.getByRole('region',{name:'时段涨跌对比'});
+  await expect(board.locator('.quote-history article')).toHaveCount(3);
+  await board.getByLabel('走势时段').selectOption('6');
+  await expect(board.locator('.quote-history article')).toHaveCount(2);
+  await board.locator('.quote-history article').last().getByRole('button').click();
+  await expect(comparison).toContainText('选中时段');
+  await expect(comparison.locator('.price-transition').first()).toHaveText('2.00→2.40');
+  await expect(comparison).toContainText('+20.00%');
+  await comparison.getByRole('button',{name:'回到最新'}).click();
+  history.push(make(now+5000,2.3));
+  const callsBefore=calls;
+  await page.clock.fastForward(31000);
+  await expect.poll(()=>calls).toBeGreaterThan(callsBefore);
+  await expect(board.locator('.quote-history article')).toHaveCount(3);
+  await expect(comparison.locator('.price-transition').first()).toHaveText('2.10→2.30');
+  await expect(comparison).toContainText('+9.52%');
+  // A singleton is a recorded quote, never a fabricated change from zero.
+  history.splice(0,history.length-1);
+  await board.getByRole('button',{name:'刷新赔率',exact:true}).click();
+  await expect(comparison).toContainText('最早取得报价');
+  await expect(comparison).toContainText('无可比记录');
+  await expect(board.locator('.quote-history article')).toHaveCount(1);
 });

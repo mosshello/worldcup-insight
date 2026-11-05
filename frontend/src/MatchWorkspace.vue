@@ -10,7 +10,7 @@ import {
   CopyIcon,
 } from "tdesign-icons-vue-next";
 import { api, timeLabel, lifecycleNames } from "./api";
-import { price, marketNames } from "./domain";
+import OfficialOdds from "./OfficialOdds.vue";
 import LiveScore from "./LiveScore.vue";
 import MarketForecast from "./MarketForecast.vue";
 import IntelligencePanel from "./IntelligencePanel.vue";
@@ -29,10 +29,7 @@ const detail = ref(null),
   loading = ref(false),
   error = ref(""),
   scope = ref("all"),
-  market = ref("had"),
   oddsSource = ref("sporttery"),
-  chartRange = ref("all"),
-  historical = ref(false),
   busy = ref(false),
   analysisError = ref(""),
   versionId = ref(""),
@@ -215,73 +212,6 @@ function formRows(i) {
     result: r.gf > r.ga ? "胜" : r.gf === r.ga ? "平" : "负",
   }));
 }
-const markets = computed(() => detail.value?.markets || props.match.pools);
-const fullHistory = computed(() => detail.value?.history?.[market.value] || []);
-const history = computed(() =>
-  fullHistory.value.filter(
-    (r) =>
-      chartRange.value === "all" ||
-      Date.parse(r.updated_at) >=
-        Date.now() - Number(chartRange.value) * 3600000,
-  ),
-);
-const oddsRows = computed(() => {
-  const p = markets.value[market.value];
-  const first = fullHistory.value[0];
-  return (p?.options || []).map((o) => {
-    const initial = first?.options.find((i) => i.key === o.key)?.odds;
-    return {
-      option: o.label,
-      initial,
-      current: o.odds,
-      change: initial == null ? null : o.odds - initial,
-      updated: timeLabel(p.updated_at),
-    };
-  });
-});
-const oddsCols = [
-  { colKey: "option", title: "选项", minWidth: 125 },
-  { colKey: "initial", title: "最早可得 SP", width: 130 },
-  { colKey: "current", title: "最新 SP", width: 115 },
-  { colKey: "change", title: "较最早记录", width: 120 },
-  { colKey: "updated", title: "来源更新时间", width: 215 },
-];
-const chartHistory = computed(() =>
-  ["had", "hhad"].includes(market.value)
-    ? history.value.filter((h) =>
-        ["h", "d", "a"].every((k) => h.options.some((o) => o.key === k)),
-      )
-    : [],
-);
-const chartBounds = computed(() => {
-  const values = chartHistory.value.flatMap((h) =>
-    h.options.map((o) => o.odds),
-  );
-  return {
-    lo: Math.max(0, Math.min(...values) - 0.2),
-    hi: Math.max(...values) + 0.2,
-  };
-});
-function linePoints(key) {
-  const rows = chartHistory.value;
-  const first = Date.parse(rows[0].updated_at),
-    last = Date.parse(rows.at(-1).updated_at);
-  return rows
-    .map(
-      (h) =>
-        `${48 + ((Date.parse(h.updated_at) - first) / Math.max(last - first, 1)) * 660},${180 - ((h.options.find((o) => o.key === key).odds - chartBounds.value.lo) / (chartBounds.value.hi - chartBounds.value.lo)) * 140}`,
-    )
-    .join(" ");
-}
-const historyRows = computed(() =>
-  [...history.value]
-    .reverse()
-    .slice(0, 60)
-    .map((r) => ({
-      time: timeLabel(r.updated_at),
-      prices: r.options.map((o) => `${o.label} ${price(o.odds)}`).join("　"),
-    })),
-);
 const followed = computed(() => props.state.favorites.includes(props.match.id));
 const predictionBlocked = computed(
   () =>
@@ -408,7 +338,7 @@ onBeforeUnmount(() => clearInterval(timer));
     :message="detail.errors.join('；')"
     class="mb16"
   />
-  <div v-if="loading && !detail" class="panel empty-state">
+  <div v-if="loading && !detail && tab !== 'odds'" class="panel empty-state">
     <h3>正在核对比赛与采集数据…</h3>
   </div>
   <template v-else-if="tab === 'basic'"
@@ -746,65 +676,9 @@ onBeforeUnmount(() => clearInterval(timer));
             { label: '体彩 SP', value: 'sporttery' },
             { label: '外盘参考', value: 'foreign' },
           ]"
-        /><t-checkbox v-model="autoRefresh">每60秒刷新</t-checkbox>
+        />
       </div>
-      <template v-if="oddsSource === 'sporttery'"
-        ><div class="market-tabs">
-          <t-radio-group
-            v-model="market"
-            variant="outline"
-            :options="
-              Object.entries(marketNames).map(([value, label]) => ({
-                value,
-                label,
-              }))
-            "
-          />
-        </div>
-        <div class="market-meta section-note">
-          {{
-            markets[market]?.single
-              ? "该玩法支持单关"
-              : "单关资格未确认或不支持"
-          }}<span v-if="markets[market]?.line != null">
-            · 主队让球 {{ markets[market].line > 0 ? "+" : ""
-            }}{{ markets[market].line }}</span
-          >
-        </div>
-        <t-table
-          row-key="option"
-          :data="oddsRows"
-          :columns="oddsCols"
-          empty="该玩法暂无可用固定奖金"
-          ><template #initial="{ row }"
-            ><span class="mono muted">{{ price(row.initial) }}</span></template
-          ><template #current="{ row }"
-            ><strong class="mono">{{ price(row.current) }}</strong></template
-          ><template #change="{ row }"
-            ><span
-              class="mono"
-              :class="row.change < 0 ? 'down' : row.change > 0 ? 'up' : 'muted'"
-              >{{
-                row.change == null
-                  ? "—"
-                  : Math.abs(row.change) < 0.001
-                    ? "持平"
-                    : `${row.change > 0 ? "↑ +" : "↓ "}${row.change.toFixed(2)}`
-              }}</span
-            ></template
-          ></t-table
-        >
-        <div class="section-note">
-          体彩官方 · 核验于
-          {{ timeLabel(detail?.quality?.verified_at || detail?.captured_at) }}
-          <t-tag
-            v-if="detail?.quality?.can_predict === false"
-            theme="warning"
-            variant="light"
-            >{{ detail.quality.reasons.join("；") }}</t-tag
-          >
-        </div></template
-      >
+      <OfficialOdds v-if="oddsSource === 'sporttery'" :match-id="match.id" />
       <div v-else-if="context.external_odds?.rows?.length">
         <t-table row-key="id" :data="context.external_odds.rows" :columns="[
           {colKey:'company',title:'来源公司',width:150},{colKey:'initial',title:'初始 主 / 平 / 客',minWidth:200},
@@ -821,90 +695,7 @@ onBeforeUnmount(() => clearInterval(timer));
         <p>{{ context.external_odds?.reason || '本场暂未取得通过身份与时间核验的公开欧赔' }}</p>
       </div>
     </section>
-    <section v-if="oddsSource === 'sporttery'" class="panel mt16">
-      <div class="panel-heading">
-        <h2>SP 变化</h2>
-        <div class="actions">
-          <t-radio-group
-            v-model="chartRange"
-            size="small"
-            variant="default-filled"
-            :options="[
-              { label: '6小时', value: '6' },
-              { label: '24小时', value: '24' },
-              { label: '全部', value: 'all' },
-            ]"
-          /><t-button
-            variant="text"
-            :disabled="!history.length"
-            @click="historical = true"
-            >历史明细</t-button
-          >
-        </div>
-      </div>
-      <template v-if="chartHistory.length > 1"
-        ><div class="chart-legend">
-          <span><i class="legend-dot blue"></i>主胜</span
-          ><span><i class="legend-dot gray"></i>平局</span
-          ><span><i class="legend-dot teal"></i>客胜</span>
-        </div>
-        <div class="odds-chart">
-          <svg
-            viewBox="0 0 760 220"
-            role="img"
-            aria-label="SP 历史折线，精确数值可查看历史明细"
-          >
-            <g v-for="(y, i) in [40, 90, 140, 180]" :key="y">
-              <path :d="`M48 ${y}H708`" stroke="#e7e9ed" />
-              <text
-                x="38"
-                :y="y + 4"
-                text-anchor="end"
-                fill="#68717e"
-                font-size="11"
-              >
-                {{
-                  (
-                    chartBounds.hi -
-                    ((y - 40) / 140) * (chartBounds.hi - chartBounds.lo)
-                  ).toFixed(2)
-                }}
-              </text>
-            </g>
-            <polyline
-              v-for="(key, i) in ['h', 'd', 'a']"
-              :key="key"
-              :points="linePoints(key)"
-              fill="none"
-              :stroke="['#0052d9', '#798391', '#16858a'][i]"
-              stroke-width="2.5"
-            />
-            <text x="48" y="210" fill="#68717e" font-size="11">
-              {{ timeLabel(chartHistory[0].updated_at) }}
-            </text>
-            <text
-              x="708"
-              y="210"
-              text-anchor="end"
-              fill="#68717e"
-              font-size="11"
-            >
-              {{ timeLabel(chartHistory.at(-1).updated_at) }}
-            </text>
-          </svg>
-        </div></template
-      >
-      <div v-else class="empty-state compact">
-        <p>
-          {{
-            history.length
-              ? "该玩法可通过“历史明细”查看完整变化记录。"
-              : "所选时段暂无历史记录。"
-          }}
-        </p>
-      </div>
-    </section></template
-  >
+  </template>
   <template v-else-if="tab === 'analysis'"
     ><MatchBriefing :data="detail?.briefing" :match-id="match.id" />
     <MatchFacts v-if="detail?.briefing?.phase !== 'pregame'" :data="context.match_facts" />
@@ -1123,25 +914,6 @@ onBeforeUnmount(() => clearInterval(timer));
         </div>
       </div>
     </section></template
-  >
-  <t-drawer
-    v-model:visible="historical"
-    header="SP 历史明细"
-    size="680px"
-    :footer="false"
-    :close-on-esc-keydown="true"
-    @close="historical = false"
-    ><t-table
-      row-key="time"
-      :data="historyRows"
-      :columns="[
-        { colKey: 'time', title: '来源时间', width: 180 },
-        { colKey: 'prices', title: '固定奖金', minWidth: 350 },
-      ]"
-    />
-    <p class="section-note">
-      {{ marketNames[market] }} · 最近60条可得记录 · 北京时间
-    </p></t-drawer
   >
   <t-dialog v-model:visible="copyOpen" header="复制分析" :footer="false"
     ><p>请选中文本复制。</p>

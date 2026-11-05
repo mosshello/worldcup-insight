@@ -1408,3 +1408,13 @@ svg {
     row-gap: 12px;
   }
 }
+@media (max-width: 760px) {
+  .app-header.daily-header nav {
+    height: auto;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0 20px;
+    overflow: visible;
+  }
+  .app-header.daily-header nav a { min-height: 44px; }
+}

@@ -98,6 +98,31 @@ class Store:
                     digest TEXT NOT NULL, created_at TEXT NOT NULL, payload TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS settlement_analysis ON settlement_versions(analysis_id,id);
                 INSERT OR IGNORE INTO schema_versions VALUES(7);
+                CREATE TABLE IF NOT EXISTS daily_fixtures(
+                    match_id TEXT PRIMARY KEY, day TEXT NOT NULL, payload TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS daily_fixture_day ON daily_fixtures(day);
+                CREATE TABLE IF NOT EXISTS daily_forecasts(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, match_id TEXT NOT NULL,
+                    kind TEXT NOT NULL, captured_at TEXT NOT NULL, payload TEXT NOT NULL,
+                    UNIQUE(match_id,kind));
+                CREATE TABLE IF NOT EXISTS daily_outcomes(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, forecast_id INTEGER NOT NULL,
+                    digest TEXT NOT NULL, created_at TEXT NOT NULL, payload TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS daily_outcome_forecast ON daily_outcomes(forecast_id,id);
+                INSERT OR IGNORE INTO schema_versions VALUES(8);
+                CREATE TABLE IF NOT EXISTS daily_market_additions(
+                    forecast_id INTEGER NOT NULL, code TEXT NOT NULL,
+                    captured_at TEXT NOT NULL, payload TEXT NOT NULL,
+                    PRIMARY KEY(forecast_id,code));
+                INSERT OR IGNORE INTO schema_versions VALUES(9);
+                CREATE TABLE IF NOT EXISTS daily_explorations(
+                    forecast_id INTEGER NOT NULL, code TEXT NOT NULL,
+                    captured_at TEXT NOT NULL, payload TEXT NOT NULL,
+                    PRIMARY KEY(forecast_id,code));
+                INSERT OR IGNORE INTO schema_versions VALUES(10);
+                CREATE TABLE IF NOT EXISTS official_odds_cache(
+                    match_id TEXT PRIMARY KEY REFERENCES matches(id), payload TEXT NOT NULL);
+                INSERT OR IGNORE INTO schema_versions VALUES(11);
             """)
 
     def _open_connection(self):
