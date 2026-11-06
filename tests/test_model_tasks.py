@@ -328,7 +328,10 @@ class ModelTaskTests(unittest.TestCase):
         target = next(r for r in self.data['matches'] if r['id']==first['id'])
         self.assertEqual(model.forecast(target)['markets'],first['markets'])
         self.assertEqual(artifact['feature_metadata']['policy'],'elo_recent_results_weekly')
-        self.assertEqual(model.history,rows)
+        from worldcup_mvp.console.model_methods import HISTORY_FIELDS
+        self.assertEqual(model.history, [{k: row[k] for k in HISTORY_FIELDS if k in row} for row in rows])
+        self.assertEqual(artifact['input_receipt']['digest'], fingerprint(rows))
+        self.assertTrue(all('odds' not in row and 'postmatch_statistics' not in row for row in model.history))
 
     def test_experiment_persists_candidate_stage_receipts_without_selecting_model(self):
         from worldcup_mvp.console.model_methods import configs

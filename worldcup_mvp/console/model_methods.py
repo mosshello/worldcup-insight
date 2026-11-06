@@ -17,6 +17,8 @@ CLASSIFIERS = {'elo_logistic', 'catboost'}
 FEATURE_VERSION = 'elo-recent-results-weekly-v1'
 FEATURE_NAMES = ['elo_difference', 'home_recent_goals', 'home_recent_conceded', 'home_sample_size',
                  'away_recent_goals', 'away_recent_conceded', 'away_sample_size']
+HISTORY_FIELDS = ('id','competition_id','season','kickoff','result_available_at','home_id','away_id',
+                  'home_goals','away_goals','home_half_goals','away_half_goals')
 
 
 def capabilities(kind):
@@ -49,7 +51,8 @@ class Candidate:
         self.kind, self.half_life, self.mode = kind, half_life, 'separate'
 
     def fit(self, rows, at, competition, vectors=None):
-        self.history = available(rows, at, competition)
+        # Historical rows are serialized for replay. Keep only the facts used by the football model.
+        self.history = [{k:r[k] for k in HISTORY_FIELDS if k in r} for r in available(rows, at, competition)]
         if not self.history:
             raise ValueError('无截止时点前数据')
         self.competition = competition

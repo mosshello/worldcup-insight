@@ -9,6 +9,18 @@ from worldcup_mvp.console import model_methods as m, model_evaluation as e, trai
 
 
 class MethodTests(unittest.TestCase):
+    def test_market_observations_do_not_enter_fitted_parameters_replay_history_or_forecast(self):
+        rows=history(100,half=True);at=datetime(2024,1,1,tzinfo=timezone.utc)
+        changed=[{**r,'odds':{'h':1.05,'d':20,'a':40},'prematch_market_archive':{'quotes':['unrelated']},
+                  'postmatch_xg_sources':{'unused':{'xg':[18,0]}}} for r in rows]
+        for kind in ('poisson','dynamic_gamma','elo_logistic'):
+            config={'mode':'separate','half_life':180,'kind':kind}
+            a=m.fit(config,rows,at,'jp.j1');b=m.fit(config,changed,at,'jp.j1')
+            self.assertEqual(a.to_dict(),b.to_dict())
+            self.assertEqual(a.forecast(rows[0]),b.forecast(changed[0]))
+            for r in b.to_dict().get('history',[]):
+                self.assertNotIn('odds',r);self.assertNotIn('prematch_market_archive',r)
+
     def test_new_artifacts_roundtrip_capabilities_and_isolation(self):
         rows = history(120,half=True)
         at = datetime(2024,1,1,tzinfo=timezone.utc)
