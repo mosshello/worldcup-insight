@@ -21,3 +21,4 @@ frontend/test-results/
 frontend/playwright-report/
 data/training/*
 !data/training/historical_outcomes.example.json
+data/research/big-five/

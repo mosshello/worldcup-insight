@@ -1,0 +1,2022 @@
+{
+  "eng.1-hf": {
+    "15": [
+      "espn:337",
+      "Brentford",
+      "Brentford"
+    ],
+    "3": [
+      "espn:359",
+      "Arsenal",
+      "Arsenal"
+    ],
+    "19": [
+      "espn:360",
+      "Man United",
+      "Manchester United"
+    ],
+    "21": [
+      "espn:357",
+      "Leeds",
+      "Leeds United"
+    ],
+    "24": [
+      "espn:395",
+      "Watford",
+      "Watford"
+    ],
+    "14": [
+      "espn:362",
+      "Aston Villa",
+      "Aston Villa"
+    ],
+    "1": [
+      "espn:379",
+      "Burnley",
+      "Burnley"
+    ],
+    "7": [
+      "espn:331",
+      "Brighton",
+      "Brighton & Hove Albion"
+    ],
+    "17": [
+      "espn:363",
+      "Chelsea",
+      "Chelsea"
+    ],
+    "12": [
+      "espn:384",
+      "Crystal Palace",
+      "Crystal Palace"
+    ],
+    "9": [
+      "espn:368",
+      "Everton",
+      "Everton"
+    ],
+    "22": [
+      "espn:376",
+      "Southampton",
+      "Southampton"
+    ],
+    "23": [
+      "espn:375",
+      "Leicester",
+      "Leicester City"
+    ],
+    "20": [
+      "espn:380",
+      "Wolves",
+      "Wolverhampton Wanderers"
+    ],
+    "25": [
+      "espn:381",
+      "Norwich",
+      "Norwich City"
+    ],
+    "18": [
+      "espn:364",
+      "Liverpool",
+      "Liverpool"
+    ],
+    "13": [
+      "espn:361",
+      "Newcastle",
+      "Newcastle United"
+    ],
+    "6": [
+      "espn:371",
+      "West Ham",
+      "West Ham United"
+    ],
+    "16": [
+      "espn:367",
+      "Tottenham",
+      "Tottenham Hotspur"
+    ],
+    "2": [
+      "espn:382",
+      "Man City",
+      "Manchester City"
+    ],
+    "10": [
+      "espn:370",
+      "Fulham",
+      "Fulham"
+    ],
+    "5": [
+      "espn:349",
+      "Bournemouth",
+      "AFC Bournemouth"
+    ],
+    "4": [
+      "espn:393",
+      "Nott'm Forest",
+      "Nottingham Forest"
+    ],
+    "8": [
+      "espn:301",
+      "Luton",
+      "Luton Town"
+    ],
+    "11": [
+      "espn:398",
+      "Sheffield United",
+      "Sheffield United"
+    ],
+    "44": [
+      "espn:373",
+      "Ipswich",
+      "Ipswich Town"
+    ],
+    "43": [
+      "espn:366",
+      "Sunderland",
+      "Sunderland"
+    ]
+  },
+  "eng.1-opta": {
+    "7yx5dqhhphyvfisohikodajhv": [
+      "espn:337",
+      "Brentford FC",
+      "Brentford"
+    ],
+    "4dsgumo7d4zupm2ugsvm4zm4d": [
+      "espn:359",
+      "Arsenal FC",
+      "Arsenal"
+    ],
+    "6eqit8ye8aomdsrrq0hk3v7gh": [
+      "espn:360",
+      "Manchester United FC",
+      "Manchester United"
+    ],
+    "48gk2hpqtsl6p9sx9kjhaydq4": [
+      "espn:357",
+      "Leeds United FC",
+      "Leeds United"
+    ],
+    "4t83rqbdbekinxl5fz2ygsyta": [
+      "espn:395",
+      "Watford FC",
+      "Watford"
+    ],
+    "b496gs285it6bheuikox6z9mj": [
+      "espn:362",
+      "Aston Villa FC",
+      "Aston Villa"
+    ],
+    "64bxxwu2mv2qqlv0monbkj1om": [
+      "espn:379",
+      "Burnley FC",
+      "Burnley"
+    ],
+    "e5p0ehyguld7egzhiedpdnc3w": [
+      "espn:331",
+      "Brighton & Hove Albion FC",
+      "Brighton & Hove Albion"
+    ],
+    "9q0arba2kbnywth8bkxlhgmdr": [
+      "espn:363",
+      "Chelsea FC",
+      "Chelsea"
+    ],
+    "1c8m2ko0wxq1asfkuykurdr0y": [
+      "espn:384",
+      "Crystal Palace FC",
+      "Crystal Palace"
+    ],
+    "ehd2iemqmschhj2ec0vayztzz": [
+      "espn:368",
+      "Everton FC",
+      "Everton"
+    ],
+    "d5ydtvt96bv7fq04yqm2w2632": [
+      "espn:376",
+      "Southampton FC",
+      "Southampton"
+    ],
+    "avxknfz4f6ob0rv9dbnxdzde0": [
+      "espn:375",
+      "Leicester City FC",
+      "Leicester City"
+    ],
+    "b9si1jn1lfxfund69e9ogcu2n": [
+      "espn:380",
+      "Wolverhampton Wanderers FC",
+      "Wolverhampton Wanderers"
+    ],
+    "suz80crpy3anixyzccmu6jzp": [
+      "espn:381",
+      "Norwich City FC",
+      "Norwich City"
+    ],
+    "c8h9bw1l82s06h77xxrelzhur": [
+      "espn:364",
+      "Liverpool FC",
+      "Liverpool"
+    ],
+    "7vn2i2kd35zuetw6b38gw9jsz": [
+      "espn:361",
+      "Newcastle United FC",
+      "Newcastle United"
+    ],
+    "4txjdaqveermfryvbfrr4taf7": [
+      "espn:371",
+      "West Ham United FC",
+      "West Ham United"
+    ],
+    "22doj4sgsocqpxw45h607udje": [
+      "espn:367",
+      "Tottenham Hotspur FC",
+      "Tottenham Hotspur"
+    ],
+    "a3nyxabgsqlnqfkeg41m6tnpp": [
+      "espn:382",
+      "Manchester City FC",
+      "Manchester City"
+    ],
+    "hzqh7z0mdl3v7gwete66syxp": [
+      "espn:370",
+      "Fulham FC",
+      "Fulham"
+    ],
+    "1qtaiy11gswx327s0vkibf70n": [
+      "espn:393",
+      "Nottingham Forest FC",
+      "Nottingham Forest"
+    ],
+    "1pse9ta7a45pi2w2grjim70ge": [
+      "espn:349",
+      "AFC Bournemouth",
+      "AFC Bournemouth"
+    ],
+    "aksa492u5hf93giwcn2zt1nzz": [
+      "espn:301",
+      "Luton Town FC",
+      "Luton Town"
+    ],
+    "bws31egwjda253q9lvykgnivo": [
+      "espn:398",
+      "Sheffield United FC",
+      "Sheffield United"
+    ],
+    "8b523ujgl21tbc01me65q0aoh": [
+      "espn:373",
+      "Ipswich Town FC",
+      "Ipswich Town"
+    ],
+    "1r3545b2dzan8yqa80gtmcjch": [
+      "espn:366",
+      "Sunderland AFC",
+      "Sunderland"
+    ],
+    "dacoc20k0n3fxu4zek8wufmko": [
+      "espn:388",
+      "Coventry City FC",
+      "Coventry City"
+    ],
+    "f0figafm2v9h8ofo6slajj7xf": [
+      "espn:306",
+      "Hull City AFC",
+      "Hull City"
+    ]
+  },
+  "eng.1-fbref": {
+    "cd051869": [
+      "espn:337",
+      "Brentford",
+      "Brentford"
+    ],
+    "18bb7c10": [
+      "espn:359",
+      "Arsenal",
+      "Arsenal"
+    ],
+    "19538871": [
+      "espn:360",
+      "Manchester United",
+      "Manchester United"
+    ],
+    "5bfb9659": [
+      "espn:357",
+      "Leeds United",
+      "Leeds United"
+    ],
+    "2abfe087": [
+      "espn:395",
+      "Watford",
+      "Watford"
+    ],
+    "8602292d": [
+      "espn:362",
+      "Aston Villa",
+      "Aston Villa"
+    ],
+    "943e8050": [
+      "espn:379",
+      "Burnley",
+      "Burnley"
+    ],
+    "d07537b9": [
+      "espn:331",
+      "Brighton & Hove Albion",
+      "Brighton & Hove Albion"
+    ],
+    "cff3d9bb": [
+      "espn:363",
+      "Chelsea",
+      "Chelsea"
+    ],
+    "47c64c55": [
+      "espn:384",
+      "Crystal Palace",
+      "Crystal Palace"
+    ],
+    "d3fd31cc": [
+      "espn:368",
+      "Everton",
+      "Everton"
+    ],
+    "33c895d4": [
+      "espn:376",
+      "Southampton",
+      "Southampton"
+    ],
+    "a2d435b3": [
+      "espn:375",
+      "Leicester City",
+      "Leicester City"
+    ],
+    "8cec06e1": [
+      "espn:380",
+      "Wolverhampton Wanderers",
+      "Wolverhampton Wanderers"
+    ],
+    "1c781004": [
+      "espn:381",
+      "Norwich City",
+      "Norwich City"
+    ],
+    "822bd0ba": [
+      "espn:364",
+      "Liverpool",
+      "Liverpool"
+    ],
+    "b2b47a98": [
+      "espn:361",
+      "Newcastle United",
+      "Newcastle United"
+    ],
+    "7c21e445": [
+      "espn:371",
+      "West Ham United",
+      "West Ham United"
+    ],
+    "361ca564": [
+      "espn:367",
+      "Tottenham Hotspur",
+      "Tottenham Hotspur"
+    ],
+    "b8fd03ef": [
+      "espn:382",
+      "Manchester City",
+      "Manchester City"
+    ],
+    "fd962109": [
+      "espn:370",
+      "Fulham",
+      "Fulham"
+    ],
+    "4ba7cbea": [
+      "espn:349",
+      "Bournemouth",
+      "AFC Bournemouth"
+    ],
+    "e4a775cb": [
+      "espn:393",
+      "Nottingham Forest",
+      "Nottingham Forest"
+    ],
+    "e297cd13": [
+      "espn:301",
+      "Luton Town",
+      "Luton Town"
+    ],
+    "1df6b87e": [
+      "espn:398",
+      "Sheffield United",
+      "Sheffield United"
+    ],
+    "b74092de": [
+      "espn:373",
+      "Ipswich Town",
+      "Ipswich Town"
+    ],
+    "8ef52968": [
+      "espn:366",
+      "Sunderland",
+      "Sunderland"
+    ]
+  },
+  "esp.1-hf": {
+    "102": [
+      "espn:94",
+      "Valencia",
+      "Valencia"
+    ],
+    "113": [
+      "espn:2922",
+      "Getafe",
+      "Getafe"
+    ],
+    "110": [
+      "espn:97",
+      "Osasuna",
+      "Osasuna"
+    ],
+    "119": [
+      "espn:88",
+      "Espanol",
+      "Espanyol"
+    ],
+    "116": [
+      "espn:96",
+      "Alaves",
+      "Alavés"
+    ],
+    "108": [
+      "espn:86",
+      "Real Madrid",
+      "Real Madrid"
+    ],
+    "109": [
+      "espn:85",
+      "Celta",
+      "Celta Vigo"
+    ],
+    "117": [
+      "espn:1068",
+      "Ath Madrid",
+      "Atlético Madrid"
+    ],
+    "114": [
+      "espn:83",
+      "Barcelona",
+      "Barcelona"
+    ],
+    "103": [
+      "espn:89",
+      "Sociedad",
+      "Real Sociedad"
+    ],
+    "101": [
+      "espn:243",
+      "Sevilla",
+      "Sevilla"
+    ],
+    "100": [
+      "espn:101",
+      "Vallecano",
+      "Rayo Vallecano"
+    ],
+    "111": [
+      "espn:102",
+      "Villarreal",
+      "Villarreal"
+    ],
+    "118": [
+      "espn:3747",
+      "Granada",
+      "Granada"
+    ],
+    "121": [
+      "espn:3751",
+      "Elche",
+      "Elche"
+    ],
+    "107": [
+      "espn:93",
+      "Ath Bilbao",
+      "Athletic Club"
+    ],
+    "112": [
+      "espn:244",
+      "Betis",
+      "Real Betis"
+    ],
+    "115": [
+      "espn:3842",
+      "Cadiz",
+      "Cádiz"
+    ],
+    "106": [
+      "espn:84",
+      "Mallorca",
+      "Mallorca"
+    ],
+    "122": [
+      "espn:1538",
+      "Levante",
+      "Levante"
+    ],
+    "120": [
+      "espn:95",
+      "Valladolid",
+      "Real Valladolid"
+    ],
+    "104": [
+      "espn:9812",
+      "Girona",
+      "Girona"
+    ],
+    "99": [
+      "espn:6832",
+      "Almeria",
+      "Almería"
+    ],
+    "105": [
+      "espn:98",
+      "Las Palmas",
+      "Las Palmas"
+    ],
+    "125": [
+      "espn:17534",
+      "Leganes",
+      "Leganés"
+    ],
+    "140": [
+      "espn:92",
+      "Oviedo",
+      "Real Oviedo"
+    ]
+  },
+  "esp.1-opta": {
+    "ba5e91hjacvma2sjvixn00pjo": [
+      "espn:94",
+      "Valencia CF",
+      "Valencia"
+    ],
+    "1n1j0wsl763lq7ee1k0c11c02": [
+      "espn:2922",
+      "Getafe CF",
+      "Getafe"
+    ],
+    "2l0ldgiwsgb8d6y3z0sfgjzyj": [
+      "espn:97",
+      "CA Osasuna",
+      "Osasuna"
+    ],
+    "c8llrezkm3b3op4afrou6b487": [
+      "espn:88",
+      "Reial Club Deportiu Espanyol de Barcelona",
+      "Espanyol"
+    ],
+    "4dtdjgnpdq9uw4sdutti0vaar": [
+      "espn:96",
+      "Deportivo Alavés",
+      "Alavés"
+    ],
+    "3kq9cckrnlogidldtdie2fkbl": [
+      "espn:86",
+      "Real Madrid CF",
+      "Real Madrid"
+    ],
+    "6f27yvbqcngegwsg2ozxxdj4": [
+      "espn:85",
+      "Real Club Celta de Vigo",
+      "Celta Vigo"
+    ],
+    "4ku8o6uf87yd8iecdalipo6wd": [
+      "espn:1068",
+      "Club Atlético de Madrid",
+      "Atlético Madrid"
+    ],
+    "agh9ifb2mw3ivjusgedj7c3fe": [
+      "espn:83",
+      "FC Barcelona",
+      "Barcelona"
+    ],
+    "63f5h8t5e9qm1fqmvfkb23ghh": [
+      "espn:89",
+      "Real Sociedad de Fútbol",
+      "Real Sociedad"
+    ],
+    "10eyb18v5puw4ez03ocaug09m": [
+      "espn:243",
+      "Sevilla FC",
+      "Sevilla"
+    ],
+    "3budh3j9xivsid3ptm8ptpy4k": [
+      "espn:101",
+      "Rayo Vallecano de Madrid",
+      "Rayo Vallecano"
+    ],
+    "ah8dala7suqqkj04n2l8xz4zd": [
+      "espn:244",
+      "Real Betis Balompié",
+      "Real Betis"
+    ],
+    "82q9159y2u7mkfn3z6hy75r4o": [
+      "espn:3842",
+      "Cádiz CF",
+      "Cádiz"
+    ],
+    "50x1m4u58lffhq6v6ga1hbxmy": [
+      "espn:84",
+      "Real Club Deportivo Mallorca",
+      "Mallorca"
+    ],
+    "74mcjsm72vr3l9pw2i4qfjchj": [
+      "espn:102",
+      "Villarreal CF",
+      "Villarreal"
+    ],
+    "4grc9qgcvusllap8h5j6gc5h5": [
+      "espn:1538",
+      "Levante UD",
+      "Levante"
+    ],
+    "4yg9ttzw0m51048doksv8uq5r": [
+      "espn:3751",
+      "Elche CF",
+      "Elche"
+    ],
+    "26fes5ubaeq0fk1nay2pj2ob2": [
+      "espn:3747",
+      "Granada CF",
+      "Granada"
+    ],
+    "3czravw89omgc9o4s0w3l1bg5": [
+      "espn:93",
+      "Athletic Club",
+      "Athletic Club"
+    ],
+    "4jelr92fsge73q39is6qvhxb3": [
+      "espn:95",
+      "Real Valladolid CF",
+      "Real Valladolid"
+    ],
+    "7h7eg7q7dbwvzww78h9d5eh0h": [
+      "espn:9812",
+      "Girona FC",
+      "Girona"
+    ],
+    "cobffe32r7g4skka9m19qib63": [
+      "espn:6832",
+      "UD Almería",
+      "Almería"
+    ],
+    "1ae3awgwm3i1jds5tfct5441j": [
+      "espn:98",
+      "UD Las Palmas",
+      "Las Palmas"
+    ],
+    "3krm0f4yr1l80j1sd7823f9xn": [
+      "espn:17534",
+      "CD Leganés",
+      "Leganés"
+    ],
+    "clo928vcczjp0mczavs5o7p5k": [
+      "espn:92",
+      "Real Oviedo",
+      "Real Oviedo"
+    ],
+    "bzkwzatvwahmbzok1ymm5vqa1": [
+      "espn:87",
+      "Real Racing Club",
+      "Racing Santander"
+    ],
+    "1r541mega6d838hi0p44sv0h2": [
+      "espn:90",
+      "RC Deportivo de A Coruña",
+      "Deportivo"
+    ],
+    "7012hpp3p5vg4fzyn3h0yvf09": [
+      "espn:99",
+      "Málaga CF",
+      "Málaga"
+    ]
+  },
+  "esp.1-fbref": {
+    "dcc91a7b": [
+      "espn:94",
+      "Valencia",
+      "Valencia"
+    ],
+    "7848bd64": [
+      "espn:2922",
+      "Getafe",
+      "Getafe"
+    ],
+    "03c57e2b": [
+      "espn:97",
+      "Osasuna",
+      "Osasuna"
+    ],
+    "a8661628": [
+      "espn:88",
+      "Espanyol",
+      "Espanyol"
+    ],
+    "8d6fd021": [
+      "espn:96",
+      "Alavés",
+      "Alavés"
+    ],
+    "53a2f082": [
+      "espn:86",
+      "Real Madrid",
+      "Real Madrid"
+    ],
+    "f25da7fb": [
+      "espn:85",
+      "Celta Vigo",
+      "Celta Vigo"
+    ],
+    "db3b9613": [
+      "espn:1068",
+      "Atlético Madrid",
+      "Atlético Madrid"
+    ],
+    "206d90db": [
+      "espn:83",
+      "Barcelona",
+      "Barcelona"
+    ],
+    "e31d1cd9": [
+      "espn:89",
+      "Real Sociedad",
+      "Real Sociedad"
+    ],
+    "ad2be733": [
+      "espn:243",
+      "Sevilla",
+      "Sevilla"
+    ],
+    "98e8af82": [
+      "espn:101",
+      "Rayo Vallecano",
+      "Rayo Vallecano"
+    ],
+    "2a8183b3": [
+      "espn:102",
+      "Villarreal",
+      "Villarreal"
+    ],
+    "a0435291": [
+      "espn:3747",
+      "Granada",
+      "Granada"
+    ],
+    "6c8b07df": [
+      "espn:3751",
+      "Elche",
+      "Elche"
+    ],
+    "2b390eca": [
+      "espn:93",
+      "Athletic Club",
+      "Athletic Club"
+    ],
+    "fc536746": [
+      "espn:244",
+      "Real Betis",
+      "Real Betis"
+    ],
+    "ee7c297c": [
+      "espn:3842",
+      "Cádiz",
+      "Cádiz"
+    ],
+    "2aa12281": [
+      "espn:84",
+      "Mallorca",
+      "Mallorca"
+    ],
+    "9800b6a1": [
+      "espn:1538",
+      "Levante",
+      "Levante"
+    ],
+    "17859612": [
+      "espn:95",
+      "Valladolid",
+      "Real Valladolid"
+    ],
+    "9024a00a": [
+      "espn:9812",
+      "Girona",
+      "Girona"
+    ],
+    "78ecf4bb": [
+      "espn:6832",
+      "Almería",
+      "Almería"
+    ],
+    "0049d422": [
+      "espn:98",
+      "Las Palmas",
+      "Las Palmas"
+    ],
+    "7c6f2c78": [
+      "espn:17534",
+      "Leganés",
+      "Leganés"
+    ],
+    "ab358912": [
+      "espn:92",
+      "Oviedo",
+      "Real Oviedo"
+    ]
+  },
+  "ger.1-hf": {
+    "257": [
+      "espn:268",
+      "M'gladbach",
+      "Borussia Mönchengladbach"
+    ],
+    "255": [
+      "espn:132",
+      "Bayern Munich",
+      "Bayern Munich"
+    ],
+    "268": [
+      "espn:598",
+      "Union Berlin",
+      "1. FC Union Berlin"
+    ],
+    "260": [
+      "espn:131",
+      "Leverkusen",
+      "Bayer Leverkusen"
+    ],
+    "264": [
+      "espn:138",
+      "Wolfsburg",
+      "VfL Wolfsburg"
+    ],
+    "263": [
+      "espn:121",
+      "Bochum",
+      "VfL Bochum"
+    ],
+    "3375": [
+      "espn:2506",
+      "Arminia Bielefeld",
+      "Arminia Bielefeld"
+    ],
+    "259": [
+      "espn:126",
+      "Freiburg",
+      "SC Freiburg"
+    ],
+    "256": [
+      "espn:3841",
+      "Augsburg",
+      "FC Augsburg"
+    ],
+    "258": [
+      "espn:7911",
+      "Hoffenheim",
+      "TSG Hoffenheim"
+    ],
+    "262": [
+      "espn:134",
+      "Stuttgart",
+      "VfB Stuttgart"
+    ],
+    "275": [
+      "espn:3070",
+      "Greuther Furth",
+      "SpVgg Greuther Fürth"
+    ],
+    "266": [
+      "espn:124",
+      "Dortmund",
+      "Borussia Dortmund"
+    ],
+    "270": [
+      "espn:125",
+      "Ein Frankfurt",
+      "Eintracht Frankfurt"
+    ],
+    "269": [
+      "espn:2950",
+      "Mainz",
+      "Mainz"
+    ],
+    "261": [
+      "espn:11420",
+      "RB Leipzig",
+      "RB Leipzig"
+    ],
+    "267": [
+      "espn:122",
+      "FC Koln",
+      "FC Cologne"
+    ],
+    "272": [
+      "espn:129",
+      "Hertha",
+      "Hertha Berlin"
+    ],
+    "254": [
+      "espn:137",
+      "Werder Bremen",
+      "Werder Bremen"
+    ],
+    "273": [
+      "espn:133",
+      "Schalke 04",
+      "Schalke 04"
+    ],
+    "265": [
+      "espn:6418",
+      "Heidenheim",
+      "1. FC Heidenheim 1846"
+    ],
+    "271": [
+      "espn:3812",
+      "Darmstadt",
+      "SV Darmstadt 98"
+    ],
+    "288": [
+      "espn:7884",
+      "Holstein Kiel",
+      "Holstein Kiel"
+    ],
+    "282": [
+      "espn:270",
+      "St Pauli",
+      "St. Pauli"
+    ],
+    "278": [
+      "espn:127",
+      "Hamburg",
+      "Hamburg SV"
+    ]
+  },
+  "ger.1-opta": {
+    "go76xxm0xyfgqt1h6tcrtimm": [
+      "espn:268",
+      "Borussia VfL Mönchengladbach",
+      "Borussia Mönchengladbach"
+    ],
+    "apoawtpvac4zqlancmvw4nk4o": [
+      "espn:132",
+      "FC Bayern München",
+      "Bayern Munich"
+    ],
+    "a8d2gb2nag8fy0itbuxmcibh2": [
+      "espn:598",
+      "1. FC Union Berlin",
+      "1. FC Union Berlin"
+    ],
+    "7ad69ngbpjuyzv96drf8d9sn2": [
+      "espn:131",
+      "Bayer 04 Leverkusen",
+      "Bayer Leverkusen"
+    ],
+    "a8l3w3n0j99qjlsxj3jnmgkz1": [
+      "espn:138",
+      "VfL Wolfsburg",
+      "VfL Wolfsburg"
+    ],
+    "eq1oq6y61xnzq88zu0cnw131z": [
+      "espn:121",
+      "VfL Bochum 1848",
+      "VfL Bochum"
+    ],
+    "bdlavlqj0dshxnepyfanzwu47": [
+      "espn:2506",
+      "DSC Arminia Bielefeld",
+      "Arminia Bielefeld"
+    ],
+    "6k5zscdm9ufw0tguvzyjlp5hq": [
+      "espn:126",
+      "SC Freiburg",
+      "SC Freiburg"
+    ],
+    "ex3psl8e3ajeypwjy4xfltpx6": [
+      "espn:3841",
+      "FC Augsburg",
+      "FC Augsburg"
+    ],
+    "4l9mrqzmajz5crzlz50mtbt6x": [
+      "espn:7911",
+      "TSG 1899 Hoffenheim",
+      "TSG Hoffenheim"
+    ],
+    "3dwlvz6cl4lcavvrg0y2dycrt": [
+      "espn:134",
+      "VfB Stuttgart 1893",
+      "VfB Stuttgart"
+    ],
+    "9dlxuym0eab00j9ggrdr87soj": [
+      "espn:3070",
+      "SpVgg Greuther Fürth",
+      "SpVgg Greuther Fürth"
+    ],
+    "dt4pinj0vw0t0cvz7za6mhmzy": [
+      "espn:124",
+      "BV Borussia 09 Dortmund",
+      "Borussia Dortmund"
+    ],
+    "c5hderjlkcoaze51e5wgvptk": [
+      "espn:125",
+      "Eintracht Frankfurt",
+      "Eintracht Frankfurt"
+    ],
+    "1c7qokc1j5z50cjj4tcu32haa": [
+      "espn:2950",
+      "1. FSV Mainz 05",
+      "Mainz"
+    ],
+    "9gefq4dz9b2hl8rqrxwrlrzmp": [
+      "espn:11420",
+      "RasenBallsport Leipzig",
+      "RB Leipzig"
+    ],
+    "8q1ul09cygzswb7tb456bmifv": [
+      "espn:122",
+      "1. FC Köln",
+      "FC Cologne"
+    ],
+    "f0w62l8zql3tukxsy8fqwp72x": [
+      "espn:129",
+      "Hertha BSC",
+      "Hertha Berlin"
+    ],
+    "cu0eztmjcsbydyp53aleznorw": [
+      "espn:137",
+      "SV Werder Bremen",
+      "Werder Bremen"
+    ],
+    "cz4a6wmzx2obyisadhgaccx7b": [
+      "espn:133",
+      "FC Schalke 04",
+      "Schalke 04"
+    ],
+    "3xcg7xikgrn2x8oa65sopb2is": [
+      "espn:6418",
+      "1. FC Heidenheim 1846",
+      "1. FC Heidenheim 1846"
+    ],
+    "1y7e48j8swyafegsucvewse5a": [
+      "espn:3812",
+      "SV Darmstadt 1898",
+      "SV Darmstadt 98"
+    ],
+    "6zwg0wxjie31da2i4wwh2h4ho": [
+      "espn:7884",
+      "Kieler SV Holstein 1900",
+      "Holstein Kiel"
+    ],
+    "85jtaw5dcxxx1yp8te6axh3p8": [
+      "espn:270",
+      "FC St. Pauli",
+      "St. Pauli"
+    ],
+    "75xi6hloabmnjn2kzgj1g8h1s": [
+      "espn:127",
+      "Hamburger SV",
+      "Hamburg SV"
+    ],
+    "62ljqd4za2a6svd9wgctg8b53": [
+      "espn:3307",
+      "SC Paderborn 07",
+      "SC Paderborn 07"
+    ],
+    "cig09m7g3wx983agnqgovggoh": [
+      "espn:10388",
+      "SV 07 Elversberg",
+      "SV Elversberg"
+    ]
+  },
+  "ger.1-fbref": {
+    "32f3ee20": [
+      "espn:268",
+      "Mönchengladbach",
+      "Borussia Mönchengladbach"
+    ],
+    "054efa67": [
+      "espn:132",
+      "Bayern Munich",
+      "Bayern Munich"
+    ],
+    "7a41008f": [
+      "espn:598",
+      "Union Berlin",
+      "1. FC Union Berlin"
+    ],
+    "c7a9f859": [
+      "espn:131",
+      "Bayer Leverkusen",
+      "Bayer Leverkusen"
+    ],
+    "4eaa11d7": [
+      "espn:138",
+      "Wolfsburg",
+      "VfL Wolfsburg"
+    ],
+    "b42c6323": [
+      "espn:121",
+      "Bochum",
+      "VfL Bochum"
+    ],
+    "247c4b67": [
+      "espn:2506",
+      "Arminia",
+      "Arminia Bielefeld"
+    ],
+    "a486e511": [
+      "espn:126",
+      "Freiburg",
+      "SC Freiburg"
+    ],
+    "0cdc4311": [
+      "espn:3841",
+      "Augsburg",
+      "FC Augsburg"
+    ],
+    "033ea6b8": [
+      "espn:7911",
+      "Hoffenheim",
+      "TSG Hoffenheim"
+    ],
+    "598bc722": [
+      "espn:134",
+      "Stuttgart",
+      "VfB Stuttgart"
+    ],
+    "12192a4c": [
+      "espn:3070",
+      "Greuther Fürth",
+      "SpVgg Greuther Fürth"
+    ],
+    "add600ae": [
+      "espn:124",
+      "Dortmund",
+      "Borussia Dortmund"
+    ],
+    "f0ac8ee6": [
+      "espn:125",
+      "Eintracht Frankfurt",
+      "Eintracht Frankfurt"
+    ],
+    "a224b06a": [
+      "espn:2950",
+      "Mainz 05",
+      "Mainz"
+    ],
+    "acbb6a5b": [
+      "espn:11420",
+      "RB Leipzig",
+      "RB Leipzig"
+    ],
+    "bc357bf7": [
+      "espn:122",
+      "Köln",
+      "FC Cologne"
+    ],
+    "2818f8bc": [
+      "espn:129",
+      "Hertha BSC",
+      "Hertha Berlin"
+    ],
+    "62add3bf": [
+      "espn:137",
+      "Werder Bremen",
+      "Werder Bremen"
+    ],
+    "c539e393": [
+      "espn:133",
+      "Schalke 04",
+      "Schalke 04"
+    ],
+    "18d9d2a7": [
+      "espn:6418",
+      "Heidenheim",
+      "1. FC Heidenheim 1846"
+    ],
+    "6a6967fc": [
+      "espn:3812",
+      "Darmstadt 98",
+      "SV Darmstadt 98"
+    ],
+    "2ac661d9": [
+      "espn:7884",
+      "Holstein Kiel",
+      "Holstein Kiel"
+    ],
+    "54864664": [
+      "espn:270",
+      "St. Pauli",
+      "St. Pauli"
+    ],
+    "26790c6a": [
+      "espn:127",
+      "Hamburger SV",
+      "Hamburg SV"
+    ]
+  },
+  "ita.1-hf": {
+    "159": [
+      "espn:110",
+      "Inter",
+      "Internazionale"
+    ],
+    "157": [
+      "espn:3263",
+      "Genoa",
+      "Genoa"
+    ],
+    "154": [
+      "espn:119",
+      "Verona",
+      "Hellas Verona"
+    ],
+    "163": [
+      "espn:3997",
+      "Sassuolo",
+      "Sassuolo"
+    ],
+    "169": [
+      "espn:239",
+      "Torino",
+      "Torino"
+    ],
+    "164": [
+      "espn:105",
+      "Atalanta",
+      "Atalanta"
+    ],
+    "153": [
+      "espn:2574",
+      "Empoli",
+      "Empoli"
+    ],
+    "166": [
+      "espn:112",
+      "Lazio",
+      "Lazio"
+    ],
+    "167": [
+      "espn:118",
+      "Udinese",
+      "Udinese"
+    ],
+    "168": [
+      "espn:111",
+      "Juventus",
+      "Juventus"
+    ],
+    "171": [
+      "espn:107",
+      "Bologna",
+      "Bologna"
+    ],
+    "162": [
+      "espn:3240",
+      "Salernitana",
+      "Salernitana"
+    ],
+    "161": [
+      "espn:104",
+      "Roma",
+      "AS Roma"
+    ],
+    "158": [
+      "espn:109",
+      "Fiorentina",
+      "Fiorentina"
+    ],
+    "156": [
+      "espn:114",
+      "Napoli",
+      "Napoli"
+    ],
+    "176": [
+      "espn:17530",
+      "Venezia",
+      "Venezia"
+    ],
+    "170": [
+      "espn:2925",
+      "Cagliari",
+      "Cagliari"
+    ],
+    "175": [
+      "espn:4056",
+      "Spezia",
+      "Spezia"
+    ],
+    "173": [
+      "espn:2734",
+      "Sampdoria",
+      "Sampdoria"
+    ],
+    "172": [
+      "espn:103",
+      "Milan",
+      "AC Milan"
+    ],
+    "174": [
+      "espn:4050",
+      "Cremonese",
+      "Cremonese"
+    ],
+    "165": [
+      "espn:113",
+      "Lecce",
+      "Lecce"
+    ],
+    "160": [
+      "espn:4007",
+      "Monza",
+      "Monza"
+    ],
+    "155": [
+      "espn:4057",
+      "Frosinone",
+      "Frosinone"
+    ],
+    "177": [
+      "espn:115",
+      "Parma",
+      "Parma"
+    ],
+    "192": [
+      "espn:2572",
+      "Como",
+      "Como"
+    ],
+    "193": [
+      "espn:3956",
+      "Pisa",
+      "Pisa"
+    ]
+  },
+  "ita.1-opta": {
+    "3vo5mpj7catp66nrwwqiuhuup": [
+      "espn:110",
+      "FC Internazionale Milano",
+      "Internazionale"
+    ],
+    "4kumqzwifv478caxed8zywlh3": [
+      "espn:3263",
+      "Genoa CFC",
+      "Genoa"
+    ],
+    "ap6blbxhq9elm62vw6tutzlwg": [
+      "espn:119",
+      "Hellas Verona FC",
+      "Hellas Verona"
+    ],
+    "6tuibxq39fdryu8ou06wcm0q3": [
+      "espn:3997",
+      "US Sassuolo Calcio",
+      "Sassuolo"
+    ],
+    "7gnly6999wao1xarwct4p8fe9": [
+      "espn:239",
+      "Torino FC",
+      "Torino"
+    ],
+    "e75syeuawg3ql8nwpi3vr2btz": [
+      "espn:105",
+      "Atalanta Bergamasca Calcio",
+      "Atalanta"
+    ],
+    "8le3orkfz6iix3jns6g9ojqjg": [
+      "espn:2574",
+      "Empoli FC",
+      "Empoli"
+    ],
+    "btcy9nra9ak4m22ovr2ia6m5v": [
+      "espn:112",
+      "SS Lazio",
+      "Lazio"
+    ],
+    "dxq76zcvnokq07cszdx0i6kve": [
+      "espn:118",
+      "Udinese Calcio",
+      "Udinese"
+    ],
+    "bqbbqm98ud8obe45ds9ohgyrd": [
+      "espn:111",
+      "Juventus FC",
+      "Juventus"
+    ],
+    "ej5er0oyngdw138yuumwqbyqt": [
+      "espn:107",
+      "Bologna FC 1909",
+      "Bologna"
+    ],
+    "49rkyo4do8uwj06geomw0xr4i": [
+      "espn:3240",
+      "US Salernitana 1919",
+      "Salernitana"
+    ],
+    "2tk2l9sgktwc9jhzqdd4mpdtb": [
+      "espn:104",
+      "AS Roma",
+      "AS Roma"
+    ],
+    "4raiad4l2j5lkfaz92pk4osb": [
+      "espn:109",
+      "ACF Fiorentina",
+      "Fiorentina"
+    ],
+    "gi0l1habji5hpgar77dl5jqe": [
+      "espn:114",
+      "SSC Napoli",
+      "Napoli"
+    ],
+    "565sm63rjm2y7xeae0dcdbtnu": [
+      "espn:17530",
+      "Venezia FC",
+      "Venezia"
+    ],
+    "5rwlg5cfv1hu7yf0ek1zxpzy3": [
+      "espn:2925",
+      "Cagliari Calcio",
+      "Cagliari"
+    ],
+    "4klvxyeh3xcus4ongu7c00mgc": [
+      "espn:4056",
+      "Spezia Calcio",
+      "Spezia"
+    ],
+    "4plikfte18rv8v4l89z803d4y": [
+      "espn:2734",
+      "UC Sampdoria",
+      "Sampdoria"
+    ],
+    "9dntj5dioj5ex52yrgwzxrq9l": [
+      "espn:103",
+      "AC Milan",
+      "AC Milan"
+    ],
+    "af91jdcs6x0bqkmdb78rokod2": [
+      "espn:4050",
+      "US Cremonese",
+      "Cremonese"
+    ],
+    "bi1fxjrncd0ram0oi7ja1jyuo": [
+      "espn:113",
+      "US Lecce",
+      "Lecce"
+    ],
+    "67z1gqyiuzpmmb15q5fy7ntc4": [
+      "espn:4007",
+      "AC Monza",
+      "Monza"
+    ],
+    "5khizzei8z0qbb7exz622wxw3": [
+      "espn:4057",
+      "Frosinone Calcio",
+      "Frosinone"
+    ],
+    "5aosfavi55p40c65lkriqnqnl": [
+      "espn:115",
+      "Parma Calcio 1913",
+      "Parma"
+    ],
+    "6uzfw7ahyxg4wrrfxo5u7qt0n": [
+      "espn:2572",
+      "Calcio Como 1907",
+      "Como"
+    ],
+    "bfztlrr6176xsdt2bmp0u1d2d": [
+      "espn:3956",
+      "Pisa Sporting Club",
+      "Pisa"
+    ]
+  },
+  "ita.1-fbref": {
+    "d609edc0": [
+      "espn:110",
+      "Internazionale",
+      "Internazionale"
+    ],
+    "658bf2de": [
+      "espn:3263",
+      "Genoa",
+      "Genoa"
+    ],
+    "0e72edf2": [
+      "espn:119",
+      "Hellas Verona",
+      "Hellas Verona"
+    ],
+    "e2befd26": [
+      "espn:3997",
+      "Sassuolo",
+      "Sassuolo"
+    ],
+    "105360fe": [
+      "espn:239",
+      "Torino",
+      "Torino"
+    ],
+    "922493f3": [
+      "espn:105",
+      "Atalanta",
+      "Atalanta"
+    ],
+    "a3d88bd8": [
+      "espn:2574",
+      "Empoli",
+      "Empoli"
+    ],
+    "7213da33": [
+      "espn:112",
+      "Lazio",
+      "Lazio"
+    ],
+    "04eea015": [
+      "espn:118",
+      "Udinese",
+      "Udinese"
+    ],
+    "e0652b02": [
+      "espn:111",
+      "Juventus",
+      "Juventus"
+    ],
+    "1d8099f8": [
+      "espn:107",
+      "Bologna",
+      "Bologna"
+    ],
+    "c5577084": [
+      "espn:3240",
+      "Salernitana",
+      "Salernitana"
+    ],
+    "cf74a709": [
+      "espn:104",
+      "Roma",
+      "AS Roma"
+    ],
+    "421387cf": [
+      "espn:109",
+      "Fiorentina",
+      "Fiorentina"
+    ],
+    "d48ad4ff": [
+      "espn:114",
+      "Napoli",
+      "Napoli"
+    ],
+    "af5d5982": [
+      "espn:17530",
+      "Venezia",
+      "Venezia"
+    ],
+    "c4260e09": [
+      "espn:2925",
+      "Cagliari",
+      "Cagliari"
+    ],
+    "68449f6d": [
+      "espn:4056",
+      "Spezia",
+      "Spezia"
+    ],
+    "8ff9e3b3": [
+      "espn:2734",
+      "Sampdoria",
+      "Sampdoria"
+    ],
+    "dc56fe14": [
+      "espn:103",
+      "Milan",
+      "AC Milan"
+    ],
+    "9aad3a77": [
+      "espn:4050",
+      "Cremonese",
+      "Cremonese"
+    ],
+    "ffcbe334": [
+      "espn:113",
+      "Lecce",
+      "Lecce"
+    ],
+    "21680aa4": [
+      "espn:4007",
+      "Monza",
+      "Monza"
+    ],
+    "6a7ad59d": [
+      "espn:4057",
+      "Frosinone",
+      "Frosinone"
+    ],
+    "eab4234c": [
+      "espn:115",
+      "Parma",
+      "Parma"
+    ],
+    "28c9c3cd": [
+      "espn:2572",
+      "Como",
+      "Como"
+    ],
+    "4cceedfc": [
+      "espn:3956",
+      "Pisa",
+      "Pisa"
+    ]
+  },
+  "fra.1-hf": {
+    "216": [
+      "espn:174",
+      "Monaco",
+      "AS Monaco"
+    ],
+    "219": [
+      "espn:165",
+      "Nantes",
+      "Nantes"
+    ],
+    "224": [
+      "espn:167",
+      "Lyon",
+      "Lyon"
+    ],
+    "213": [
+      "espn:6997",
+      "Brest",
+      "Brest"
+    ],
+    "228": [
+      "espn:170",
+      "Troyes",
+      "Troyes"
+    ],
+    "211": [
+      "espn:160",
+      "Paris SG",
+      "Paris Saint-Germain"
+    ],
+    "221": [
+      "espn:169",
+      "Rennes",
+      "Stade Rennais"
+    ],
+    "214": [
+      "espn:175",
+      "Lens",
+      "Lens"
+    ],
+    "230": [
+      "espn:178",
+      "St Etienne",
+      "Saint-Étienne"
+    ],
+    "212": [
+      "espn:273",
+      "Lorient",
+      "Lorient"
+    ],
+    "207": [
+      "espn:2502",
+      "Nice",
+      "Nice"
+    ],
+    "210": [
+      "espn:3243",
+      "Reims",
+      "Stade de Reims"
+    ],
+    "222": [
+      "espn:177",
+      "Metz",
+      "Metz"
+    ],
+    "208": [
+      "espn:166",
+      "Lille",
+      "Lille"
+    ],
+    "217": [
+      "espn:274",
+      "Montpellier",
+      "Montpellier"
+    ],
+    "209": [
+      "espn:176",
+      "Marseille",
+      "Marseille"
+    ],
+    "223": [
+      "espn:180",
+      "Strasbourg",
+      "Strasbourg"
+    ],
+    "226": [
+      "espn:7868",
+      "Angers",
+      "Angers"
+    ],
+    "229": [
+      "espn:159",
+      "Bordeaux",
+      "Bordeaux"
+    ],
+    "215": [
+      "espn:3171",
+      "Clermont",
+      "Clermont Foot"
+    ],
+    "225": [
+      "espn:2503",
+      "Ajaccio",
+      "AC Ajaccio"
+    ],
+    "220": [
+      "espn:179",
+      "Toulouse",
+      "Toulouse"
+    ],
+    "227": [
+      "espn:172",
+      "Auxerre",
+      "AJ Auxerre"
+    ],
+    "218": [
+      "espn:3236",
+      "Le Havre",
+      "Le Havre AC"
+    ],
+    "243": [
+      "espn:6851",
+      "Paris FC",
+      "Paris FC"
+    ]
+  },
+  "fra.1-opta": {
+    "4t4hod56fsj7utpjdor8so5q6": [
+      "espn:174",
+      "AS Monaco FC",
+      "AS Monaco"
+    ],
+    "750ustvk4jfqmo8q4gnrcxy7z": [
+      "espn:165",
+      "FC Nantes",
+      "Nantes"
+    ],
+    "121le8unjfzug3iu9pgkqa1c7": [
+      "espn:167",
+      "Lyon",
+      "Lyon"
+    ],
+    "3adj8hkws0z1al232bg2h6tk0": [
+      "espn:6997",
+      "Stade Brestois 29",
+      "Brest"
+    ],
+    "3unkqo2g6ag99gd5ynz1j7vse": [
+      "espn:170",
+      "Espérance Sportive Troyes Aube Champagne",
+      "Troyes"
+    ],
+    "2b3mar72yy8d6uvat1ka6tn3r": [
+      "espn:160",
+      "Paris Saint-Germain FC",
+      "Paris Saint-Germain"
+    ],
+    "bx0cdmzr2gwr70ez72dorx82p": [
+      "espn:2502",
+      "OGC Nice Côte d'Azur",
+      "Nice"
+    ],
+    "3c3jcs7vc1t6vz5lev162jyv7": [
+      "espn:3243",
+      "Stade de Reims",
+      "Stade de Reims"
+    ],
+    "2khen2a38l2hkx33s73pehl6o": [
+      "espn:177",
+      "FC Metz",
+      "Metz"
+    ],
+    "be2k34rut1lz79jxenabttqlc": [
+      "espn:166",
+      "Lille OSC",
+      "Lille"
+    ],
+    "2cjpmotqo8phcqfpgo9xf4gel": [
+      "espn:274",
+      "Montpellier HSC",
+      "Montpellier"
+    ],
+    "27xvwccz8kpmqsefjv2b2sc0o": [
+      "espn:176",
+      "Olympique de Marseille",
+      "Marseille"
+    ],
+    "70nn27vgkt6l48lvv5e66q7ww": [
+      "espn:273",
+      "FC Lorient",
+      "Lorient"
+    ],
+    "71ajatxnuhc5cnm3xvgdky49w": [
+      "espn:180",
+      "RC Strasbourg Alsace",
+      "Strasbourg"
+    ],
+    "75qj99fhg5c0ztj2tva5u4uii": [
+      "espn:7868",
+      "Angers Sporting Club de l'Ouest",
+      "Angers"
+    ],
+    "z1wbqtd0fz5t5eezjvrbld3h": [
+      "espn:169",
+      "Stade Rennais FC",
+      "Stade Rennais"
+    ],
+    "3xedluek08t2ka7oypwuullcn": [
+      "espn:175",
+      "Racing Club de Lens",
+      "Lens"
+    ],
+    "2sc9xfhu6tbru9hhlhr4a89zn": [
+      "espn:178",
+      "AS Saint-Étienne",
+      "Saint-Étienne"
+    ],
+    "17o35s8assv3kamxowzz77k4r": [
+      "espn:3171",
+      "Clermont Foot 63",
+      "Clermont Foot"
+    ],
+    "98dr7jscv8adc8zgi2u403oij": [
+      "espn:159",
+      "FC Girondins de Bordeaux",
+      "Bordeaux"
+    ],
+    "6xjy1q2m55iiwe8g1r1yffbc9": [
+      "espn:2503",
+      "AC Ajaccio",
+      "AC Ajaccio"
+    ],
+    "4aghw9tyi8ba3ju1ne83gmf9w": [
+      "espn:179",
+      "Toulouse FC",
+      "Toulouse"
+    ],
+    "9bxav814mkuhueiyivyive82d": [
+      "espn:172",
+      "Association Jeunesse Auxerroise",
+      "AJ Auxerre"
+    ],
+    "23pqcgxu1tip265hbe01kszbt": [
+      "espn:3236",
+      "Le Havre AC",
+      "Le Havre AC"
+    ],
+    "8v00fx2zwhiwm05tqqkt122p5": [
+      "espn:6851",
+      "Paris FC",
+      "Paris FC"
+    ],
+    "bj8hrmj01r3zit0x8r6qm2eu2": [
+      "espn:2697",
+      "Le Mans FC",
+      "Le Mans"
+    ]
+  },
+  "fra.1-fbref": {
+    "fd6114db": [
+      "espn:174",
+      "Monaco",
+      "AS Monaco"
+    ],
+    "d7a486cd": [
+      "espn:165",
+      "Nantes",
+      "Nantes"
+    ],
+    "d53c0b06": [
+      "espn:167",
+      "Lyon",
+      "Lyon"
+    ],
+    "fb08dbb3": [
+      "espn:6997",
+      "Brest",
+      "Brest"
+    ],
+    "54195385": [
+      "espn:170",
+      "Troyes",
+      "Troyes"
+    ],
+    "e2d8892c": [
+      "espn:160",
+      "Paris Saint-Germain",
+      "Paris Saint-Germain"
+    ],
+    "b3072e00": [
+      "espn:169",
+      "Rennes",
+      "Stade Rennais"
+    ],
+    "fd4e0f7d": [
+      "espn:175",
+      "Lens",
+      "Lens"
+    ],
+    "d298ef2c": [
+      "espn:178",
+      "Saint-Étienne",
+      "Saint-Étienne"
+    ],
+    "d2c87802": [
+      "espn:273",
+      "Lorient",
+      "Lorient"
+    ],
+    "132ebc33": [
+      "espn:2502",
+      "Nice",
+      "Nice"
+    ],
+    "7fdd64e0": [
+      "espn:3243",
+      "Reims",
+      "Stade de Reims"
+    ],
+    "f83960ae": [
+      "espn:177",
+      "Metz",
+      "Metz"
+    ],
+    "cb188c0c": [
+      "espn:166",
+      "Lille",
+      "Lille"
+    ],
+    "281b0e73": [
+      "espn:274",
+      "Montpellier",
+      "Montpellier"
+    ],
+    "5725cc7b": [
+      "espn:176",
+      "Marseille",
+      "Marseille"
+    ],
+    "c0d3eab4": [
+      "espn:180",
+      "Strasbourg",
+      "Strasbourg"
+    ],
+    "69236f98": [
+      "espn:7868",
+      "Angers",
+      "Angers"
+    ],
+    "123f3efe": [
+      "espn:159",
+      "Bordeaux",
+      "Bordeaux"
+    ],
+    "d9676424": [
+      "espn:3171",
+      "Clermont Foot",
+      "Clermont Foot"
+    ],
+    "7a54bb4f": [
+      "espn:2503",
+      "Ajaccio",
+      "AC Ajaccio"
+    ],
+    "3f8c4b5f": [
+      "espn:179",
+      "Toulouse",
+      "Toulouse"
+    ],
+    "5ae09109": [
+      "espn:172",
+      "Auxerre",
+      "AJ Auxerre"
+    ],
+    "5c2737db": [
+      "espn:3236",
+      "Le Havre",
+      "Le Havre AC"
+    ],
+    "056a5a75": [
+      "espn:6851",
+      "Paris FC",
+      "Paris FC"
+    ]
+  }
+}
