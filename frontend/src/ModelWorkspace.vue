@@ -1,4 +1,5 @@
 <script setup>
+import WorkspaceTabs from './WorkspaceTabs.vue';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { RefreshIcon } from "tdesign-icons-vue-next";
 import { api, timeLabel } from "./api";
@@ -354,13 +355,7 @@ onBeforeUnmount(() => {
       <span>加载中</span>
     </div>
     <template v-if="data">
-      <t-tabs v-model="tab" class="detail-tabs"
-        ><t-tab-panel
-          v-for="[value, label] in tabs"
-          :key="value"
-          :value="value"
-          :label="label"
-      /></t-tabs>
+      <WorkspaceTabs :tabs="tabs" :value="tab" label="数据与模型栏目" @change="tab = $event" />
       <template v-if="tab === 'overview'">
         <div class="scope-line">
           <span>{{ overview.date || "日期待核实" }}</span
@@ -870,7 +865,7 @@ onBeforeUnmount(() => {
   margin-bottom: 24px;
   grid-template-columns: repeat(4, 1fr);
 }
-@media (max-width: 700px) {
+@media (max-width: 760px) {
   .workspace-actions {
     gap: 8px;
   }
@@ -882,7 +877,17 @@ onBeforeUnmount(() => {
     gap: 8px;
   }
   .summary-strip {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 16px;
+  }
+  .summary-strip > div:last-child {
+    grid-column: auto;
+    border-top: 0;
+    margin-top: 0;
+    padding-top: 0;
+  }
+  .summary-strip > div:nth-child(2n) {
+    border-right: 0;
   }
   .model-workspace :deep(.t-tabs__nav) {
     overflow: auto;

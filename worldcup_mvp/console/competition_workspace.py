@@ -66,12 +66,13 @@ def workspaces(service, date=None, competition_id=None, scores=None):
     result = {}
     matches, statuses = service.store.list_matches(), service.store.statuses()
     scores = service.scores() if scores is None else scores
-    for spec in catalog():
+    specs = catalog()
+    for spec in specs:
         cid = spec["id"]
         if competition_id is not None and cid != competition_id:
             continue
         training = training_status(service, cid)
-        rows = [m for m in matches if classify(m)["id"] == cid]
+        rows = [m for m in matches if classify(m, specs)["id"] == cid]
         if date:
             from datetime import timedelta, timezone
             from .sources import parse_date

@@ -1,5 +1,5 @@
 """V2 read API acceptance on disposable SQLite backups and artifact copies."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from contextlib import closing
 import hashlib
 import os
@@ -191,10 +191,11 @@ class WorkspaceV2APITests(unittest.TestCase):
     def test_no_network_forecast_does_not_attempt_500_mapping(self):
         run = self.fit()
         _, bundle, report, frozen = registry.load_run('jp.j1', run['run_id'])
-        match = self.match('jp', kickoff='2026-11-05T12:00:00Z')
+        now = datetime.now(timezone.utc)
+        match = self.match('jp', kickoff=(now + timedelta(days=1)).isoformat())
         match['home_id'] = 'unmapped'
         with patch('worldcup_mvp.console.league_data.load_history', side_effect=AssertionError('network')):
-            result = training.shadow_forecast(match, {}, datetime.now(timezone.utc),
+            result = training.shadow_forecast(match, {}, now,
                                              artifacts=(bundle,report,frozen), allow_network=False)
         self.assertEqual(result['status'], 'unavailable')
         self.assertEqual(result['reason'], '球队标识尚未映射')

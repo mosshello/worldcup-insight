@@ -17,6 +17,13 @@ const groups = computed(() => {
   ].filter(g => g.rows.length);
 });
 const probability = v => v == null || !Number.isFinite(Number(v)) ? '未记录' : `${Number(v).toFixed(1)}%`;
+const marketLabel = market => {
+  if (market.code !== 'hhad') return market.label;
+  const raw = market.line;
+  const valid = (typeof raw === 'number' || (typeof raw === 'string' && /^[+-]?\d+$/.test(raw.trim()))) && Number.isSafeInteger(Number(raw));
+  const line = valid ? `${Number(raw) > 0 ? '+' : ''}${Number(raw)}` : '让球未记录';
+  return `${market.label}（${line}）`;
+};
 </script>
 <template>
   <section v-if="current" class="prediction-archive mt16" :class="{compact}" aria-label="当时预测">
@@ -37,12 +44,12 @@ const probability = v => v == null || !Number.isFinite(Number(v)) ? '未记录' 
     <section v-for="group in groups" :key="group.name" class="mt16">
       <h4>{{ group.name }}</h4>
       <t-table v-if="group.rows.some(row => row.selection != null)" row-key="code" :data="group.rows.filter(row => row.selection != null)" size="small" :columns="[
-        { colKey: 'label', title: '玩法', width: 100 },
+        { colKey: 'label', title: '玩法', width: 180 },
         { colKey: 'selection', title: '当时选择', minWidth: 170 },
         { colKey: 'coverage', title: '选择概率', width: 100 },
-      ]"><template #coverage="{ row }">{{ probability(row.coverage) }}</template></t-table>
+      ]"><template #label="{ row }">{{ marketLabel(row) }}</template><template #coverage="{ row }">{{ probability(row.coverage) }}</template></t-table>
       <details v-for="market in group.rows.filter(row => row.options?.length)" :key="market.code" class="mt8">
-        <summary>{{ market.label }} · 各选项概率</summary>
+        <summary>{{ marketLabel(market) }} · 各选项概率</summary>
         <t-table row-key="key" :data="market.options" size="small" :columns="[
           { colKey: 'label', title: '选项', minWidth: 180 },
           { colKey: 'probability', title: '归档概率', width: 100 },

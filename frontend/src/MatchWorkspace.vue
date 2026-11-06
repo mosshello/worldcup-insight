@@ -1,4 +1,5 @@
 <script setup>
+import WorkspaceTabs from './WorkspaceTabs.vue';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { MessagePlugin } from "tdesign-vue-next";
 import {
@@ -322,16 +323,12 @@ onBeforeUnmount(() => clearInterval(timer));
       >
     </div>
   </section>
-  <t-tabs
+  <WorkspaceTabs
     :value="tab"
-    class="detail-tabs"
+    :tabs="tabs"
+    label="比赛详情栏目"
     @change="(v) => emit('navigate', `/match/${match.id}/${v}`)"
-    ><t-tab-panel
-      v-for="[value, label] in tabs"
-      :key="value"
-      :value="value"
-      :label="label"
-  /></t-tabs>
+  />
   <t-alert v-if="error" theme="error" :message="error" class="mb16" /><t-alert
     v-if="detail?.errors?.length"
     theme="warning"

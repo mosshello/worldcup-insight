@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import os
 import time
 import re
 from concurrent.futures import ThreadPoolExecutor
@@ -237,8 +238,12 @@ class ConsoleService:
             if not force and time.monotonic() - self.last_sync < 60:
                 return
             try:
-                matches = sources.fetch_matches()
-                captured = now_iso()
+                snapshot_file = os.environ.get("FOOTBALL_SCHEDULE_SNAPSHOT")
+                last_capture = None
+                if snapshot_file:
+                    last_capture = next((s.get("last_success") for s in self.store.statuses()
+                                         if s["id"] == "sporttery"), None)
+                matches, captured, transport = sources.read_official_schedule(snapshot_file, last_capture)
                 self.store.upsert_matches(matches, captured)
                 self.identities.index_matches([{**m,'captured_at':captured} for m in matches])
                 self.current_ids = {m["id"] for m in matches}
@@ -249,6 +254,7 @@ class ConsoleService:
                         "status": "available",
                         "count": len(matches),
                         "last_success": captured,
+                        "transport": transport,
                     },
                 )
             except sources.SourceError as exc:
@@ -261,13 +267,28 @@ class ConsoleService:
         with self.store.connection_scope():
             return self._list_matches(date)
 
+    def score_fixtures(self, date=None, refresh=False):
+        if refresh:
+            self.sync_scores()
+        with self.store.connection_scope():
+            data = self._list_matches(date)
+            source = next((s for s in self.store.statuses() if s["id"] == "live-scores"), {})
+            for fixture in data["matches"]:
+                fixture.pop("markets", None)
+            data["score_source"] = source
+            data["cached"] = source.get("status") == "error" or (not source.get("count") and bool(source.get("unmatched_count")))
+            data["warning"] = "比分更新失败，显示上次核验结果" if data["cached"] else None
+            data["schedule_warning"] = self.last_error
+            return data
+
     def _list_matches(self, date=None):
         rows = self.store.list_matches(date)
-        state = self.store.state()
+        counts = self.store.analysis_counts()
         scores = self.scores()
         legacy_entries = self.legacy_entries()
+        specs = catalog()
         for m in rows:
-            m["competition"] = classify(m)
+            m["competition"] = classify(m, specs)
             start = sources.parse_date(m["kickoff"])
             m["lifecycle"] = (
                 "upcoming" if start > datetime.now(timezone.utc) else "started"
@@ -285,7 +306,7 @@ class ConsoleService:
             )
             if m["stale"] and m["sale_status"] == "selling":
                 m["sale_status"] = "unknown"
-            m["analysis_count"] = len(state["versions"].get(m["id"], []))
+            m["analysis_count"] = counts.get(m["id"], 0)
             m["prediction_archive"] = {"legacy": bool(legacy_predictions.for_match(m, legacy_entries))}
             cached = self.store.detail(m["id"])
             if cached:

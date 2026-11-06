@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import os
 import urllib.parse
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -53,6 +54,7 @@ class DashboardHTTPServer(ThreadingHTTPServer):
 class DashboardHandler(BaseHTTPRequestHandler):
     server_version = "WorldcupInsightDashboard/1.2"
     console_only = False
+    site_login = None
 
     def log_message(self, format: str, *args: Any) -> None:
         print(f"[dashboard] {self.address_string()} - {format % args}")
@@ -101,7 +103,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(data)))
-            if path.suffix in (".js", ".css", ".html"):
+            if path.parent == WEB_ROOT / "console" / "assets" and path.suffix in (".js", ".css"):
+                self.send_header("Cache-Control", "private, max-age=31536000, immutable")
+            elif path.suffix in (".js", ".css", ".html"):
                 self.send_header("Cache-Control", "no-cache")
             self.end_headers()
             self._safe_write(data)
@@ -128,6 +132,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
         route = parsed.path
+        if self.site_login and self.site_login.intercept(self, route):
+            return
         query = self._parse_query()
 
         try:
@@ -135,7 +141,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 from worldcup_mvp.console import api
                 from worldcup_mvp.console.sources import SourceError
                 try:
-                    self._send_json(api.get(route, query))
+                    result = api.get(route, query)
+                    if route == "/api/v1/capabilities" and self.site_login:
+                        result["site_login"] = True
+                    self._send_json(result)
                 except ValueError as exc:
                     self._send_json({"success": False, "error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
                 except SourceError as exc:
@@ -290,6 +299,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
         route = parsed.path
+        if self.site_login and self.site_login.intercept(self, route):
+            return
 
         try:
             if route.startswith(("/api/v1/", "/api/v2/")):
@@ -375,6 +386,9 @@ def main() -> int:
         help="前端建议自动刷新间隔（秒），0 表示关闭",
     )
     args = parser.parse_args()
+    if credential := os.environ.get("FOOTBALL_SITE_CREDENTIAL"):
+        from worldcup_mvp.console.site_login import SiteLogin
+        DashboardHandler.site_login = SiteLogin(credential, WEB_ROOT / "site-login.html")
 
     if not WEB_ROOT.exists():
         raise SystemExit(f"缺少前端目录：{WEB_ROOT}")

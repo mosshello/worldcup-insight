@@ -6,6 +6,7 @@ import json
 import os
 import re
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from urllib import request, parse, error
 
 from .store import now_iso
@@ -262,14 +263,54 @@ def normalize_match(raw):
 
 def fetch_matches():
     data = official("getMatchCalculatorV1.qry", channel="c", poolCode=",".join(MARKETS))
+    return normalize_schedule(data)
+
+
+def normalize_schedule(data):
     try:
+        if not isinstance(data.get("matchInfoList"), list):
+            raise ValueError
         return [
             normalize_match(m)
-            for group in data.get("matchInfoList", [])
-            for m in group.get("subMatchList", [])
+            for group in data["matchInfoList"]
+            for m in group["subMatchList"]
         ]
-    except (ValueError, KeyError, TypeError):
+    except (ValueError, KeyError, TypeError, AttributeError):
         raise SourceError("体彩场次格式无效，本次未覆盖已存数据") from None
+
+
+def read_official_schedule(snapshot_file, previous_capture=None):
+    """Prefer direct observation. A relay can only supply a recent original observation."""
+    try:
+        return fetch_matches(), now_iso(), "direct"
+    except SourceError:
+        if not snapshot_file:
+            raise
+    try:
+        with Path(snapshot_file).open("rb") as stream:
+            raw = stream.read(8_000_001)
+    except OSError:
+        raise SourceError("体彩采集节点暂无有效赛程") from None
+    return parse_schedule_snapshot(raw, previous_capture)
+
+
+def parse_schedule_snapshot(raw, previous_capture=None):
+    try:
+        if len(raw) > 8_000_000:
+            raise ValueError
+        snapshot = json.loads(raw)
+        captured = datetime.fromisoformat(snapshot["captured_at"])
+        age = (datetime.now(timezone.utc) - captured).total_seconds()
+        if not 0 <= age <= 180 or (previous_capture and captured < parse_date(previous_capture)):
+            raise SourceError("体彩采集节点未更新，显示最近采集的赛程")
+        if snapshot["source"] != SPORTTERY + "getMatchCalculatorV1.qry":
+            raise ValueError
+        rows = normalize_schedule(snapshot["value"])
+        if not rows or len({m["id"] for m in rows}) != len(rows):
+            raise ValueError
+        return rows, captured.astimezone(timezone.utc).isoformat(), "relay"
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        raise SourceError("体彩采集节点暂无有效赛程") from None
 
 
 def fetch_odds(match):

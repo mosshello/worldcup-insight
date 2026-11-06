@@ -1,4 +1,11 @@
 <script setup>
+import { usePhoneLayout } from './usePhoneLayout';
+const phone = usePhoneLayout();
+const navigation = [
+  ['matches', '比赛中心', '比赛'], ['scores', '实时比分', '比分'],
+  ['reviews', '复盘记录', '复盘'], ['daily-sweep', '每日扫盘命中', '扫盘'],
+  ['models', '数据与模型', '模型'],
+];
 import {
   ref,
   reactive,
@@ -105,12 +112,15 @@ const filtered = computed(() =>
     ? (Date.parse(b.kickoff) || 0) - (Date.parse(a.kickoff) || 0) || a.id.localeCompare(b.id)
     : 0),
 );
+function archivedVersions(match) {
+  return match.analysis_count || state.value.versions[match.id]?.length || 0;
+}
 function hasArchive(match) {
-  return Boolean(state.value.versions[match.id]?.length || match.prediction_archive?.legacy);
+  return Boolean(archivedVersions(match) || match.prediction_archive?.legacy);
 }
 function archiveLabel(match) {
   if (stateError.value) return '读取失败';
-  if (state.value.versions[match.id]?.length) return '查看预测';
+  if (archivedVersions(match)) return '查看预测';
   return match.prediction_archive?.legacy ? '旧版记录' : '未归档';
 }
 const pageRows = computed(() =>
@@ -168,26 +178,38 @@ function hashChange() {
 }
 async function loadState() {
   try {
-    const d = await api.state();
+    const screen = route.value;
+    const d = await api.state(screen !== 'match');
+    if (route.value !== screen) return;
     state.value = d.state;
     stateError.value = "";
   } catch (e) {
     stateError.value = "记录服务不可用：" + e.message;
   }
 }
+let loadSequence = 0;
+const scheduleDelayed = ref(false);
 async function reload(force = false) {
-  if (loading.value) return;
+  const screen = route.value;
+  const sequence = ++loadSequence;
+  if (!['matches', 'match', 'scores'].includes(screen)) {
+    loading.value = false;
+    if (screen === 'reviews') await loadState();
+    return;
+  }
   loading.value = true;
   error.value = "";
   try {
-    const data = await (force ? api.sync() : api.matches());
+    const data = await (screen === 'scores' ? api.scoreFixtures(force) : force ? api.sync() : api.matches());
+    if (sequence !== loadSequence) return;
     matches.value = data.matches.map(adaptMatch);
-    warning.value = data.warning
-      ? `数据更新失败，当前显示缓存：${data.warning}`
-      : "";
-    updated.value = data.server_time;
+    warning.value = screen === 'scores' ? data.warning || '' : data.warning
+      ? (data.warning.includes('567') ? '体彩赛程暂不可用，显示已采集比赛。' : `赛程更新失败：${data.warning}`) : '';
+    scheduleDelayed.value = screen === 'scores' && !!data.schedule_warning;
+    updated.value = screen === 'scores' ? data.score_source?.last_success : data.server_time;
     await loadState();
   } catch (e) {
+    if (sequence !== loadSequence) return;
     error.value = e.message;
     warning.value = matches.value.length
       ? "当前展示上次获取的数据，不能确认仍在售。"
@@ -198,9 +220,10 @@ async function reload(force = false) {
       sale: m.sale === "selling" ? "unknown" : m.sale,
     }));
   } finally {
-    loading.value = false;
+    if (sequence === loadSequence) loading.value = false;
   }
 }
+watch(route, () => reload());
 const favoriteBusy = ref(new Set());
 async function favorite(id) {
   if (favoriteBusy.value.has(id)) return;
@@ -279,7 +302,7 @@ onMounted(async () => {
     capabilities.value = await api.capabilities();
   } catch {}
   timer = setInterval(() => {
-    if (!document.hidden) reload();
+    if (!document.hidden && !loading.value && ['scores','match','matches'].includes(route.value)) reload();
   }, 30000);
 });
 onBeforeUnmount(() => {
@@ -294,15 +317,10 @@ onBeforeUnmount(() => {
       ><span class="brand-mark">F</span><span>足球分析</span></a
     >
     <nav aria-label="主导航">
-      <a
-        href="#/matches"
-        :class="{ active: ['matches', 'match'].includes(route) }"
-        >比赛中心</a
-      ><a href="#/scores" :class="{ active: route === 'scores' }">实时比分</a
-      ><a href="#/reviews" :class="{ active: route === 'reviews' }">复盘记录</a
-      ><a href="#/daily-sweep" :class="{ active: route === 'daily-sweep' }">每日扫盘命中</a
-      ><a href="#/models" :class="{ active: route === 'models' }">数据与模型</a>
+      <a v-for="[key, title, short] in navigation" :key="key" :href="`#/${key}`" :aria-label="title"
+        :class="{ active: key === (route === 'match' ? 'matches' : route) }">{{ phone ? short : title }}</a>
     </nav>
+    <form v-if="capabilities.site_login" class="site-logout" method="post" action="/logout"><button>退出登录</button></form>
   </header>
   <main class="main-shell">
     <div
@@ -348,7 +366,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="actions">
           <span class="small muted">{{
-            updated ? "获取于 " + timeLabel(updated) : "正在连接数据源"
+            route === 'scores' ? (updated ? '比分核验于 ' + timeLabel(updated) : '比分待核验') : updated ? "获取于 " + timeLabel(updated) : "正在连接数据源"
           }}</span
           ><t-button variant="outline" :loading="loading" @click="reload(true)"
             ><template #icon><RefreshIcon /></template>刷新</t-button
@@ -356,6 +374,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <t-alert v-if="warning" theme="warning" :message="warning" class="mb16" />
+      <p v-if="route === 'scores' && scheduleDelayed" class="small muted">体彩赛程暂未更新，新场次可能延迟收录。</p>
       <section class="panel filters">
         <div class="filter-field">
           <label>{{ route === "scores" ? "比赛日期" : "销售日期" }}</label
@@ -536,8 +555,8 @@ onBeforeUnmount(() => {
             }}</span></template
           ><template #analysisState="{ row }"
             ><span
-              :class="state.versions[row.id]?.length ? 'primary' : 'muted'"
-              >{{ state.versions[row.id]?.length ? "已归档" : row.data_coverage?.total ? "自动研判" : "待采集" }}</span
+              :class="archivedVersions(row) ? 'primary' : 'muted'"
+              >{{ archivedVersions(row) ? "已归档" : row.data_coverage?.total ? "自动研判" : "待采集" }}</span
             ></template
           ><template #coverage="{ row }"><a :href="`#/match/${row.id}/analysis`">{{ row.data_coverage?.total ? `${row.data_coverage.available}/${row.data_coverage.total}项` : '待采集' }}</a></template
           ><template #archive="{ row }">
@@ -620,6 +639,7 @@ onBeforeUnmount(() => {
             v-model:page-size="pageSize"
             :total="filtered.length"
             :page-size-options="[10, 20, 50]"
+            :max-page-btn="phone ? 3 : 10"
             :show-jumper="false"
             size="small"
           />

@@ -316,6 +316,10 @@ class Store:
             ).fetchall()
         return [json.loads(r[0]) for r in rows]
 
+    def analysis_counts(self):
+        with self.connect() as db:
+            return dict(db.execute("SELECT match_id, COUNT(*) FROM analyses GROUP BY match_id"))
+
     def saved_request(self, request_key, match_id):
         if request_key is None:
             return None
@@ -487,7 +491,7 @@ class Store:
                 )
             ]
 
-    def state(self, workspace="local"):
+    def state(self, workspace="local", *, include_versions=True):
         state = {
             "favorites": [],
             "notes": {},
@@ -509,7 +513,7 @@ class Store:
                 state[k].append(value)
             else:
                 state[k][key] = value
-        for version in self.versions():
+        for version in self.versions() if include_versions else ():
             state["versions"].setdefault(version["matchId"], []).append(version)
         return state
 

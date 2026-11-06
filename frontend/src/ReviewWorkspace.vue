@@ -4,6 +4,8 @@ import LiveScore from "./LiveScore.vue";
 import IntelligencePanel from "./IntelligencePanel.vue";
 import LegacyPrediction from "./LegacyPrediction.vue";
 import PredictionArchive from './PredictionArchive.vue';
+import { usePhoneLayout } from './usePhoneLayout';
+const phone = usePhoneLayout();
 import MatchFacts from './MatchFacts.vue';
 import { MessagePlugin } from "tdesign-vue-next";
 import { RefreshIcon, SearchIcon } from "tdesign-icons-vue-next";
@@ -291,11 +293,26 @@ onBeforeUnmount(() => clearInterval(timer));
         ><template #prefix-icon><SearchIcon /></template
       ></t-input>
     </div>
-    <t-alert v-if="error" theme="error" :message="error" /><t-table
+    <t-alert v-if="error" theme="error" :message="error" />
+    <div v-if="phone" class="phone-records">
+      <article v-for="row in pageRows" :key="row.id" class="phone-record">
+        <small class="muted">{{ row.kickoff ? beijingDateTime(row.kickoff) : row.date }} · {{ row.league }}</small>
+        <h3>{{ row.home }} <span class="versus">vs</span> {{ row.away }}</h3>
+        <LiveScore :value="row.live_score" compact />
+        <dl><dt>正式比分</dt><dd>{{ row.score }}</dd><dt>赛前方向</dt><dd>
+          <button v-if="row.prediction || row.legacy_prediction" class="prediction-link" @click="previewPrediction(row)">{{ row.prediction ? row.pick : row.legacy_prediction.direction + ' · 旧版' }}</button>
+          <span v-else>未归档</span>
+        </dd><dt>方向对照</dt><dd>{{ row.consistent === true ? '方向一致' : row.consistent === false ? '出现偏差' : row.has_prediction === false ? '无赛前对照' : row.direction_observed ? '观望' : '待核实' }}</dd>
+        <dt>复盘状态</dt><dd>{{ row.status }}</dd><dt>AI复盘</dt><dd>{{ aiLabels[row.ai_review?.status] || '—' }}</dd></dl>
+        <t-button variant="text" theme="primary" @click="inspect(row)">查看复盘</t-button>
+      </article>
+      <p v-if="!pageRows.length" class="empty-state">{{ loading ? '加载中' : '暂无匹配的复盘记录' }}</p>
+    </div>
+    <t-table v-else
       row-key="id"
       :data="pageRows"
       :columns="columns"
-      :loading="loading"
+      :loading="loading && !rows.length"
       hover
       empty="暂无已完场比赛或赛前预测归档，后台正在同步赛果。"
       ><template #fixture="{ row }"
@@ -354,6 +371,7 @@ onBeforeUnmount(() => clearInterval(timer));
       ><t-pagination
         v-model="page"
         :page-size="10"
+        :max-page-btn="phone ? 3 : 10"
         :total="list.length"
         :show-page-size="false"
         :show-jumper="false"

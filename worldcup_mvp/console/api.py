@@ -24,14 +24,18 @@ def get(route, query):
         if len(parts)==2 and parts[1]=='ingestion':
             return {'success':True,'tasks':app.data_tasks.list(cid)}
     if route == "/api/v1/matches":
+        if query.get("view") == ["scores"]:
+            return {"success": True, **app.score_fixtures((query.get("date") or [None])[0], query.get("refresh") == ["1"])}
         return {"success": True, **app.list_matches((query.get("date") or [None])[0])}
     if route == "/api/v1/state":
-        return {"success": True, "state": app.store.state()}
+        return {"success": True, "state": app.store.state(include_versions=query.get("view") != ["list"])}
     if route == "/api/v1/scores":
         if (query.get("refresh") or ["0"])[0] == "1":
             app.sync_scores()
         return {"success": True, "scores": app.scores()}
     if route == "/api/v1/capabilities":
+        if query.get("view") == ["console"]:
+            return {"success": True, "ai_configured": False}
         return {"success": True, **app.capabilities()}
     if route == "/api/v1/competitions":
         return {"success": True, "competitions": app.competitions()}

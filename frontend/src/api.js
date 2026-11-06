@@ -3,11 +3,12 @@ export const api = {
   odds: id => request(`/api/v1/matches/${encodeURIComponent(id)}/odds`),
   dailySweep: (date = '', source = 'auto') => request(`/api/v1/daily-sweep?date=${encodeURIComponent(date)}&source=${encodeURIComponent(source)}`),
   matches: () => request("/api/v1/matches"),
+  scoreFixtures: refresh => request('/api/v1/matches?view=scores' + (refresh ? '&refresh=1' : '')),
   scores: (refresh = false) =>
     request("/api/v1/scores" + (refresh ? "?refresh=1" : "")),
   sync: () => request("/api/v1/sync", { method: "POST", body: "{}" }),
-  state: () => request("/api/v1/state"),
-  capabilities: () => request("/api/v1/capabilities"),
+  state: (summary = false) => request('/api/v1/state' + (summary ? '?view=list' : '')),
+  capabilities: () => request("/api/v1/capabilities?view=console"),
   workspace: (competition_id) =>
     request(
       `/api/v2/workspaces?competition_id=${encodeURIComponent(competition_id)}`,

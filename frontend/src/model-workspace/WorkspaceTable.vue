@@ -1,12 +1,18 @@
 <script setup>
 import { statusNames, shortVersion } from "./view-model";
 import { timeLabel } from "../api";
-defineProps({
+import { computed, ref, watch } from 'vue';
+import { usePhoneLayout } from '../usePhoneLayout';
+const phone = usePhoneLayout();
+const page = ref(1);
+const props = defineProps({
   rows: { type: Array, default: () => [] },
   columns: { type: Array, required: true },
   loading: Boolean,
 });
 defineEmits(["detail"]);
+const pageRows = computed(() => props.rows.slice((page.value - 1) * 10, page.value * 10));
+watch(() => props.rows, () => { page.value = 1; });
 function cell(row, key) {
   const value = row[key];
   if (value == null || value === "") return "—";
@@ -26,7 +32,17 @@ function cell(row, key) {
 }
 </script>
 <template>
-  <t-table
+  <section v-if="phone" class="phone-records">
+    <article v-for="(row, index) in pageRows" :key="row.id || row.digest || index" class="phone-record">
+      <dl><template v-for="[key, title] in columns" :key="key">
+        <template v-if="key !== 'action'"><dt>{{ title }}</dt><dd><slot :name="key" :row="row">{{ cell(row, key) }}</slot></dd></template>
+      </template></dl>
+      <t-button v-if="columns.some(([key]) => key === 'action')" variant="text" theme="primary" @click="$emit('detail', row)">详情</t-button>
+    </article>
+    <p v-if="!rows.length" class="empty-state">{{ loading ? '加载中' : '暂无记录' }}</p>
+    <t-pagination v-if="rows.length > 10" v-model="page" :total="rows.length" :page-size="10" :show-page-size="false" :max-page-btn="3" size="small" />
+  </section>
+  <t-table v-else
     :data="
       rows.map((r, i) => ({
         ...r,

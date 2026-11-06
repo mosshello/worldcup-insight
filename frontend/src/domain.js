@@ -35,6 +35,10 @@ export async function request(path, options = {}) {
   if (!type.includes("application/json"))
     throw new Error("当前地址未连接数据服务，请启动足球工作台服务后重试。");
   const data = await response.json();
+  if (response.status === 401 && data.login_required) {
+    location.assign('/login' + location.hash);
+    throw new Error("请登录工作台");
+  }
   if (!response.ok || data.success === false || data.error)
     throw new Error(data.error || "请求失败，请稍后重试");
   return data;

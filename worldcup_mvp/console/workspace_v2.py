@@ -22,8 +22,9 @@ def _read(service, competition_id=None, date=None):
     specs = catalog()
     identities = IdentityRepository(service.store,initialize=False)
     registered = {spec['id'] for spec in specs}
+    identities_by_match = {m['id']: classify(m, specs) for m in matches}
     for match in matches:
-        cid = classify(match)['id']
+        cid = identities_by_match[match['id']]['id']
         if cid not in registered and cid not in scopes:
             spec = {'id':cid,'name':match.get('league') or match.get('league_code') or '待登记赛事',
                     'providers':{'sporttery':match.get('league_code')},'seasons':[], 'training_enabled':False, 'discovered':True}
@@ -35,7 +36,7 @@ def _read(service, competition_id=None, date=None):
         raise ValueError('赛事不存在')
     for cid,value in selected_scopes.items():
         training = value['training']
-        scoped = [m for m in matches if classify(m)['id']==cid]
+        scoped = [m for m in matches if identities_by_match[m['id']]['id']==cid]
         from .sources import parse_date
         today = [m for m in scoped if m.get('sale_date')==date or parse_date(m['kickoff']).astimezone(timezone(timedelta(hours=8))).date().isoformat()==date]
         results = []
@@ -99,6 +100,6 @@ def _read(service, competition_id=None, date=None):
             overview={'date':date,'scope':'销售日及北京时间自然日已收录比赛','checked_at':now_iso(),
                 'date_type':'sale_or_beijing_calendar','observed_total':len(today),'excluded':excluded_count,
                 'total':len(today)-excluded_count,'eligible':eligible,'blocked':len(today)-excluded_count-eligible,
-                'unknown':sum(classify(m).get('season') is None for m in today if any(r['id']==m['id'] and r['in_prediction_scope'] for r in results)),'matches':results})
+                'unknown':sum(identities_by_match[m['id']].get('season') is None for m in today if any(r['id']==m['id'] and r['in_prediction_scope'] for r in results)),'matches':results})
     return {'schema_version':2,'competitions':specs,'competition_workspaces':selected_scopes,
             'workspace':selected_scopes.get(competition_id) if competition_id else None,'checked_at':now_iso()}

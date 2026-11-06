@@ -6,8 +6,9 @@ test('prediction directions open compact archived previews without navigation or
     title:'归档完整预测',direction:'主胜',probabilities:[50,30,20],scores:'2-1',goals:'3球',
     evidence:[{text:'当时的判断依据'}],risks:['当时的风险'],
     market_assessments:['胜平负','让球胜平负','总进球','比分','半全场'].map((label,i)=>({
-      code:String(i),label,selection:'归档选择',coverage:50,options:[{key:'h',label:'归档选项',probability:50,odds:2}]}))};
-  const first = {...saved,id:'popup-first',version:0,title:'初版预测内容',direction:'客胜'};
+      code:i===1?'hhad':String(i),label,line:i===1?-1:null,selection:'归档选择',coverage:50,options:[{key:'h',label:'归档选项',probability:50,odds:2}]}))};
+  const first = {...saved,id:'popup-first',version:0,title:'初版预测内容',direction:'客胜',
+    market_assessments:saved.market_assessments.map(m=>({...m,line:m.code==='hhad'?1:m.line}))};
   const row = {...match,date:'2026-10-31',pick:'主胜',score:'4-0',prediction:saved,versions:[saved,first]};
   const legacy = {...row,id:'legacy-popup',home:'旧版主队',prediction:null,versions:[],pick:'未归档',legacy_prediction:{direction:'客胜',score:'1-2',recorded_at:saved.created,recorded_before_kickoff:true}};
   const missing = {...row,id:'missing-popup',home:'无归档主队',prediction:null,versions:[],pick:'未归档'};
@@ -23,6 +24,8 @@ test('prediction directions open compact archived previews without navigation or
   await expect(page.locator('.t-drawer--open')).toHaveCount(0);
   await expect(page).toHaveURL(/#\/reviews$/);
   for(const label of ['归档完整预测','saved-model','2026-10-31 14:58','50.0%','半全场']) await expect(popup).toContainText(label);
+  await expect(popup.getByRole('cell',{name:'让球胜平负（-1）',exact:true})).toBeVisible();
+  await expect(popup.locator('summary').filter({hasText:'让球胜平负（-1）'})).toBeVisible();
   await popup.locator('summary').filter({hasText:'预测依据与风险'}).click();
   await expect(popup).toContainText('当时的风险');
   await page.keyboard.press('Escape');
@@ -44,6 +47,8 @@ test('prediction directions open compact archived previews without navigation or
   await expect(note).toHaveValue('保留的复盘草稿');
   await page.locator('.t-drawer--open').getByRole('button',{name:'查看 v0 预测：客胜',exact:true}).click();
   await expect(popup).toContainText('初版预测内容');
+  await expect(popup).toContainText('让球胜平负（+1）');
+  await expect(popup).not.toContainText('让球胜平负（-1）');
   await expect(popup).not.toContainText('归档完整预测');
   await page.keyboard.press('Escape');
   await expect(note).toHaveValue('保留的复盘草稿');
@@ -67,7 +72,7 @@ test('scores sort by kickoff, show Beijing dates and open immutable prediction v
   const frozen = JSON.stringify(state.versions);
   const writes = [];
   page.on('request', r => { if(r.url().includes('/api/') && r.method()!=='GET') writes.push(r.url()); });
-  await page.route('**/api/v1/matches', r => r.fulfill({json:{success:true,matches:[earlier,match,later],server_time:new Date().toISOString()}}));
+  await page.route('**/api/v1/matches?view=scores', r => r.fulfill({json:{success:true,matches:[earlier,match,later],server_time:new Date().toISOString()}}));
   await page.goto('/club-preview.html#/scores');
   await page.reload();
   const table = page.locator('.desktop-matches');
@@ -87,12 +92,13 @@ test('scores sort by kickoff, show Beijing dates and open immutable prediction v
   await expect(archive).toContainText('original-model');
   await expect(archive.locator('.archive-probabilities strong').first()).toHaveText('50.0%');
   await archive.locator('summary').filter({hasText:'让球胜平负'}).click();
+  await expect(archive).toContainText('让球胜平负（让球未记录）');
   await expect(archive).toContainText('旧版让负');
   await expect(archive).toContainText('56.6%');
-  await expect(archive).not.toContainText('未记录');
+  await expect(archive.getByRole('table')).not.toContainText('未记录');
   await page.setViewportSize({width:390,height:844});
   await expect(archive).toBeVisible();
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button',{name:'关闭',exact:true}).click();
   await page.getByRole('navigation',{name:'主导航'}).getByRole('link',{name:'实时比分'}).click();
   await expect(page.locator('.mobile-matches').getByRole('link',{name:'查看预测',exact:true})).toBeVisible();

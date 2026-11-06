@@ -26,9 +26,11 @@ function audit(page) {
 async function capture(page, name) {
   await stylesReady(page);
   await page.screenshot({ path: path.join(folder, name+'-desktop.png'), fullPage: false });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-    { message: name+' must scroll within panels, not overflow the document' }).toBe(true);
+  for (const width of [320, 430, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth),
+      { message: name+' must fit '+width+'px' }).toBeLessThanOrEqual(width);
+  }
   await stylesReady(page);
   await page.screenshot({ path: path.join(folder, name+'-mobile.png'), fullPage: false });
   await page.setViewportSize({ width: 1440, height: 1000 });

@@ -16,8 +16,8 @@ if len(COMPETITIONS) != sum(bool(c["providers"].get("sporttery")) for c in REGIS
 
 
 
-def classify(match):
-    spec = next((c for c in catalog() if c.get('providers', {}).get('sporttery') == match.get('league_code') and match.get('league_code')), None)
+def classify(match, specs=None):
+    spec = next((c for c in (catalog() if specs is None else specs) if c.get('providers', {}).get('sporttery') == match.get('league_code') and match.get('league_code')), None)
     if not spec:
         return {
             "id": "unregistered:" + str(match.get('provider') or 'sporttery') + ':' + str(match.get('league_code') or ('fixture:' + str(match.get('id')))),
@@ -47,7 +47,7 @@ def catalog():
     codes = [c.get('providers', {}).get('sporttery') for c in values if c.get('providers', {}).get('sporttery')]
     if len(codes) != len(set(codes)):
         raise ValueError('体彩赛事映射重复')
-    return deepcopy(values)
+    return values
 
 
 def rule_revision(spec):
