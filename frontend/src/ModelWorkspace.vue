@@ -1,5 +1,6 @@
 <script setup>
 import WorkspaceTabs from './WorkspaceTabs.vue';
+import ResearchModels from './ResearchModels.vue';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { RefreshIcon } from "tdesign-icons-vue-next";
 import { api, timeLabel } from "./api";
@@ -325,7 +326,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="model-workspace">
     <div class="page-heading">
-      <h1>数据与模型</h1>
+      <h1>数据与模型</h1><a href="#/observations">五大联赛观察</a>
       <div class="workspace-actions">
         <t-select
           v-model="selectedCompetition"
@@ -591,6 +592,7 @@ onBeforeUnmount(() => {
         </section>
       </template>
       <template v-else-if="tab === 'models'">
+        <ResearchModels :competition="selectedCompetition" />
         <section class="panel">
           <div class="panel-heading">
             <h2>当前使用</h2>

@@ -218,7 +218,7 @@ onBeforeUnmount(() => clearInterval(timer));
 <template>
   <div class="page-heading">
     <div>
-      <h1>复盘记录</h1>
+      <h1>复盘记录</h1><a href="#/observations">五大联赛观察</a>
     </div>
     <div class="actions">
       <t-tag variant="light">完场自动初评</t-tag>

@@ -1425,7 +1425,7 @@ svg {
 @media (max-width: 760px) {
   body { min-width: 0; }
   .app-header { padding: 10px 12px 0; }
-  .app-header nav { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 0; height: 44px; }
+  .app-header nav { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 0; height: 44px; }
   .app-header nav a { justify-content: center; }
   .main-shell { padding: 16px max(12px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
   .phone-tabs { display: grid; grid-template-columns: repeat(var(--columns), minmax(0, 1fr)); margin: 16px 0; border: 1px solid var(--border); background: white; }

@@ -153,7 +153,7 @@ test('every connected competition and an unconfigured competition render correct
 
 test('repeated full page navigation keeps all styles and scripts available', async ({ page, request }) => {
   const evidence = audit(page), before = (await json(request, '/api/v1/state')).state;
-  for (const route of ['matches','scores','reviews','models','matches','models']) {
+  for (const route of ['matches','scores','reviews','daily-sweep','models','observations','matches','models']) {
     await page.goto(base+'/static/console/index.html?asset-check='+Date.now()+'#/'+route);
     await stylesReady(page);
   }

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "slug": "five-league-observation",
+  "title": "五大联赛观察",
+  "status": "approved",
+  "fidelity": "partial",
+  "createdAt": "2026-11-09",
+  "updatedAt": "2026-11-09",
+  "direction": {
+    "source": "product-tokens",
+    "note": "styles.css TDesign blue square panels; existing navigation preserved"
+  },
+  "asIs": {
+    "verified": "source-diff",
+    "selfChecked": true,
+    "component": "frontend/src/Workbench.vue"
+  },
+  "versions": [
+    {
+      "v": 1,
+      "file": "v1.html",
+      "date": "2026-11-09",
+      "summary": "新增观察页面，真实接口定义与空状态",
+      "decisions": [
+        "用户已授权执行12项清单，无需重复确认"
+      ]
+    }
+  ],
+  "dataModel": [
+    {
+      "field": "summary",
+      "means": "选定来源玩法节点下独立比赛统计，不合并多个时点命中",
+      "source": "observations.py read"
+    }
+  ],
+  "build": {
+    "entryPoints": [
+      "frontend/src/ObservationWorkspace.vue"
+    ],
+    "verify": [
+      "npm run build:check",
+      "npm test",
+      "playwright observations.spec.js"
+    ]
+  }
+}

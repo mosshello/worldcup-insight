@@ -33,7 +33,7 @@ test('daily sweep highlights rates, exports a share image and fits narrow screen
   });
   await page.goto('/club-preview.html#/daily-sweep');
   const nav=page.getByRole('navigation',{name:'主导航'});
-  await expect(nav.getByRole('link')).toHaveText(['比赛中心','实时比分','复盘记录','每日扫盘命中','数据与模型']);
+  await expect(nav.getByRole('link')).toHaveText(['比赛中心','实时比分','复盘记录','每日扫盘命中','数据与模型','五大联赛观察']);
   const match=page.getByRole('article',{name:'测试主队对测试客队'});
   for(const title of ['胜平负','让球','半全场','比分','进球数']) await expect(match.getByRole('region',{name:title+'对比',exact:true})).toBeVisible();
   await expect(match).toContainText('2-1 / 1-0 / 2-0');

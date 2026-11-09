@@ -22,3 +22,8 @@ frontend/playwright-report/
 data/training/*
 !data/training/historical_outcomes.example.json
 data/research/big-five/
+data/research/observation-models/
+data/research/observation-personnel-models/
+data/research/observation-personnel-sources/
+data/research/observation-personnel-trees/
+data/research/epl-pregame-personnel/

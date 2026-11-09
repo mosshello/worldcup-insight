@@ -18,6 +18,7 @@ import IntelligencePanel from "./IntelligencePanel.vue";
 import LegacyPrediction from "./LegacyPrediction.vue";
 import MatchBriefing from './MatchBriefing.vue';
 import MatchFacts from './MatchFacts.vue';
+import MatchResearchFacts from './MatchResearchFacts.vue';
 import ColdStartStatus from './ColdStartStatus.vue';
 const props = defineProps({
   match: Object,
@@ -306,7 +307,7 @@ onBeforeUnmount(() => clearInterval(timer));
           >{{ match.kickoff.slice(0, 10) }} {{ match.time }} · 北京时间</span
         ><span>{{ match.num }}</span>
       </div>
-      <h1>{{ match.home }} <span class="versus">vs</span> {{ match.away }}</h1>
+      <h1>{{ match.home }} <span class="versus">vs</span> {{ match.away }}</h1><a :href="`#/observations?fixture_id=${encodeURIComponent(match.id)}`">观察记录</a>
     </div>
     <LiveScore :value="liveScore" large />
     <div class="actions">
@@ -516,7 +517,7 @@ onBeforeUnmount(() => clearInterval(timer));
     </div>
   </template>
   <template v-else-if="tab === 'lineups'"
-    ><div class="two-column detail-grid">
+    ><MatchResearchFacts :fixture-id="match.id" :competition="match.competition?.id||match.competition_id" /><div class="two-column detail-grid">
       <section
         class="panel"
         v-for="(team, i) in [match.home, match.away]"

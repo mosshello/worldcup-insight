@@ -1,5 +1,7 @@
 import { request } from "./domain.js";
 export const api = {
+  observations: filters => request(`/api/v1/observations?${new URLSearchParams(filters)}`),
+  observationDetail: id => request(`/api/v1/observations/${encodeURIComponent(id)}`),
   odds: id => request(`/api/v1/matches/${encodeURIComponent(id)}/odds`),
   dailySweep: (date = '', source = 'auto', competition = '') => request(`/api/v1/daily-sweep?date=${encodeURIComponent(date)}&source=${encodeURIComponent(source)}&competition=${encodeURIComponent(competition)}`),
   matches: () => request("/api/v1/matches"),

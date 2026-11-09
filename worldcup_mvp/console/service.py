@@ -19,7 +19,8 @@ from .team_labels import localize_context
 
 
 class ConsoleService:
-    def __init__(self, store=None):
+    def __init__(self, store=None, *, observation_enabled=None):
+        self.observation_enabled = store is None if observation_enabled is None else observation_enabled
         self.store = store or Store()
         self.sync_lock = threading.Lock()
         self.last_sync = 0
@@ -46,6 +47,9 @@ class ConsoleService:
         self.model_tasks = ModelTasks(self.store)
         from .data_tasks import DataTasks
         self.data_tasks = DataTasks(self.store)
+        from .observation_runtime import ObservationRuntime
+        self.observation_runtime = ObservationRuntime(self.store)
+        self.observations = self.observation_runtime.workspace
         if store is None:
             self.reconcile_identity()
             self.model_tasks.reconcile()
@@ -138,6 +142,8 @@ class ConsoleService:
                 self.collector_stop.wait(60)
         self.daily_thread = threading.Thread(target=collect_daily, name='football-daily-sweep', daemon=True)
         self.daily_thread.start()
+        if self.observation_enabled:
+            self.observation_runtime.start(self.collector_stop)
         return self.collector_stop
 
     def sync_scores(self):

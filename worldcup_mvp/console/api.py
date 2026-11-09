@@ -6,6 +6,23 @@ from .service import service
 
 def get(route, query):
     app = service()
+    if route == '/api/v1/observations':
+        args = {key:(query.get(key) or [default])[0] for key,default in
+                [('day',''),('competition',''),('source','base'),('market','had'),('node','t60'),('fixture_id',None)]}
+        args['fixture_id'] = app.observation_runtime.resolve_fixture(args['fixture_id'])
+        with app.store.connection_scope():
+            from .observation_insights import read_research
+            result = app.observations.read(**args)
+            comparison = None if args['fixture_id'] else app.observations.compare(**{k:v for k,v in args.items() if k in ('day','competition','market','node')})
+            statuses = app.observation_runtime.statuses()
+            research = read_research(app.store,args['competition'])
+        return {'success':True,**result,'comparison':comparison,'source_status':statuses,'research_status':research}
+    if route.startswith('/api/v1/observations/'):
+        ident = app.observation_runtime.resolve_fixture(unquote(route.removeprefix('/api/v1/observations/')))
+        result=app.observations.detail(ident)
+        from .observation_insights import read_evidence
+        result['evidence_summary']=read_evidence(app.store,result['fixture'])
+        return {'success':True,**result}
     if route == '/api/v1/daily-sweep':
         return {'success': True, **app.daily_sweep.read((query.get('date') or [None])[0], (query.get('source') or ['auto'])[0], (query.get('competition') or [None])[0])}
     if route == '/api/v2/workspaces':

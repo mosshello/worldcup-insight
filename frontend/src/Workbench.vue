@@ -4,7 +4,7 @@ const phone = usePhoneLayout();
 const navigation = [
   ['matches', '比赛中心', '比赛'], ['scores', '实时比分', '比分'],
   ['reviews', '复盘记录', '复盘'], ['daily-sweep', '每日扫盘命中', '扫盘'],
-  ['models', '数据与模型', '模型'],
+  ['models', '数据与模型', '模型'], ['observations', '五大联赛观察', '观察'],
 ];
 import {
   ref,
@@ -27,11 +27,12 @@ import { api, adaptMatch, timeLabel, lifecycleNames, saleNames } from "./api";
 import { marketNames, price, toCsv } from "./domain";
 import MatchWorkspace from "./MatchWorkspace.vue";
 import ReviewWorkspace from "./ReviewWorkspace.vue";
+import ObservationWorkspace from "./ObservationWorkspace.vue";
 import DailySweepWorkspace from "./DailySweepWorkspace.vue";
 import ModelWorkspace from "./ModelWorkspace.vue";
 import LiveScore from "./LiveScore.vue";
 const hash = ref(location.hash.slice(1) || "/matches");
-const route = computed(() => hash.value.split("/")[1] || "matches");
+const route = computed(() => hash.value.split('?')[0].split("/")[1] || "matches");
 const matches = ref([]),
   loading = ref(false),
   error = ref(""),
@@ -673,6 +674,7 @@ onBeforeUnmount(() => {
       @download="download"
     />
     <ModelWorkspace v-else-if="route === 'models'" />
+    <ObservationWorkspace v-else-if="route === 'observations'" />
     <DailySweepWorkspace v-else-if="route === 'daily-sweep'" />
     <div v-else class="panel empty-state">
       <h2>页面不存在</h2>

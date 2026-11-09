@@ -490,6 +490,18 @@ test("AI postmatch review is separate from editable notes and supports retry", a
 });
 
 // Test-only fixtures. Production has no demo mode or fixture import.
+test('match personnel tab reads latest sourced workload without creating forecasts', async ({page}) => {
+  const {state,match}=await setup(page); match.competition={id:'eng.premier'}; await page.reload();
+  await page.route('**/api/v1/observations/*',route=>route.fulfill({json:{success:true,evidence_summary:{captured_at:'2026-11-09T12:00:00Z',personnel:[],workload:[{id:'w1',side:'home',source:'来源赛事记录',source_url:'https://example.com/matches',captured_at:'2026-11-09T12:00:00Z',text:'未覆盖国家队场次',workload:{observed_match_count:5,matches_previous_14_days_lower_bound:2}}],unknown:['完整球员分钟'],alerts:[]}}}));
+  await page.locator('.desktop-matches').getByRole('button',{name:'查看',exact:true}).click();
+  await page.getByText('阵容情报',{exact:true}).click();
+  await expect(page.getByRole('heading',{name:'最新采集事实与负荷'})).toBeVisible();
+  await page.getByText('主队 · 最近5场来源 · 已观察5场 · 近14天至少2场',{exact:true}).click();
+  await expect(page.getByRole('link',{name:'来源赛事记录',exact:true})).toBeVisible();
+  await expect(page.getByText('未覆盖国家队场次',{exact:true})).toBeVisible();
+  expect(state.versions).toEqual({});
+});
+
 async function setup(page) {
   const start = new Date(Date.now() + 86400000 * 2).toISOString();
   const market = {
