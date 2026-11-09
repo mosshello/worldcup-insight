@@ -272,7 +272,7 @@ class DailySweep:
                                    (row['id'], digest, now_iso(), encode(result)))
             self.store.status('daily-sweep', {'status': 'available', 'last_success': now_iso(), 'interval_seconds': 60})
 
-    def read(self, day=None, kind='auto'):
+    def read(self, day=None, kind='auto', competition=None):
         if kind not in (*KINDS, 'auto'):
             raise ValueError('扫盘来源无效')
         if day:
@@ -282,12 +282,22 @@ class DailySweep:
             days = [r[0] for r in db.execute('SELECT DISTINCT day FROM daily_fixtures ORDER BY day DESC')]
             day = day or (today if today in days else next(iter(days), today))
             rows = []
+            competitions = {}
             for fixture in db.execute('SELECT * FROM daily_fixtures WHERE day=? ORDER BY match_id', (day,)).fetchall():
                 m = json.loads(fixture['payload'])
+                cid = classify(m)['id'] or 'unknown'
+                competitions[cid] = m.get('league') or cid
+                if competition and cid != competition:
+                    continue
                 forecasts = db.execute('SELECT * FROM daily_forecasts WHERE match_id=?', (m['id'],)).fetchall()
                 by_kind = {f['kind']: f for f in forecasts}
+                observations = {}
+                for source, archive in by_kind.items():
+                    last = db.execute('SELECT payload FROM daily_outcomes WHERE forecast_id=? ORDER BY id DESC LIMIT 1', (archive['id'],)).fetchone()
+                    observations[source] = {'forecast': self.frozen(archive),
+                                            **(json.loads(last['payload']) if last else {})}
                 f = by_kind.get(kind) if kind != 'auto' else next((by_kind[k] for k in KINDS if k in by_kind), None)
-                p = self.frozen(f) if f else None
+                p = observations[f['kind']]['forecast'] if f else None
                 versions = db.execute('SELECT id,created_at,payload FROM daily_outcomes WHERE forecast_id=? ORDER BY id DESC', (f['id'],)).fetchall() if f else []
                 result = json.loads(versions[0]['payload']) if versions else reconcile(self.store, m, {})
                 details = (self.store.detail(m['id']) or {}).get('data', {})
@@ -298,6 +308,7 @@ class DailySweep:
                     current_quotes = None
                 rows.append({**{k: m.get(k) for k in ('id', 'home', 'away', 'league', 'number', 'kickoff')},
                              'current_quotes': current_quotes,
+                             'observations': observations,
                              'day': day, 'forecast': p, 'available_sources': list(by_kind), **result,
                              'model_status': '；'.join(reasons) or ('已有模型归档' if 'model' in by_kind else '尚无通过赛前核验的赛事模型预测'),
                              'settlement_versions': [{'id': v['id'], 'created_at': v['created_at'], **json.loads(v['payload'])} for v in versions]})
@@ -307,5 +318,8 @@ class DailySweep:
             for code in CODES:
                 items = [v for r in rows if (r.get('forecast') or {}).get('kind') == source for v in r['markets'] if v['code'] == code and v['hit'] is not None]
                 summary[source][code] = {'settled': len(items), 'hits': sum(v['hit'] for v in items)}
-        return {'day': day, 'days': days, 'rows': rows, 'summary': summary,
+        from .daily_audit import count, paired
+        audit = {'sources': {k: count(rows, k) for k in KINDS}, 'paired': paired(rows)}
+        return {'day': day, 'days': days, 'rows': rows, 'summary': summary, 'audit': audit,
+                'competition': competition, 'competitions': [{'value': k, 'label': v} for k, v in competitions.items()],
                 'collector': next((s for s in self.store.statuses() if s['id'] == 'daily-sweep'), None), 'sources': KINDS}

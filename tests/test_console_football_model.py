@@ -185,35 +185,27 @@ class TrainingTests(unittest.TestCase):
         now = datetime(2024, 1, 1, tzinfo=timezone.utc)
         bundle = t.fit_bundle(data, report, now)
         report["model_id"] = bundle["id"]
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            with patch.multiple(t, DATASET=root/"data.json", REPORT=root/"report.json", BUNDLE=root/"model.json"):
-                t.atomic_json(t.DATASET, data); t.atomic_json(t.REPORT, report); t.atomic_json(t.BUNDLE, bundle)
-                match = {"league_code": "JD1", "kickoff": "2024-01-02T12:00:00Z", "home_id": "1", "away_id": "2"}
-                self.assertEqual(t.shadow_forecast(match, {}, now)["status"], "shadow")
-                match["home_id"] = "wrong"
-                self.assertEqual(t.shadow_forecast(match, {}, now)["reason"], "球队标识尚未映射")
-                with patch('worldcup_mvp.console.league_data.load_history', return_value={}), \
-                     patch('worldcup_mvp.console.league_data.match_fixture', return_value={
-                         'home_id':'a','away_id':'b','source_url':'https://example.org/matched-fixture'}):
-                    mapped=t.shadow_forecast(match, {}, now)
-                self.assertEqual(mapped['status'],'shadow')
-                self.assertEqual(mapped['team_identity']['home_id'],'a')
-                self.assertEqual(mapped['team_identity']['source'],'https://example.org/matched-fixture')
-                changed = copy.deepcopy(data); changed["matches"][0]["home_goals"] = 4
-                t.atomic_json(t.DATASET, changed)
-                self.assertEqual(t.shadow_forecast(match, {}, now)["status"], "unavailable")
-                bundle["models"]["jp.j1"]["params"]["base"] = 10
-                t.atomic_json(t.BUNDLE, bundle)
-                with self.assertRaises(ValueError): t.read_bundle()
+        artifacts = (bundle, report, data)
+        match = {"league_code": "JD1", "kickoff": "2024-01-02T12:00:00Z", "home_id": "1", "away_id": "2"}
+        self.assertEqual(t.shadow_forecast(match, {}, now, artifacts=artifacts)["status"], "shadow")
+        match["home_id"] = "wrong"
+        self.assertEqual(t.shadow_forecast(match, {}, now, artifacts=artifacts, allow_network=False)["reason"], "球队标识尚未映射")
+        with patch('worldcup_mvp.console.league_data.load_history', return_value={}), \
+             patch('worldcup_mvp.console.league_data.match_fixture', return_value={
+                 'home_id':'a','away_id':'b','source_url':'https://example.org/matched-fixture'}):
+            mapped = t.shadow_forecast(match, {}, now, artifacts=artifacts)
+        self.assertEqual(mapped['status'], 'shadow')
+        self.assertEqual(mapped['team_identity']['home_id'], 'a')
+        self.assertEqual(mapped['team_identity']['source'], 'https://example.org/matched-fixture')
+        changed = copy.deepcopy(data)
+        changed["matches"][0]["home_goals"] = 4
+        self.assertEqual(t.shadow_forecast(match, {}, now, artifacts=(bundle, report, changed))["status"], "unavailable")
 
-    def test_insufficient_dataset_is_not_training_ready(self):
-        with tempfile.TemporaryDirectory() as folder:
-            with patch.multiple(t, DATASET=Path(folder)/"data.json", REPORT=Path(folder)/"report.json", BUNDLE=Path(folder)/"model.json"):
-                t.atomic_json(t.DATASET, dataset(history(10)))
-                status = t.training_status()
-                self.assertFalse(status["ready"])
-                self.assertEqual(status["rows"], 10)
+    def test_implicit_global_artifact_loading_is_disabled(self):
+        with patch.object(Path, 'read_text', side_effect=AssertionError('No implicit file read')):
+            result = t.shadow_forecast({}, {})
+        self.assertEqual(result['status'], 'unavailable')
+        self.assertEqual(result['reason'], '须显式指定本赛事模型及数据版本')
 
 
 if __name__ == "__main__":

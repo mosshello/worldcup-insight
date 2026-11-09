@@ -7,7 +7,7 @@ from .service import service
 def get(route, query):
     app = service()
     if route == '/api/v1/daily-sweep':
-        return {'success': True, **app.daily_sweep.read((query.get('date') or [None])[0], (query.get('source') or ['auto'])[0])}
+        return {'success': True, **app.daily_sweep.read((query.get('date') or [None])[0], (query.get('source') or ['auto'])[0], (query.get('competition') or [None])[0])}
     if route == '/api/v2/workspaces':
         from .workspace_v2 import read
         return {'success':True, **read(app,(query.get('competition_id') or [None])[0],(query.get('date') or [None])[0])}

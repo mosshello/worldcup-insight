@@ -9,6 +9,21 @@ from worldcup_mvp.console import model_methods as m, model_evaluation as e, trai
 
 
 class MethodTests(unittest.TestCase):
+    def test_precomputed_features_match_fold_local_training(self):
+        rows = history(120, half=True)
+        at = m.cutoff(rows[95])
+        vectors = {r['id']:m.features(rows,r,m.cutoff(r)) for r in rows}
+        config = {'kind':'elo_logistic','mode':'separate','half_life':180}
+        local = m.fit(config,rows,at,'jp.j1')
+        cached = m.fit(config,rows,at,'jp.j1',vectors)
+        self.assertEqual(local.to_dict(),cached.to_dict())
+        changed = copy.deepcopy(rows)
+        for row in changed[95:]:
+            row['home_goals'], row['away_goals'] = 18, 17
+        changed_vectors = {r['id']:m.features(changed,r,m.cutoff(r)) for r in changed}
+        replay = m.fit(config,changed,at,'jp.j1',changed_vectors)
+        self.assertEqual(local.to_dict(),replay.to_dict())
+
     def test_market_observations_do_not_enter_fitted_parameters_replay_history_or_forecast(self):
         rows=history(100,half=True);at=datetime(2024,1,1,tzinfo=timezone.utc)
         changed=[{**r,'odds':{'h':1.05,'d':20,'a':40},'prematch_market_archive':{'quotes':['unrelated']},

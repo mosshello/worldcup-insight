@@ -3,7 +3,7 @@ import { selectedOdds, currentSelectedOdds } from './dailyOdds.js';
 
 const codes = ['had', 'hhad', 'hafu', 'crs', 'ttg'];
 const labels = ['胜平负', '让球', '半全场', '比分', '进球数'];
-const palette = { ink:'#25384d', muted:'#65758a', teal:'#137d80', amber:'#a86d32', line:'#dce5ec', paper:'#f3f6f9' };
+const palette = { ink:'#1f2329', muted:'#68717e', teal:'#008858', amber:'#d54941', line:'#e7e9ed', paper:'#f5f6f8' };
 export function sharePages(data, size=12) {
   const rows = data.rows || [];
   return Array.from({length:Math.ceil(rows.length/size)},(_,i)=>({day:data.day, rows:rows.slice(i*size,(i+1)*size), index:i+1, total:Math.ceil(rows.length/size)}));
@@ -14,7 +14,8 @@ export function shareCell(row, code) {
   const extra = row.forecast?.explorations?.find(v=>v.code===code);
   const extraResult = row.exploration_results?.find(v=>v.code===code);
   const text = !m.selection || m.selection==='未归档' ? '未记录' : m.selection;
-  const status = m.hit===true ? '命中' : m.hit===false ? '未命中' : m.status==='未归档选择' ? '无预测' : m.status || '待赛果';
+  const multiple = (p?.selected_keys?.length || 0) > 1;
+  const status = m.hit===true ? (multiple?'已覆盖':'命中') : m.hit===false ? (multiple?'未覆盖':'未命中') : m.status==='未归档选择' ? '无预测' : m.status || '待赛果';
   return { prediction:text+(code==='hhad' && m.line!=null ? ` (${m.line>0?'+':''}${m.line})` : ''),
     probability:p?.selected_keys?.length && Number.isFinite(p.coverage) ? `覆盖概率 ${p.coverage.toFixed(1)}%` : '',
     odds:currentSelectedOdds(row,code) || (selectedOdds(p) ? `留档SP ${selectedOdds(p)}` : ''),
@@ -49,16 +50,16 @@ export async function renderShareImages(data) {
       const fixture=[`${row.number || ''}  ${row.league || ''}`,...wrap(`${row.home} vs ${row.away}`,widths[0]-28,23,true),beijingDateTime(row.kickoff),row.forecast?.source || '未取得预测',...(row.current_quotes?.checked_at?['报价核验',beijingDateTime(row.current_quotes.checked_at)]:[])];
       return {row,cells,lines,fixture,height:Math.max(150,Math.max(fixture.length,...lines.map(l=>l.length))*30+32)};
     });
-    const groups=Object.entries(data.summary || {}).filter(([kind])=>data.rows.some(r=>r.forecast?.kind===kind));
+    const groups=Object.entries(data.audit?.sources || {}).filter(([kind])=>data.rows.some(r=>r.forecast?.kind===kind)).flatMap(([kind,values])=>['single','multiple'].map(group=>({kind,values,group})));
     const headerHeight=164+groups.length*40, height=headerHeight+62+rowPlans.reduce((n,r)=>n+r.height,0)+112;
     canvas.width=width*1.5;canvas.height=height*1.5;ctx.scale(1.5,1.5);
     ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);
-    ctx.fillStyle=palette.ink;ctx.fillRect(0,0,width,100);
+    ctx.fillStyle='#0052d9';ctx.fillRect(0,0,width,100);
     font(36,true);ctx.fillStyle='#fff';ctx.fillText('每日足球扫盘 · 预测与赛果',margin,62);
     font(24);ctx.textAlign='right';ctx.fillText(`${page.day}  ${page.index}/${page.total}`,width-margin,62);ctx.textAlign='left';
     font(20);ctx.fillStyle=palette.muted;ctx.fillText(`全日 ${data.rows.length} 场 · 本图 ${page.rows.length} 场 · 北京时间 · 生成于 ${beijingDateTime(new Date().toISOString())}`,margin,139);
-    groups.forEach(([kind,values],i)=>{font(21,true);ctx.fillStyle=palette.teal;const name=data.sources?.[kind] || kind;
-      ctx.fillText(`${name}命中率  `+codes.map((c,j)=>`${labels[j]} ${values[c]?.settled?(100*values[c].hits/values[c].settled).toFixed(1)+'% ('+values[c].hits+'/'+values[c].settled+')':'待统计'}`).join('    '),margin,179+i*40);
+    groups.forEach(({kind,values,group},i)=>{font(21,true);ctx.fillStyle=palette.ink;const name=data.sources?.[kind] || kind;
+      ctx.fillText(`${name} · ${group==='single'?'单选命中':'多选覆盖'}  `+codes.map((c,j)=>{const v=values[c]?.[group];return `${labels[j]} ${v?.settled?(100*v.hits/v.settled).toFixed(1)+'% ('+v.hits+'/'+v.settled+')':'待统计'}`;}).join('    '),margin,179+i*40);
     });
     let y=headerHeight;
     ctx.fillStyle=palette.paper;ctx.fillRect(margin,y,width-margin*2,62);

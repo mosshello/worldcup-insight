@@ -10,15 +10,11 @@ import json
 import math
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from .store import ROOT, fingerprint, now_iso
+from .store import fingerprint, now_iso
 from .sources import parse_date
 from .football_markets import score_grid, market_probabilities, outcome, score_key
-from .catalog import COMPETITIONS as COMPETITION_CATALOG, catalog
+from .catalog import catalog
 
-DATASET = ROOT / "data" / "training" / "club_history.json"
-REPORT = ROOT / "data" / "training" / "club_evaluation.json"
-BUNDLE = ROOT / "data" / "training" / "club_model.json"
-COMPETITIONS = {c["id"] for c in COMPETITION_CATALOG.values()}
 MODEL_SCHEMA = "club-goals-v2"
 MIN_ROWS, MIN_SEASONS, MIN_TEST = 300, 3, 30
 
@@ -465,81 +461,6 @@ def reference_checks(report):
             for league, metrics in report.get("by_competition", {}).items()}
 
 
-def training_status():
-    dataset_digest = None
-    status = {
-        "dataset_available": DATASET.exists(),
-        "rows": 0,
-        "leagues": [],
-        "evaluation": None,
-        "ready": False,
-        "reason": "等待授权历史数据",
-        "coverage": [],
-        "season_coverage": [],
-        "model": None,
-    }
-    if DATASET.exists():
-        try:
-            raw = json.loads(DATASET.read_text(encoding="utf-8"))
-            rows = validate_dataset(raw)
-            dataset_digest = fingerprint(raw)
-            status.update(
-                rows=len(rows),
-                usage_mode=raw.get("manifest", {}).get("usage_mode", "licensed"),
-                availability_policy=raw.get("manifest", {}).get("availability_policy", "reported"),
-                leagues=sorted({r["competition_id"] for r in rows}),
-                reason="可训练与回测",
-            )
-            status["coverage"] = [{"id": c, "matches": sum(r["competition_id"] == c for r in rows),
-                "seasons": len({r["season"] for r in rows if r["competition_id"] == c}),
-                "half_matches": sum(r["competition_id"] == c and r.get("home_half_goals") is not None for r in rows),
-                "odds_matches": sum(r["competition_id"] == c and bool(r.get("odds")) for r in rows)} for c in sorted(COMPETITIONS)]
-            status["season_coverage"] = [
-                {"id": c + ":" + season, "competition_id": c, "season": season,
-                 "imported": sum(r["competition_id"] == c and r["season"] == season for r in rows)}
-                for c, season in sorted({(r["competition_id"], r["season"]) for r in rows})
-            ]
-            split_dataset(rows)
-            status["ready"] = True
-        except (ValueError, TypeError, KeyError, OSError) as exc:
-            status["reason"] = str(exc)
-    if REPORT.exists():
-        try:
-            report = json.loads(REPORT.read_text(encoding="utf-8"))
-            if dataset_digest and report.get("dataset_digest") == dataset_digest and report.get("model_schema") == MODEL_SCHEMA:
-                status["evaluation"] = {
-                    k: v for k, v in report.items() if k != "records"
-                }
-                status["evaluation"]["reference_checks"] = reference_checks(report)
-            elif dataset_digest:
-                status["reason"] = "数据已变更，需重新评估"
-        except (ValueError, OSError):
-            status["reason"] = "评估报告无法读取"
-    if BUNDLE.exists() and status["evaluation"]:
-        try:
-            bundle = read_bundle()
-            if bundle["dataset_digest"] == dataset_digest:
-                status["model"] = {"id": bundle["id"], "created_at": bundle["created_at"],
-                                   "status": "前瞻观察", "competitions": list(bundle["models"])}
-        except (ValueError, OSError, KeyError, TypeError):
-            status["reason"] = "模型文件无效，需重新训练"
-    return status
-
-
-def run_evaluation(progress=None):
-    if not DATASET.exists():
-        raise ValueError("请先配置授权历史数据 data/training/club_history.json")
-    data = json.loads(DATASET.read_text(encoding="utf-8"))
-    result = evaluate(data, progress)
-    if progress:
-        progress({"phase": "fit"})
-    bundle = fit_bundle(data, result)
-    result["model_id"] = bundle["id"]
-    atomic_json(BUNDLE, bundle)
-    atomic_json(REPORT, result)
-    return {k: v for k, v in result.items() if k != "records"}
-
-
 def atomic_json(path, value):
     from uuid import uuid4
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -549,13 +470,6 @@ def atomic_json(path, value):
         temporary.replace(path)
     finally:
         temporary.unlink(missing_ok=True)
-
-
-def import_dataset(path):
-    data = json.loads(Path(path).read_text(encoding="utf-8-sig"))
-    rows = validate_dataset(data)
-    atomic_json(DATASET, data)
-    return {"rows": len(rows), "dataset_digest": fingerprint(data)}
 
 
 def fit_bundle(data, report, now=None):
@@ -583,28 +497,16 @@ def fit_bundle(data, report, now=None):
     return bundle
 
 
-def read_bundle():
-    bundle = json.loads(BUNDLE.read_text(encoding="utf-8"))
-    if bundle.get("schema") != MODEL_SCHEMA or bundle.get("digest") != fingerprint({k: v for k, v in bundle.items() if k != "digest"}):
-        raise ValueError("模型文件校验失败")
-    return bundle
-
-
 def shadow_forecast(match, detail, now=None, artifacts=None, allow_network=True):
     """Prospective candidate only. Never silently replaces the market baseline."""
     from .catalog import classify
     from .football_markets import assessment
     now = now or datetime.now(timezone.utc)
     unavailable = lambda reason: {"status": "unavailable", "reason": reason, "markets": []}
-    if artifacts is None and (not DATASET.exists() or not BUNDLE.exists() or not REPORT.exists()):
-        return unavailable("尚无已训练的足球模型")
+    if artifacts is None:
+        return unavailable("须显式指定本赛事模型及数据版本")
     try:
-        if artifacts is None:
-            bundle = read_bundle()
-            report = json.loads(REPORT.read_text(encoding="utf-8"))
-            data = json.loads(DATASET.read_text(encoding="utf-8"))
-        else:
-            bundle, report, data = artifacts
+        bundle, report, data = artifacts
         if bundle["dataset_digest"] != fingerprint(data) or report.get("model_id") != bundle["id"]:
             return unavailable("历史数据或模型已变更，需重新训练")
         league = classify(match)["id"]

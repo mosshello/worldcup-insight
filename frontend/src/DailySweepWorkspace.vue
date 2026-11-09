@@ -29,16 +29,16 @@ const explorationResult = (row,code) => row.exploration_results?.find(m=>m.code=
 const rows = computed(() => (data.value?.rows || []).filter(r => `${r.number}${r.league}${r.home}${r.away}`.includes(search.value.trim())));
 const cell = (row, code) => row.markets?.find(m => m.code === code) || {};
 const summaryChoice = ref(''), page = ref(1), pageSize = 10;
-const summaryKinds = computed(() => source.value !== 'auto' ? [source.value] : Object.keys(sources).filter(kind => (data.value?.rows || []).some(r => r.forecast?.kind === kind)));
+const reportTab = ref('sources'), rulesOpen = ref(false);
+const competition = ref('');
+const summaryKinds = computed(() => source.value !== 'auto' ? [source.value] : Object.keys(sources));
 const summaryKind = computed(() => summaryKinds.value.includes(summaryChoice.value) ? summaryChoice.value : summaryKinds.value[0]);
-const summaryValues = computed(() => data.value?.summary?.[summaryKind.value] || {});
+const summaryValues = computed(() => data.value?.audit?.sources?.[summaryKind.value] || {});
+const pairedValues = computed(() => data.value?.audit?.paired || {});
+const metric = value => typeof value === 'number' ? value.toFixed(3) : '—';
+const selectionCount = (row, code) => row.forecast?.market_assessments?.find(m => m.code === code)?.selected_keys?.length || 0;
 const visibleRows = computed(() => rows.value.slice((page.value-1)*pageSize, page.value*pageSize));
 const percent = (hits, total) => total ? `${(100*hits/total).toFixed(1)}%` : '待统计';
-function matchStats(row) {
-  const settled = (row.markets || []).filter(m => typeof m.hit === 'boolean');
-  const hits = settled.filter(m => m.hit).length;
-  return { hits, total: settled.length, rate: percent(hits, settled.length) };
-}
 function predictionLabel(row) {
   return row.forecast?.kind === 'model' ? '模型预测' : row.forecast?.kind === 'legacy' ? '原预测' : '赛前参考';
 }
@@ -57,27 +57,27 @@ function resultClass(row, code) {
 }
 function resultText(row, code) {
   const m = cell(row, code);
-  return m.hit === true ? '✓ 命中' : m.hit === false ? '× 未命中' : m.status === '未归档选择' ? '无预测' : m.status || '待赛果';
+  return m.hit === true ? (selectionCount(row, code) > 1 ? '已覆盖' : '命中') : m.hit === false ? (selectionCount(row, code) > 1 ? '未覆盖' : '未命中') : m.status === '未归档选择' ? '无预测' : m.status || '待赛果';
 }
 let timer, sequence = 0;
 async function load() {
   const token = ++sequence;
   loading.value = true;
   try {
-    const value = await api.dailySweep(date.value, source.value);
+    const value = await api.dailySweep(date.value, source.value, competition.value);
     if (token !== sequence) return;
     data.value = value; error.value = '';
   } catch (e) { if (token === sequence) error.value = e.message; }
   finally { if (token === sequence) loading.value = false; }
 }
 function exportRows() {
-  const output = [['比赛日', '场次', '赛事', '主队', '客队', '开球时间', '判断来源', '记录时间', '官方赔率核验时间', ...codes.flatMap(c => [labels[c]+'选择', labels[c]+'最新SP', labels[c]+'留档SP', labels[c]+'进取观察SP', labels[c]+'赛果', labels[c]+'命中']), '正式比分'],
-    ...rows.value.map(r => [r.day, r.number, r.league, r.home, r.away, beijingDateTime(r.kickoff), r.forecast?.source || '未归档', r.forecast?.captured_at || '', r.current_quotes?.checked_at || '', ...codes.flatMap(c => { const m=cell(r,c); return [m.selection, currentSelectedOdds(r,c), predictionOdds(r,c), selectedOdds(exploration(r,c)), m.actual, m.status]; }), r.score || '待赛果'])];
+  const output = [['比赛日', '场次', '赛事', '主队', '客队', '开球时间', '判断来源', '记录时间', '官方赔率核验时间', ...codes.flatMap(c => [labels[c]+'选择', labels[c]+'选项数', labels[c]+'记录时间', labels[c]+'最新SP', labels[c]+'留档SP', labels[c]+'进取观察SP', labels[c]+'赛果', labels[c]+'核对']), '正式比分'],
+    ...rows.value.map(r => [r.day, r.number, r.league, r.home, r.away, beijingDateTime(r.kickoff), r.forecast?.source || '未归档', r.forecast?.captured_at || '', r.current_quotes?.checked_at || '', ...codes.flatMap(c => { const m=cell(r,c), p=r.forecast?.market_assessments?.find(m=>m.code===c); return [m.selection,selectionCount(r,c),p?.captured_at || r.forecast?.captured_at || '', currentSelectedOdds(r,c), predictionOdds(r,c), selectedOdds(exploration(r,c)), m.actual, resultText(r,c)]; }), r.score || '待赛果'])];
   const url = URL.createObjectURL(new Blob([toCsv(output.slice(1), output[0].map((title,key)=>({title,key})))], {type:'text/csv;charset=utf-8'}));
   const a = document.createElement('a'); a.href = url; a.download = `每日扫盘-${data.value.day}.csv`; a.click(); URL.revokeObjectURL(url);
 }
-watch([date, source], load);
-watch([date, source, search], () => { page.value = 1; });
+watch([date, source, competition], load);
+watch([date, source, competition, search], () => { page.value = 1; });
 watch(() => rows.value.length, n => { page.value = Math.min(page.value, Math.max(1, Math.ceil(n/pageSize))); });
 onMounted(() => { load(); timer = setInterval(() => { if (!document.hidden) load(); }, 15000); });
 onBeforeUnmount(() => { disposed=true; clearInterval(timer); sequence++; clearShare(); });
@@ -90,24 +90,35 @@ onBeforeUnmount(() => { disposed=true; clearInterval(timer); sequence++; clearSh
     <div class="panel daily-filters">
       <label>竞彩比赛日<t-date-picker :value="date || data?.day || ''" :clearable="false" @change="value => date = value" /></label>
       <label>判断来源<t-select v-model="source" :options="[{label:'全部（模型优先）',value:'auto'}, ...Object.entries(sources).map(([value,label])=>({value,label}))]" /></label>
+      <label>赛事<t-select v-model="competition" :options="[{label:'全部赛事',value:''}, ...(data?.competitions || [])]" /></label>
       <label>搜索比赛<t-input v-model="search" placeholder="球队、赛事或场次" clearable /></label>
       <t-button variant="outline" :disabled="!rows.length" @click="exportRows">导出记录</t-button>
     </div>
     <section class="panel daily-summary" aria-label="各来源命中汇总">
       <div class="daily-summary-heading">
-        <div><h2>当日命中率 <span class="summary-source">{{ sources[summaryKind] || '暂无记录' }}</span></h2><p class="daily-note">{{ data?.day || date }} · 按玩法统计，预测来源分别核对</p></div>
-        <div v-if="summaryKinds.length > 1" class="summary-switch" aria-label="命中率来源">
-          <button v-for="kind in summaryKinds" :key="kind" :aria-pressed="summaryKind === kind" @click="summaryChoice = kind">{{ sources[kind] }}</button>
-        </div>
+        <t-radio-group v-model="reportTab" theme="button" variant="default-filled" :options="[{label:'分类统计',value:'sources'},{label:'同期对照',value:'paired'}]" />
+        <t-button variant="text" @click="rulesOpen = true">统计口径</t-button>
       </div>
-      <div class="daily-rate-grid">
-        <div v-for="code in codes" :key="code" class="daily-rate" :aria-label="`${labels[code]}命中率`">
-          <span>{{ labels[code] }}</span>
-          <strong :class="{ 'rate-pending': !summaryValues[code]?.settled }">{{ percent(summaryValues[code]?.hits, summaryValues[code]?.settled) }}</strong>
-          <span class="daily-note">{{ summaryValues[code]?.settled ? `命中 ${summaryValues[code].hits} / 已核对 ${summaryValues[code].settled}` : '尚无可统计赛果' }}</span>
-          <div class="rate-track" aria-hidden="true"><span :style="{ width: `${summaryValues[code]?.settled ? 100*summaryValues[code].hits/summaryValues[code].settled : 0}%` }" /></div>
+      <template v-if="reportTab === 'sources'">
+        <div class="summary-switch" aria-label="统计来源"><t-button v-for="kind in summaryKinds" :key="kind" :variant="summaryKind === kind ? 'base' : 'outline'" :theme="summaryKind === kind ? 'primary' : 'default'" :aria-pressed="summaryKind === kind" @click="summaryChoice = kind">{{ sources[kind] }}</t-button></div>
+        <div class="daily-rate-grid">
+          <section v-for="code in codes" :key="code" class="daily-rate" :aria-label="`${labels[code]}统计`">
+            <h3>{{ labels[code] }}</h3>
+            <div v-for="group in ['single','multiple']" :key="group" class="audit-metric"><span>{{ group === 'single' ? '单选命中' : '多选覆盖' }}</span><strong>{{ percent(summaryValues[code]?.[group]?.hits, summaryValues[code]?.[group]?.settled) }}</strong><small>{{ summaryValues[code]?.[group]?.hits || 0 }} / {{ summaryValues[code]?.[group]?.settled || 0 }}</small></div>
+            <dl class="audit-counts"><div><dt>无预测</dt><dd>{{ summaryValues[code]?.missing ?? '—' }}</dd></div><div><dt>观望</dt><dd>{{ summaryValues[code]?.abstained ?? '—' }}</dd></div><div><dt>待赛果</dt><dd>{{ summaryValues[code]?.pending ?? '—' }}</dd></div><div><dt>排除</dt><dd>{{ summaryValues[code]?.excluded ?? '—' }}</dd></div></dl>
+          </section>
         </div>
-      </div>
+      </template>
+      <template v-else>
+        <div class="paired-heading"><h2>模型 / 市场</h2><span class="daily-note">同场、同期快照 · 误差越低越好</span></div>
+        <div class="daily-rate-grid">
+          <section v-for="code in codes" :key="code" class="daily-rate" :aria-label="`${labels[code]}同期对照`">
+            <h3>{{ labels[code] }}</h3><p class="daily-note">已核对 {{ pairedValues[code]?.settled || 0 }} / {{ pairedValues[code]?.eligible || 0 }} 场</p>
+            <div class="paired-metric"><span>Brier</span><strong>{{ metric(pairedValues[code]?.model?.brier) }} / {{ metric(pairedValues[code]?.market?.brier) }}</strong></div>
+            <div class="paired-metric"><span>Log loss</span><strong>{{ metric(pairedValues[code]?.model?.log_loss) }} / {{ metric(pairedValues[code]?.market?.log_loss) }}</strong></div>
+          </section>
+        </div>
+      </template>
     </section>
     <div class="daily-list-heading"><h2>逐场预测对比 <span class="daily-note">{{ rows.length }} 场</span></h2><span class="daily-note" v-if="loading">正在更新…</span><span v-else-if="data?.collector" class="daily-note" role="status">{{ data.collector.status === 'error' ? data.collector.error : '自动记录中' }}</span></div>
     <div v-if="!rows.length" class="panel empty-state">{{ loading ? '正在读取扫盘记录…' : '这一天尚无匹配记录，请更换日期或筛选条件。' }}</div>
@@ -117,16 +128,16 @@ onBeforeUnmount(() => { disposed=true; clearInterval(timer); sequence++; clearSh
           <div class="fixture-info"><div class="fixture-meta"><span>{{ row.number }} · {{ row.league }}</span><span class="source-chip" :class="{ 'source-model': row.forecast?.kind === 'model' }">{{ row.forecast?.kind === 'model' ? '足球模型预测' : row.forecast?.source || '未取得预测' }}</span></div>
             <h3><a :href="`#/match/${encodeURIComponent(row.id)}/analysis`">{{ row.home }} <span class="versus">vs</span> {{ row.away }}</a></h3>
             <p class="daily-note">{{ beijingDateTime(row.kickoff) }} 开球</p>
+            <p v-if="row.forecast" class="daily-note">{{ beijingDateTime(row.forecast.captured_at) }} 留档</p>
           </div>
           <div class="fixture-score"><span class="daily-note">正式比分</span><strong>{{ row.cancelled ? '已取消' : row.score || '待赛果' }}</strong></div>
-          <div class="fixture-rate"><span class="daily-note">本场玩法命中率</span><strong :class="{ 'rate-pending': !matchStats(row).total }">{{ matchStats(row).rate }}</strong><span class="daily-note">{{ matchStats(row).total ? `${matchStats(row).hits} / ${matchStats(row).total} 项已核对` : '等待有效对照' }}</span></div>
-          <t-button variant="text" @click="selected = row">查看记录</t-button>
+          <div class="fixture-links"><a :href="`#/match/${encodeURIComponent(row.id)}/odds`">赔率走势</a><t-button variant="text" @click="selected = row">查看记录</t-button><span v-if="row.current_quotes?.checked_at" class="daily-note">报价核验 {{ beijingDateTime(row.current_quotes.checked_at) }}</span></div>
         </header>
         <div class="daily-comparison-grid">
           <section v-for="code in codes" :key="code" class="market-comparison" :class="resultClass(row,code)" :aria-label="`${labels[code]}对比`">
             <div class="market-heading"><h4>{{ labels[code] }}<small v-if="code === 'hhad' && cell(row,code).line != null"> ({{ cell(row,code).line > 0 ? '+' : '' }}{{ cell(row,code).line }})</small></h4><span class="result-badge">{{ resultText(row,code) }}</span></div>
-            <div class="prediction-value"><span class="daily-note">{{ predictionLabel(row) }}</span><strong :class="{ 'no-selection': ['当时未记录','暂无预测'].includes(selection(row,code)) }">{{ selection(row,code) }}</strong></div>
-            <p v-if="currentSelectedOdds(row,code)" class="odds-note current-odds"><b>{{ currentSelectedOdds(row,code) }}</b><span>官方核验 {{ beijingDateTime(row.current_quotes?.checked_at) }}</span><a :href="`#/match/${encodeURIComponent(row.id)}/odds`">查看赔率走势</a></p>
+            <div class="prediction-value"><span class="daily-note">{{ predictionLabel(row) }}<template v-if="selectionCount(row,code)"> · {{ selectionCount(row,code) }} 项</template></span><strong :class="{ 'no-selection': ['当时未记录','暂无预测'].includes(selection(row,code)) }">{{ selection(row,code) }}</strong></div>
+            <p v-if="currentSelectedOdds(row,code)" class="odds-note current-odds"><b>{{ currentSelectedOdds(row,code) }}</b></p>
             <details v-if="predictionOdds(row,code)" class="odds-note"><summary>预测时SP</summary><span>{{ predictionOdds(row,code) }}</span></details>
             <div class="actual-value"><span class="daily-note">实际赛果</span><strong>{{ cell(row,code).actual === '—' ? '待确认' : cell(row,code).actual || '待确认' }}</strong></div>
             <p v-if="probability(row,code)" class="probability-note">{{ row.forecast.kind === 'model' ? '模型覆盖概率' : '参考覆盖概率' }} <b>{{ probability(row,code) }}</b></p>
@@ -136,10 +147,10 @@ onBeforeUnmount(() => { disposed=true; clearInterval(timer); sequence++; clearSh
       </article>
     </div>
     <div v-if="rows.length > pageSize" class="daily-pagination"><t-pagination v-model="page" :total="rows.length" :page-size="pageSize" :show-page-size="false" :max-page-btn="3" /></div>
-    <details class="daily-rules"><summary>统计口径与自动记录说明</summary><p>命中率 = 命中数 ÷ 已核对数。观望、未记录、待赛果、取消及冲突不计入分母。多项选择的命中表示覆盖赛果；赛前覆盖概率不等于赛后命中率。</p><p>按竞彩比赛日归档，包含次日凌晨比赛。模型预测、市场参考、旧日志分别统计；市场参考和旧日志不标成 AI 模型预测。赛前选择保留，赛果修正追加记录。</p><p>进取观察从已归档概率中选择主选以外的大比分、高进球数或半全场变化，概率通常较低，独立核对，不并入上方主预测命中率。仅开赛前记录；无足够概率支持时不强行给出。该观察规则尚未经过独立效果评估。</p><p v-if="data?.collector">服务运行期间每分钟检查 · 最近成功 {{ beijingDateTime(data.collector.last_success) }}</p></details>
+    <t-drawer v-model:visible="rulesOpen" header="统计口径" size="520px" :footer="false"><div class="audit-rules"><p>统计覆盖所选比赛日的全部场次，不受球队搜索或分页影响。各来源独立统计，不按“模型优先”隐去市场样本。</p><p>单选命中：选1项且命中；多选覆盖：选多项且包含赛果。分母只包含已核对场次。无预测、观望、待赛果、取消和冲突分开计数。</p><p>同期对照只使用足球模型归档内同时保留的市场参考，报价核验时间须在预测前180秒内。同场、同玩法、同让球线、同一正式赛果。缺少同期概率的记录不纳入，也不用当前赔率补填。</p><p>Brier为完整概率向量的平方误差之和；Log loss为实际结果的负对数概率。两者越低越好。不同玩法、赛事、预测提前量不能直接合并评价优劣；当前只是当日描述性对照。</p><p>旧日志与进取观察不进入模型对照；观察选择属于固定规则，不代表AI决策或验证有效的策略。</p><p>赛前留档不改写。AI试验须单独记录，不计入现有模型成绩。</p><p v-if="data?.collector">最近记录 {{ beijingDateTime(data.collector.last_success) }}</p></div></t-drawer>
     <t-dialog v-model:visible="shareOpen" header="每日扫盘分享图" width="min(1100px, calc(100vw - 32px))" :footer="false" :close-on-overlay-click="!shareBusy" :close-btn="!shareBusy" :close-on-esc-keydown="!shareBusy">
       <div class="share-preview">
-        <p class="daily-note">包含所选日期与来源的全部比赛，不受搜索或分页影响。每张最多12场，图片在本地生成。</p>
+        <p class="daily-note">包含所选日期、赛事与来源，不受搜索或分页影响。</p>
         <p v-if="shareBusy" role="status">正在生成高清图片…</p>
         <p v-if="shareError" role="alert">{{ shareError }} <t-button @click="generateShare">重新生成</t-button></p>
         <template v-if="shareImages.length">
@@ -175,28 +186,23 @@ onBeforeUnmount(() => { disposed=true; clearInterval(timer); sequence++; clearSh
 </template>
 
 <style scoped>
-.daily-workspace{min-width:0;--hit:#06705c;--miss:#b3261e;--muted:#606b7a;overflow-wrap:anywhere}
-.daily-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr) auto;gap:20px;align-items:end;padding:20px;margin-bottom:20px}
-.daily-filters label{display:grid;gap:8px;min-width:0}.daily-filters :deep(.t-select__wrap){width:100%;min-width:0}.daily-note{font-size:12px;color:var(--muted);font-weight:400;margin:0;line-height:1.6}
-.daily-summary{padding:20px;margin-bottom:24px}.daily-summary-heading,.daily-list-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.daily-summary-heading h2{margin:0 0 4px}.summary-source{font-size:13px;font-weight:400;color:var(--muted);margin-left:12px}
-.summary-switch{display:flex;flex-wrap:wrap;gap:8px}.summary-switch button{border:1px solid var(--border);background:#fff;color:var(--muted);padding:8px 12px;cursor:pointer}.summary-switch button[aria-pressed=true]{color:var(--blue);border-color:var(--blue);background:#ecf2fe}
-.daily-rate-grid,.daily-comparison-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.daily-rate-grid{margin-top:20px;gap:20px}.daily-rate{display:flex;flex-direction:column;gap:7px;min-width:0}.daily-rate>strong{font-size:32px;line-height:1.25;font-variant-numeric:tabular-nums;color:var(--blue)}.daily-rate>strong.rate-pending{font-size:24px;color:var(--muted)}.rate-track{height:4px;background:#edf0f5;margin-top:4px}.rate-track span{height:100%;display:block;background:var(--blue)}
-.daily-list-heading{margin-bottom:14px}.daily-list-heading h2{margin:0}.daily-match-list{display:grid;gap:18px}.daily-match{min-width:0;padding:20px}.daily-match-heading{display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:18px}.fixture-info{flex:1;min-width:180px}.fixture-meta{display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted)}.fixture-info h3{font-size:18px;line-height:1.5;margin:8px 0 4px}.fixture-info h3 a{color:inherit}.versus{font-size:13px;color:var(--muted);margin:0 6px;font-weight:400}.source-chip{padding:3px 7px;background:#eef1f5;color:#4b5664}.source-model{color:var(--blue);background:#ecf2fe;font-weight:600}.fixture-score,.fixture-rate{display:flex;flex-direction:column;gap:3px}.fixture-score strong{font-size:24px}.fixture-rate strong{font-size:24px;color:var(--blue)}.fixture-rate strong.rate-pending{color:var(--muted);font-size:18px}
-.market-comparison{min-width:0;border:1px solid var(--border);border-top:3px solid #b8c1cc;padding:12px;background:#fafbfc}.market-comparison.is-hit{border-top-color:var(--hit);background:#f3faf7}.market-comparison.is-miss{border-top-color:var(--miss);background:#fff8f7}.market-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap}.market-heading h4{font-size:14px;margin:0;line-height:22px}.market-heading small{font-weight:400}.result-badge{font-size:12px;font-weight:600;line-height:22px;padding:0 6px;background:#e9edf2;color:#4b5664}.is-hit .result-badge{color:var(--hit);background:#d9efe5}.is-miss .result-badge{color:var(--miss);background:#fce5e3}
-.prediction-value{display:flex;flex-direction:column;gap:5px;margin:14px 0 12px}.prediction-value strong{font-size:18px;color:var(--blue);line-height:1.5}.prediction-value .no-selection{font-size:14px;color:var(--muted);font-weight:400}.actual-value{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px solid #e1e6ed}.actual-value strong{font-size:16px;text-align:right}.probability-note{margin:10px 0 0;font-size:12px;line-height:1.5;color:var(--muted)}.probability-note b{color:var(--blue)}
-.daily-pagination{margin-top:20px}.daily-rules{font-size:12px;line-height:1.7;color:var(--muted);margin-top:20px}.daily-rules summary{cursor:pointer;min-height:32px}.daily-version{border-top:1px solid var(--border);margin-top:20px;padding-top:8px}.daily-alert{padding:16px;color:var(--miss)}:deep(.t-drawer){max-width:100vw;overflow-wrap:anywhere}
-@media(max-width:1000px){.daily-comparison-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.daily-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.daily-match,.daily-summary,.daily-filters{padding:16px}.daily-filters{gap:12px}.daily-filters label:nth-child(3){grid-column:1/-1}.daily-filters :deep(.t-date-picker),.daily-filters :deep(.t-select){width:100%;min-width:0}.daily-rate-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 16px}.daily-rate>strong{font-size:28px}.daily-rate:last-child{grid-column:1/-1}.daily-comparison-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.market-comparison:last-child{grid-column:1/-1}.daily-match-heading{gap:14px}.fixture-info{flex-basis:100%;min-width:0}.fixture-score,.fixture-rate{flex:1}.fixture-info h3{font-size:17px}.market-comparison{padding:10px}.prediction-value strong{font-size:16px}.actual-value{flex-wrap:wrap}.summary-source{display:block;margin:4px 0 0}.daily-pagination :deep(.t-pagination){flex-wrap:wrap;gap:12px}}
-</style>
-
-<style scoped>
-.daily-workspace{--blue:#315d80;--hit:#137d80;--miss:#a86d32;--muted:#65758a;color:#25384d}
-.odds-note{display:grid;gap:4px;font-size:12px;line-height:1.6;color:var(--muted);margin:0 0 12px;overflow-wrap:anywhere}.odds-note b{font-weight:500;color:#3c5369;font-variant-numeric:tabular-nums}
-.current-odds b{font-size:14px;color:#294e6c}.odds-note summary,.exploration summary{cursor:pointer}
-.daily-summary{border-color:#dce5ec;background:#fff}.daily-rate>strong,.fixture-rate strong{color:#315d80}.rate-track{background:#edf2f6}.rate-track span{background:#558e9e}
-.daily-match{border-color:#dce5ec}.market-comparison,.market-comparison.is-hit,.market-comparison.is-miss{border:1px solid #e1e8ee;border-top:1px solid #e1e8ee;background:#f8fafc}
-.market-comparison.is-hit{background:#f5faf9}.market-comparison.is-miss{background:#fcfaf7}.result-badge{background:#edf1f5;color:#697789;font-weight:500}.is-hit .result-badge{background:#e1f1ed;color:#146e65}.is-miss .result-badge{background:#f5eadc;color:#94612d}
-.prediction-value strong{color:#294e6c}.actual-value{border-color:#e3eaf0}.source-chip{background:#eef3f7;color:#586d80}.source-model{background:#e6f0f4;color:#315d80}.daily-match-heading{border-bottom:1px solid #edf1f5;padding-bottom:16px}.market-heading h4{color:#3c5369}.probability-note b{color:#397585}
-.share-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.share-preview{min-width:0}.share-preview img{display:block;width:100%;height:auto;margin-top:16px;border:1px solid #dce5ec}.share-preview .share-actions{margin-top:16px}.daily-workspace :deep(.t-button--theme-primary){background:#315d80;border-color:#315d80}.exploration{border-top:1px dashed #dbc6a8;margin-top:12px;padding-top:10px;display:flex;flex-direction:column;gap:4px;color:#94612d;font-size:12px}.exploration strong{font-size:16px;font-weight:600}.daily-workspace .page-heading{flex-wrap:wrap}
-@media(max-width:600px){.page-heading .share-actions{gap:8px}.share-preview .share-actions{gap:8px}}
+.daily-workspace{min-width:0;--hit:var(--td-success-color,#008858);--miss:var(--td-error-color,#d54941);overflow-wrap:anywhere}
+.daily-workspace .page-heading,.share-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.fixture-links{display:grid;grid-template-columns:auto auto;gap:4px 16px;align-items:center}.fixture-links .daily-note{grid-column:1/-1}.fixture-links>a{min-height:32px;display:flex;align-items:center}
+.daily-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.2fr) auto;gap:20px;align-items:end;padding:24px;margin-bottom:24px}
+.daily-filters label{display:grid;gap:8px;min-width:0}.daily-filters :deep(.t-select__wrap){width:100%;min-width:0}
+.daily-note{font-size:12px;color:var(--muted);font-weight:400;margin:0;line-height:1.6}
+.daily-summary{margin-bottom:24px}.daily-summary-heading,.daily-list-heading,.paired-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.daily-summary-heading{padding:16px 24px;border-bottom:1px solid var(--border)}.summary-switch{display:flex;gap:12px;flex-wrap:wrap;padding:20px 24px}
+.daily-rate-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}.daily-rate{min-width:0;padding:20px 24px;border-right:1px solid var(--border)}.daily-rate:last-child{border-right:0}.daily-rate h3{font-size:14px;margin:0 0 16px}.audit-metric{display:grid;grid-template-columns:1fr auto;gap:4px 8px;margin-bottom:14px;font-size:12px;color:var(--muted)}.audit-metric strong{font-size:18px;font-weight:600;color:var(--td-text-color-primary,#1f2329);font-variant-numeric:tabular-nums}.audit-metric small{grid-column:2;text-align:right;font-size:12px}
+.audit-counts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}.audit-counts div{display:flex;gap:6px;justify-content:space-between}.audit-counts dd{margin:0;color:var(--td-text-color-primary,#1f2329)}
+.paired-heading{padding:20px 24px 0}.paired-heading h2{font-size:16px}.paired-metric{display:grid;gap:8px;margin-top:16px;font-size:12px;color:var(--muted)}.paired-metric strong{font-weight:500;color:var(--td-text-color-primary,#1f2329);font-size:16px;font-variant-numeric:tabular-nums}
+.daily-list-heading{margin-bottom:16px}.daily-list-heading h2{margin:0}.daily-match-list{display:grid;gap:24px}.daily-match{min-width:0}.daily-match-heading{display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding:20px 24px;border-bottom:1px solid var(--border)}.fixture-info{flex:1;min-width:180px}.fixture-meta{display:flex;align-items:center;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted)}.fixture-info h3{font-size:18px;line-height:1.5;margin:8px 0}.fixture-info h3 a{color:inherit}.versus{font-size:13px;color:var(--muted);margin:0 6px;font-weight:400}.source-chip{padding:2px 8px;background:var(--td-bg-color-secondarycontainer,#f3f3f3);color:var(--muted)}.source-model{color:var(--blue);background:var(--td-brand-color-light)}.fixture-score{display:flex;flex-direction:column;gap:4px}.fixture-score strong{font-size:24px}
+.daily-comparison-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}.market-comparison{min-width:0;padding:16px 20px;border-right:1px solid var(--border);background:#fff}.market-comparison:last-child{border-right:0}.market-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.market-heading h4{font-size:14px;margin:0;line-height:24px}.market-heading small{font-weight:400}.result-badge{font-size:12px;line-height:24px;color:var(--muted)}.is-hit .result-badge{color:var(--hit)}.is-miss .result-badge{color:var(--miss)}
+.prediction-value{display:grid;gap:8px;margin:16px 0}.prediction-value strong{font-size:16px;color:var(--blue);line-height:1.5}.prediction-value .no-selection{font-size:14px;color:var(--muted);font-weight:400}.actual-value{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding-top:12px;border-top:1px solid var(--border)}.actual-value strong{font-size:14px;text-align:right}.probability-note{margin:12px 0 0;font-size:12px;line-height:1.6;color:var(--muted)}.probability-note b{font-weight:500;color:var(--td-text-color-primary,#1f2329)}
+.odds-note{display:grid;gap:4px;font-size:12px;line-height:1.6;color:var(--muted);margin:0 0 12px}.odds-note b{font-weight:400;color:var(--td-text-color-primary,#1f2329);font-variant-numeric:tabular-nums}.odds-note summary,.exploration summary{cursor:pointer}.exploration{border-top:1px solid var(--border);margin-top:16px;padding-top:12px;display:flex;flex-direction:column;gap:4px;color:var(--muted);font-size:12px}.exploration strong{font-size:14px;font-weight:500}
+.daily-pagination{margin-top:20px}.daily-version{border-top:1px solid var(--border);margin-top:20px;padding-top:8px}.daily-alert{padding:16px;color:var(--miss)}.audit-rules{display:grid;gap:16px;line-height:1.8}:deep(.t-drawer){max-width:100vw;overflow-wrap:anywhere}.share-preview{min-width:0}.share-preview img{display:block;width:100%;height:auto;margin-top:16px;border:1px solid var(--border)}.share-preview .share-actions{margin-top:16px}
+@media(max-width:1200px){.daily-rate{padding:16px}.market-comparison{padding:16px 12px}.daily-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:800px){.daily-rate-grid,.daily-comparison-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.daily-rate,.market-comparison{border-bottom:1px solid var(--border)}.daily-rate:nth-child(2n),.market-comparison:nth-child(2n){border-right:0}.daily-rate:last-child,.market-comparison:last-child{grid-column:1/-1;border-bottom:0}.daily-rate:last-child{max-width:none}}
+@media(max-width:600px){.daily-filters{padding:16px;gap:12px;margin-bottom:16px}.daily-filters label:nth-child(4){grid-column:1/-1}.daily-filters :deep(.t-date-picker),.daily-filters :deep(.t-select){width:100%;min-width:0}.daily-summary-heading,.summary-switch,.paired-heading{padding:16px}.daily-summary{margin-bottom:16px}.daily-match-list{gap:16px}.daily-match-heading{padding:16px;gap:12px}.fixture-info{flex-basis:100%;min-width:0}.fixture-score{flex:1}.fixture-info h3{font-size:16px}.market-comparison{padding:16px 12px}.actual-value{flex-wrap:wrap}.daily-pagination :deep(.t-pagination){flex-wrap:wrap;gap:12px}.daily-workspace :deep(.t-button){min-height:40px}.odds-note summary{min-height:32px;display:flex;align-items:center}.share-actions{gap:8px}}
 </style>

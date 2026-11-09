@@ -111,6 +111,16 @@ class DailySweepTests(unittest.TestCase):
         for day, kind in [('yesterday','auto'),('2026-11-04','bad')]:
             with self.assertRaises(ValueError):self.sweep.read(day,kind)
 
+    def test_competition_filter_also_scopes_audit_denominators(self):
+        self.tick()
+        report = self.sweep.read('2026-11-04')
+        cid = report['competitions'][0]['value']
+        self.assertEqual(len(self.sweep.read('2026-11-04', competition=cid)['rows']), 1)
+        other = self.sweep.read('2026-11-04', competition='not-this-competition')
+        self.assertEqual(other['rows'], [])
+        self.assertEqual(other['audit']['sources']['model']['had']['missing'], 0)
+        self.assertEqual(other['competitions'], report['competitions'])
+
     def test_changed_fixture_identity_suspends_comparison(self):
         self.tick()
         self.result('1-0')
@@ -144,6 +154,11 @@ class DailySweepTests(unittest.TestCase):
         self.assertEqual(row['forecast']['kind'],'model')
         self.assertEqual(self.row('market')['forecast']['kind'],'market')
         self.assertEqual(len(self.store.versions(self.match['id'])),2)
+        report = self.sweep.read('2026-11-04')
+        self.assertIn('market', report['rows'][0]['observations'])
+        self.assertIn('model', report['rows'][0]['observations'])
+        self.assertEqual(report['audit']['sources']['market']['had']['missing'], 0)
+        self.assertEqual(report['audit']['sources']['market']['had']['pending'], 1)
 
     def test_incomplete_market_is_not_fabricated(self):
         self.match['markets']['hafu']['options'].pop()

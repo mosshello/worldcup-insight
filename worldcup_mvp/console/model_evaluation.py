@@ -108,8 +108,13 @@ def evaluate_task(data, config, *, fixed_model=None, date_from=None, date_to=Non
         raise ValueError('评估样本早于模型训练截止')
     if progress:
         progress({'phase': 'evaluate', 'completed': 0, 'total': len(targets)})
+    # Each row's training features have their own historical cutoff. They are
+    # identical across weekly refits; computing them once does not expose later facts.
+    vectors = ({r['id']:features(rows,r,cutoff(r)) for r in rows}
+               if fixed_model is None and config['kind'] in ('elo_logistic','catboost','lightgbm_goals')
+               else None)
     exclusions = []
-    records, reused = stage_walk('evaluate',rows,targets,config,None,sink=artifact_sink,exclusions=exclusions,
+    records, reused = stage_walk('evaluate',rows,targets,config,vectors,sink=artifact_sink,exclusions=exclusions,
                                  fixed_model=fixed_model,fixed_artifact=fixed_artifact)
     if len(records) < t.MIN_TEST:
         raise ValueError(f'模型可评估样本不足{t.MIN_TEST}场')

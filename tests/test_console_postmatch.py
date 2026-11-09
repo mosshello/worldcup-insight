@@ -127,6 +127,7 @@ class PostmatchTests(unittest.TestCase):
 
     def test_verified_aliases_still_require_both_teams_and_time(self):
         for league, home, away, mapped_home, mapped_away in [
+            ("esp.1", "SEV", "ALS", "SEV", "ALA"),
             ("ita.1", "SSL", "FIO", "SAS", "FIO"),
             ("swe.1", "GIS", "ASA", "GAIS", "AIK"),
             ("fra.2", "RST", "ASN", "RSFC", "ASNL"),

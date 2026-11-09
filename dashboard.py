@@ -170,6 +170,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 return
 
             if route == "/api/console/capabilities":
+                if self.console_only:
+                    self._send_json({"success": True, "club_training_enabled": False,
+                                     "national_model": None, "legacy_enabled": False})
+                    return
                 from worldcup_mvp.statistical_model import load_statistical_model
                 model = load_statistical_model() or {}
                 self._send_json({
@@ -196,6 +200,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     self.send_error(HTTPStatus.FORBIDDEN)
                     return
                 self._send_file(target)
+                return
+
+            if self.console_only and route.startswith("/api/"):
+                self._send_json({"success": False, "error": "旧版接口已停用"}, status=HTTPStatus.GONE)
                 return
 
             if route == "/api/doctor":
@@ -325,6 +333,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     self._send_json({"success": False, "error": str(exc)}, status=HTTPStatus.BAD_GATEWAY)
                 return
 
+            if self.console_only and route.startswith("/api/"):
+                self._send_json({"success": False, "error": "旧版接口已停用"}, status=HTTPStatus.GONE)
+                return
+
             if route == "/api/analyze/chat":
                 body = self._read_json_body()
                 match_id = str(body.get("match_id") or "").strip()
@@ -372,7 +384,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="启动世界杯盘口可视化仪表盘")
     parser.add_argument("--host", default="127.0.0.1", help="监听地址")
     parser.add_argument("--port", type=int, default=8765, help="监听端口")
-    parser.add_argument("--console-only", action="store_true", help="仅运行通用足球工作台，不启动旧世界杯自动任务")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--console-only", dest="console_only", action="store_true", default=True,
+                      help="运行通用足球工作台（默认）")
+    mode.add_argument("--legacy-dashboard", dest="console_only", action="store_false",
+                      help="显式运行旧世界杯工作台，与足球工作台隔离")
     parser.add_argument(
         "--cache-interval",
         type=float,

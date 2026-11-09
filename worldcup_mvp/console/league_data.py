@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .catalog import classify
-from .history_pipeline import STAGING, competition_staging
+from .history_pipeline import competition_staging
 from .sources import SourceError, parse_date
 from .store import fingerprint, now_iso
 
@@ -13,9 +13,11 @@ ALIASES = {"jp.j1": {"町田泽维": "町田泽维亚"},
            "kr.k1": {"仁川联": "仁川联合", "仁川联队": "仁川联合", "蔚山HD": "蔚山现代"}}
 
 
-def load_history(path=STAGING, competition_id=None):
+def load_history(path=None, competition_id=None):
     if competition_id is not None:
         path = competition_staging(competition_id)
+    if path is None:
+        raise SourceError("须指定赛事或历史快照路径")
     try:
         data = json.loads(Path(path).read_text(encoding="utf8"))
         if data.get("status") != "collected" or data.get("digest") != fingerprint({"matches": data["matches"], "coverage": data["coverage"]}):

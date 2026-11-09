@@ -1,7 +1,7 @@
 import { request } from "./domain.js";
 export const api = {
   odds: id => request(`/api/v1/matches/${encodeURIComponent(id)}/odds`),
-  dailySweep: (date = '', source = 'auto') => request(`/api/v1/daily-sweep?date=${encodeURIComponent(date)}&source=${encodeURIComponent(source)}`),
+  dailySweep: (date = '', source = 'auto', competition = '') => request(`/api/v1/daily-sweep?date=${encodeURIComponent(date)}&source=${encodeURIComponent(source)}&competition=${encodeURIComponent(competition)}`),
   matches: () => request("/api/v1/matches"),
   scoreFixtures: refresh => request('/api/v1/matches?view=scores' + (refresh ? '&refresh=1' : '')),
   scores: (refresh = false) =>

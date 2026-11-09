@@ -62,6 +62,7 @@ LEAGUES = {
 }
 # Explicit aliases scoped by competition; never match clubs solely by a kickoff or one team.
 ALIASES = {
+    "esp.1": {"ALS": "ALA"},
     "eng.2": {"BRT": "BRC", "WLV": "WOL"},
     "uefa.europa": {"OLP": "OLY"},
     "afc.champions": {"NCJ":"NEW", "SSP":"SHP", "KAH":"KRE", "DJC":"DHC", "PTF":"PORT", "FBJ":"BEI", "PHS":"POH", "GAB":"GAM", "BUU":"BUR", "KAS":"KAN"},

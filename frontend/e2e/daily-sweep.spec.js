@@ -5,6 +5,7 @@ test('daily sweep highlights rates, exports a share image and fits narrow screen
   const source={model:'足球模型',market:'市场参考',legacy:'旧日志参考'};
   const markets=codes.map((code,i)=>({code,selection:['主胜','让平','胜胜','2-1 / 1-0 / 2-0','2球 / 3球'][i],actual:['主胜','让负','—','2-1','3球'][i],status:i===2?'待赛果':i===1?'未命中':'命中',hit:i===2?null:i!==1,line:code==='hhad'?-1:null}));
   const summary=Object.fromEntries(Object.keys(source).map(k=>[k,Object.fromEntries(codes.map(c=>[c,c==='hafu'?{hits:0,settled:0}:c==='hhad'?{hits:0,settled:1}:{hits:1,settled:2}]))]));
+  const audit={sources:Object.fromEntries(Object.keys(source).map(k=>[k,Object.fromEntries(codes.map(c=>[c,{single:summary[k][c],multiple:{hits:0,settled:0},missing:2,abstained:1,pending:3,excluded:0}]))])),paired:Object.fromEntries(codes.map(c=>[c,{eligible:2,settled:1,model:{brier:.245,log_loss:.511},market:{brier:.345,log_loss:.611}}]))};
   const requests=[], writes=[], errors=[];
   let currentOdds=3.25;
   page.on('pageerror', e=>errors.push(e.message));
@@ -15,7 +16,7 @@ test('daily sweep highlights rates, exports a share image and fits narrow screen
     if(url.pathname.endsWith('/daily-sweep')) {
       requests.push(url.searchParams.get('date'));
       const kind=['model','legacy'].includes(url.searchParams.get('source'))?url.searchParams.get('source'):'market';
-      data={...data,day:url.searchParams.get('date')||'2026-11-04',days:['2026-11-04'],summary,sources:source,
+      data={...data,day:url.searchParams.get('date')||'2026-11-04',days:['2026-11-04'],summary,audit,sources:source,
         collector:{status:'available',last_success:'2026-11-05T01:40:00Z'},
         rows:[{id:'sporttery:daily',number:'周三001',home:'测试主队',away:'测试客队',league:'欧冠',day:'2026-11-04',kickoff:'2026-11-05T04:00:00+08:00',score:'2-1',markets,
           forecast:{kind,source:source[kind],captured_at:'2026-11-04T10:00:00Z',market_assessments:codes.map((code,i)=>({code,selected_keys:['h'],selection:markets[i].selection,options:kind==='legacy'?[]:[{key:'h',label:markets[i].selection,odds:2.5+i}],coverage:64.2}))},available_sources:['model','market','legacy'],
@@ -37,7 +38,8 @@ test('daily sweep highlights rates, exports a share image and fits narrow screen
   for(const title of ['胜平负','让球','半全场','比分','进球数']) await expect(match.getByRole('region',{name:title+'对比',exact:true})).toBeVisible();
   await expect(match).toContainText('2-1 / 1-0 / 2-0');
   await expect(match).toContainText('待赛果');
-  await expect(match).toContainText('75.0%');
+  await expect(match).not.toContainText('本场玩法命中率');
+  await expect(match).toContainText('留档');
   await expect(match).toContainText('参考覆盖概率 64.2%');
   await expect(match.locator('.current-odds').first()).toContainText('最新SP 主胜 @ 3.25');
   currentOdds=3.5;await page.getByRole('button',{name:'刷新记录',exact:true}).click();
@@ -49,10 +51,14 @@ test('daily sweep highlights rates, exports a share image and fits narrow screen
   }
   await expect(match.locator('.is-hit')).toHaveCount(3);
   await expect(match.locator('.is-miss')).toHaveCount(1);
-  await expect(page.getByLabel('胜平负命中率',{exact:true})).toContainText('50.0%');
-  await expect(page.getByLabel('让球命中率',{exact:true})).toContainText('0.0%');
-  await expect(page.getByLabel('半全场命中率',{exact:true})).toContainText('待统计');
-  await expect(page.getByLabel('半全场命中率',{exact:true})).not.toContainText('0.0%');
+  await expect(page.getByLabel('胜平负统计',{exact:true})).toContainText('50.0%');
+  await expect(page.getByLabel('胜平负统计',{exact:true})).toContainText('多选覆盖');
+  await expect(page.getByLabel('让球统计',{exact:true})).toContainText('0.0%');
+  await expect(page.getByLabel('半全场统计',{exact:true})).toContainText('待统计');
+  await expect(page.getByLabel('半全场统计',{exact:true})).not.toContainText('0.0%');
+  await page.getByText('同期对照',{exact:true}).click();
+  await expect(page.getByLabel('胜平负同期对照',{exact:true})).toContainText('0.245 / 0.345');
+  await page.getByText('分类统计',{exact:true}).click();
   const download=page.waitForEvent('download');
   await page.getByRole('button',{name:'导出记录'}).click();
   expect((await download).suggestedFilename()).toBe('每日扫盘-2026-11-04.csv');
@@ -81,6 +87,8 @@ test('daily sweep highlights rates, exports a share image and fits narrow screen
     expect(overflow,`horizontal overflow at ${width}`).toEqual([]);
     const size=await page.evaluate(()=>({body:document.body.scrollWidth,width:innerWidth}));
     expect(size.body).toBeLessThanOrEqual(size.width);
+    expect(await page.locator('.daily-match').first().evaluate(e=>getComputedStyle(e).borderTopLeftRadius)).toBe('0px');
+    expect(await page.getByRole('button',{name:'生成分享图',exact:true}).evaluate(e=>getComputedStyle(e).backgroundColor)).toBe('rgb(0, 82, 217)');
     for(const title of ['胜平负','让球','半全场','比分','进球数']) {
       const box=await match.getByRole('region',{name:title+'对比',exact:true}).boundingBox();
       expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width);

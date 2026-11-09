@@ -1,0 +1,133 @@
+{
+  "revision": "35df2f2ba0e170bc830f301e3a19ae6a20b016b8cbe8460ea95553a3403f94bb",
+  "previous_revision": "e85a82c281bdd7c0d5b71c9f29fa72b06503dbe998d025597c4a56ba3c46eb63",
+  "created_at": "2026-11-06T14:18:59.841483+00:00",
+  "rules": {
+    "id": "esp.laliga",
+    "name": "西甲",
+    "country": "ES",
+    "region": "UEFA",
+    "official_url": "https://www.laliga.com/",
+    "rule_source": "https://www.theifab.com/laws/latest/the-duration-of-the-match/",
+    "providers": {
+      "sporttery": "SFL",
+      "espn": "esp.1",
+      "espn_id": "740"
+    },
+    "training_enabled": true,
+    "target_period": "regular_time",
+    "training_scope": "competition_only",
+    "cross_competition_features": false,
+    "training_stage_policy": {
+      "2021": [
+        "regular"
+      ],
+      "2022": [
+        "regular"
+      ],
+      "2023": [
+        "regular"
+      ],
+      "2024": [
+        "regular"
+      ],
+      "2025": [
+        "regular"
+      ],
+      "2026": [
+        "regular"
+      ]
+    },
+    "prediction_stage_policy": {
+      "2026": [
+        "2026-27-laliga"
+      ]
+    },
+    "research_policy": {
+      "sample_policy": "big-five-audited-research-v1",
+      "usage_mode": "local_research",
+      "rules_scope": "Main league regular-time, non-neutral matches only; all playoffs, administrative awards and abandoned matches excluded",
+      "data_admission_only": false,
+      "enhanced_features_trained": false,
+      "rules_verified_at": "2026-11-05",
+      "limitations": [
+        "历史可用时间采用明确七天假设",
+        "增强资料按实际覆盖"
+      ]
+    },
+    "seasons": [
+      {
+        "id": "2021",
+        "label": "2021/22",
+        "start": "2021-07-01",
+        "end": "2022-07-01",
+        "format": "league",
+        "stages": [
+          "regular"
+        ],
+        "shootout_separate": true,
+        "expected_teams": 20
+      },
+      {
+        "id": "2022",
+        "label": "2022/23",
+        "start": "2022-07-01",
+        "end": "2023-07-01",
+        "format": "league",
+        "stages": [
+          "regular"
+        ],
+        "shootout_separate": true,
+        "expected_teams": 20
+      },
+      {
+        "id": "2023",
+        "label": "2023/24",
+        "start": "2023-07-01",
+        "end": "2024-07-01",
+        "format": "league",
+        "stages": [
+          "regular"
+        ],
+        "shootout_separate": true,
+        "expected_teams": 20
+      },
+      {
+        "id": "2024",
+        "label": "2024/25",
+        "start": "2024-07-01",
+        "end": "2025-07-01",
+        "format": "league",
+        "stages": [
+          "regular"
+        ],
+        "shootout_separate": true,
+        "expected_teams": 20
+      },
+      {
+        "id": "2025",
+        "label": "2025/26",
+        "start": "2025-07-01",
+        "end": "2026-07-01",
+        "format": "league",
+        "stages": [
+          "regular"
+        ],
+        "shootout_separate": true,
+        "expected_teams": 20
+      },
+      {
+        "id": "2026",
+        "label": "2026/27",
+        "start": "2026-07-01",
+        "end": "2027-07-01",
+        "format": "league",
+        "stages": [
+          "regular"
+        ],
+        "shootout_separate": true,
+        "expected_teams": 20
+      }
+    ]
+  }
+}

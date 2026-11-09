@@ -83,6 +83,26 @@ class ConsoleRoutesTest(unittest.TestCase):
             )
             caught.exception.close()
 
+    def test_console_only_blocks_legacy_predictions_and_mutations(self):
+        with patch.object(DashboardHandler, 'console_only', True), \
+             patch('dashboard.get_fusion_prediction', side_effect=AssertionError('legacy predictor ran')), \
+             patch('dashboard.settle_open_predictions', side_effect=AssertionError('legacy settlement ran')), \
+             patch('dashboard.run_match_chat_analysis', side_effect=AssertionError('legacy analysis ran')):
+            for path, body in [('/api/sporttery/predict/example', None),
+                               ('/api/settlement/run', None), ('/api/cache/refresh', None),
+                               ('/api/analyze/chat', b'{}')]:
+                request = urllib.request.Request(self.base+path, data=body)
+                with self.assertRaises(urllib.error.HTTPError) as caught:
+                    urllib.request.urlopen(request)
+                self.assertEqual(caught.exception.code, 410)
+                caught.exception.close()
+            with patch('worldcup_mvp.console.api.get', return_value={'success':True}):
+                with urllib.request.urlopen(self.base+'/api/v1/capabilities') as response:
+                    self.assertTrue(json.load(response)['success'])
+            with patch('worldcup_mvp.statistical_model.load_statistical_model', side_effect=AssertionError('legacy model read')):
+                with urllib.request.urlopen(self.base+'/api/console/capabilities') as response:
+                    self.assertFalse(json.load(response)['legacy_enabled'])
+
 
 if __name__ == "__main__":
     unittest.main()
